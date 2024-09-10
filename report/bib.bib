@@ -1,0 +1,140 @@
+@article{tangExplainableMultitaskLearning2023,
+  title = {Explainable Multi-Task Learning for Multi-Modality Biological Data Analysis},
+  author = {Tang, Xin and Zhang, Jiawei and He, Yichun and Zhang, Xinhe and Lin, Zuwan and Partarrieu, Sebastian and Hanna, Emma Bou and Ren, Zhaolin and Shen, Hao and Yang, Yuhong and Wang, Xiao and Li, Na and Ding, Jie and Liu, Jia},
+  date = {2023-05-03},
+  journaltitle = {Nature Communications},
+  shortjournal = {Nat Commun},
+  volume = {14},
+  number = {1},
+  pages = {2546},
+  issn = {2041-1723},
+  doi = {10.1038/s41467-023-37477-x},
+  url = {https://www.nature.com/articles/s41467-023-37477-x},
+  urldate = {2024-07-07},
+  abstract = {Abstract             Current biotechnologies can simultaneously measure multiple high-dimensional modalities (e.g., RNA, DNA accessibility, and protein) from the same cells. A combination of different analytical tasks (e.g., multi-modal integration and cross-modal analysis) is required to comprehensively understand such data, inferring how gene regulation drives biological diversity and functions. However, current analytical methods are designed to perform a single task, only providing a partial picture of the multi-modal data. Here, we present UnitedNet, an explainable multi-task deep neural network capable of integrating different tasks to analyze single-cell multi-modality data. Applied to various multi-modality datasets (e.g., Patch-seq, multiome ATAC\,+\,gene expression, and spatial transcriptomics), UnitedNet demonstrates similar or better accuracy in multi-modal integration and cross-modal prediction compared with state-of-the-art methods. Moreover, by dissecting the trained UnitedNet with the explainable machine learning algorithm, we can directly quantify the relationship between gene expression and other modalities with cell-type specificity. UnitedNet is a comprehensive end-to-end framework that could be broadly applicable to single-cell multi-modality biology. This framework has the potential to facilitate the discovery of cell-type-specific regulation kinetics across transcriptomics and other modalities.},
+  langid = {english},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/2H746QBC/Tang et al. - 2023 - Explainable multi-task learning for multi-modality.pdf}
+}
+
+@inproceedings{yangDeepSpectralClustering2019,
+  title = {Deep {{Spectral Clustering Using Dual Autoencoder Network}}},
+  booktitle = {2019 {{IEEE}}/{{CVF Conference}} on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  author = {Yang, Xu and Deng, Cheng and Zheng, Feng and Yan, Junchi and Liu, Wei},
+  date = {2019-06},
+  pages = {4061--4070},
+  publisher = {IEEE},
+  location = {Long Beach, CA, USA},
+  doi = {10.1109/CVPR.2019.00419},
+  url = {https://ieeexplore.ieee.org/document/8953592/},
+  urldate = {2024-08-18},
+  abstract = {The clustering methods have recently absorbed evenincreasing attention in learning and vision. Deep clustering combines embedding and clustering together to obtain optimal embedding subspace for clustering, which can be more effective compared with conventional clustering methods. In this paper, we propose a joint learning framework for discriminative embedding and spectral clustering. We first devise a dual autoencoder network, which enforces the reconstruction constraint for the latent representations and their noisy versions, to embed the inputs into a latent space for clustering. As such the learned latent representations can be more robust to noise. Then the mutual information estimation is utilized to provide more discriminative information from the inputs. Furthermore, a deep spectral clustering method is applied to embed the latent representations into the eigenspace and subsequently clusters them, which can fully exploit the relationship between inputs to achieve optimal clustering results. Experimental results on benchmark datasets show that our method can significantly outperform state-of-the-art clustering approaches.},
+  eventtitle = {2019 {{IEEE}}/{{CVF Conference}} on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  isbn = {978-1-72813-293-8},
+  langid = {english},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/2Z3TJN7R/Yang et al. - 2019 - Deep Spectral Clustering Using Dual Autoencoder Ne.pdf}
+}
+
+@online{kingmaAutoEncodingVariationalBayes2022,
+  title = {Auto-{{Encoding Variational Bayes}}},
+  author = {Kingma, Diederik P. and Welling, Max},
+  date = {2022-12-10},
+  eprint = {1312.6114},
+  eprinttype = {arXiv},
+  eprintclass = {cs, stat},
+  url = {http://arxiv.org/abs/1312.6114},
+  urldate = {2024-08-24},
+  abstract = {How can we perform efficient inference and learning in directed probabilistic models, in the presence of continuous latent variables with intractable posterior distributions, and large datasets? We introduce a stochastic variational inference and learning algorithm that scales to large datasets and, under some mild differentiability conditions, even works in the intractable case. Our contributions are two-fold. First, we show that a reparameterization of the variational lower bound yields a lower bound estimator that can be straightforwardly optimized using standard stochastic gradient methods. Second, we show that for i.i.d. datasets with continuous latent variables per datapoint, posterior inference can be made especially efficient by fitting an approximate inference model (also called a recognition model) to the intractable posterior using the proposed lower bound estimator. Theoretical advantages are reflected in experimental results.},
+  langid = {english},
+  pubstate = {prepublished},
+  keywords = {Computer Science - Machine Learning,Statistics - Machine Learning},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/JVUGPKZR/Kingma and Welling - 2022 - Auto-Encoding Variational Bayes.pdf}
+}
+
+@online{heMaskedAutoencodersAre2021,
+  title = {Masked {{Autoencoders Are Scalable Vision Learners}}},
+  author = {He, Kaiming and Chen, Xinlei and Xie, Saining and Li, Yanghao and Dollár, Piotr and Girshick, Ross},
+  date = {2021-12-19},
+  eprint = {2111.06377},
+  eprinttype = {arXiv},
+  eprintclass = {cs},
+  url = {http://arxiv.org/abs/2111.06377},
+  urldate = {2024-07-26},
+  abstract = {This paper shows that masked autoencoders (MAE) are scalable self-supervised learners for computer vision. Our MAE approach is simple: we mask random patches of the input image and reconstruct the missing pixels. It is based on two core designs. First, we develop an asymmetric encoder-decoder architecture, with an encoder that operates only on the visible subset of patches (without mask tokens), along with a lightweight decoder that reconstructs the original image from the latent representation and mask tokens. Second, we find that masking a high proportion of the input image, e.g., 75\%, yields a nontrivial and meaningful self-supervisory task. Coupling these two designs enables us to train large models efficiently and effectively: we accelerate training (by 3× or more) and improve accuracy. Our scalable approach allows for learning high-capacity models that generalize well: e.g., a vanilla ViT-Huge model achieves the best accuracy (87.8\%) among methods that use only ImageNet-1K data. Transfer performance in downstream tasks outperforms supervised pretraining and shows promising scaling behavior.},
+  langid = {english},
+  pubstate = {prepublished},
+  keywords = {Computer Science - Computer Vision and Pattern Recognition},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/8VHXHF3P/He et al. - 2021 - Masked Autoencoders Are Scalable Vision Learners.pdf}
+}
+
+@online{goodfellowGenerativeAdversarialNetworks2014,
+  title = {Generative {{Adversarial Networks}}},
+  author = {Goodfellow, Ian J. and Pouget-Abadie, Jean and Mirza, Mehdi and Xu, Bing and Warde-Farley, David and Ozair, Sherjil and Courville, Aaron and Bengio, Yoshua},
+  date = {2014-06-10},
+  eprint = {1406.2661},
+  eprinttype = {arXiv},
+  eprintclass = {cs, stat},
+  url = {http://arxiv.org/abs/1406.2661},
+  urldate = {2024-08-27},
+  abstract = {We propose a new framework for estimating generative models via an adversarial process, in which we simultaneously train two models: a generative model G that captures the data distribution, and a discriminative model D that estimates the probability that a sample came from the training data rather than G. The training procedure for G is to maximize the probability of D making a mistake. This framework corresponds to a minimax two-player game. In the space of arbitrary functions G and D, a unique solution exists, with G recovering the training data distribution and D equal to 1/2 everywhere. In the case where G and D are defined by multilayer perceptrons, the entire system can be trained with backpropagation. There is no need for any Markov chains or unrolled approximate inference networks during either training or generation of samples. Experiments demonstrate the potential of the framework through qualitative and quantitative evaluation of the generated samples.},
+  langid = {english},
+  pubstate = {prepublished},
+  keywords = {Computer Science - Machine Learning,Statistics - Machine Learning},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/WNM2LPL9/Goodfellow et al. - 2014 - Generative Adversarial Networks.pdf}
+}
+
+@article{tejada-lapuertaCausalMachineLearning,
+  title = {Causal Machine Learning for Single-Cell Genomics},
+  author = {Tejada-Lapuerta, Alejandro and Bertin, Paul and Bauer, Stefan and Aliee, Hananeh and Theis, Fabian J},
+  abstract = {Advances in single-cell omics allow for unprecedented insights into the transcription profiles of individual cells. When combined with large-scale perturbation screens, through which specific biological mechanisms can be targeted, these technologies allow for measuring the effect of targeted perturbations on the whole transcriptome. These advances provide an opportunity to better understand the causative role of genes in complex biological processes such as gene regulation, disease progression or cellular development. However, the high-dimensional nature of the data, coupled with the intricate complexity of biological systems renders this task nontrivial. Within the machine learning community, there has been a recent increase of interest in causality, with a focus on adapting established causal techniques and algorithms to handle high-dimensional data. In this perspective, we delineate the application of these methodologies within the realm of single-cell genomics and their challenges. We first present the model that underlies most of current causal approaches to single-cell biology and discuss and challenge the assumptions it entails from the biological point of view. We then identify open problems in the application of causal approaches to single-cell data: generalising to unseen environments, learning interpretable models, and learning causal models of dynamics. For each problem, we discuss how various research directions – including the development of computational approaches and the adaptation of experimental protocols – may offer ways forward, or on the contrary pose some difficulties. With the advent of single cell atlases and increasing perturbation data, we expect causal models to become a crucial tool for informed experimental design.},
+  langid = {english},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/VXZQY9HM/Tejada-Lapuerta et al. - Causal machine learning for single-cell genomics.14935}
+}
+
+
+@online{kendallMultiTaskLearningUsing2018,
+  title = {Multi-{{Task Learning Using Uncertainty}} to {{Weigh Losses}} for {{Scene Geometry}} and {{Semantics}}},
+  author = {Kendall, Alex and Gal, Yarin and Cipolla, Roberto},
+  date = {2018-04-24},
+  eprint = {1705.07115},
+  eprinttype = {arXiv},
+  eprintclass = {cs},
+  url = {http://arxiv.org/abs/1705.07115},
+  urldate = {2024-08-27},
+  abstract = {Numerous deep learning applications benefit from multitask learning with multiple regression and classification objectives. In this paper we make the observation that the performance of such systems is strongly dependent on the relative weighting between each task’s loss. Tuning these weights by hand is a difficult and expensive process, making multi-task learning prohibitive in practice. We propose a principled approach to multi-task deep learning which weighs multiple loss functions by considering the homoscedastic uncertainty of each task. This allows us to simultaneously learn various quantities with different units or scales in both classification and regression settings. We demonstrate our model learning per-pixel depth regression, semantic and instance segmentation from a monocular input image. Perhaps surprisingly, we show our model can learn multi-task weightings and outperform separate models trained individually on each task.},
+  langid = {english},
+  pubstate = {prepublished},
+  keywords = {Computer Science - Computer Vision and Pattern Recognition},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/KJXI3RH9/Kendall et al. - 2018 - Multi-Task Learning Using Uncertainty to Weigh Losses for Scene Geometry and Semantics.pdf}
+}
+
+@article{szalataTransformersSinglecellOmics2024,
+  title = {Transformers in Single-Cell Omics: A Review and New Perspectives},
+  shorttitle = {Transformers in Single-Cell Omics},
+  author = {Szałata, Artur and Hrovatin, Karin and Becker, Sören and Tejada-Lapuerta, Alejandro and Cui, Haotian and Wang, Bo and Theis, Fabian J.},
+  date = {2024-08},
+  journaltitle = {Nature Methods},
+  shortjournal = {Nat Methods},
+  volume = {21},
+  number = {8},
+  pages = {1430--1443},
+  issn = {1548-7091, 1548-7105},
+  doi = {10.1038/s41592-024-02353-z},
+  url = {https://www.nature.com/articles/s41592-024-02353-z},
+  urldate = {2024-09-06},
+  langid = {english},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/BHAD7LFB/Szałata et al. - 2024 - Transformers in single-cell omics a review and new perspectives.pdf}
+}
+
+@online{zhaoEvaluatingUtilitiesLarge2023,
+  title = {Evaluating the {{Utilities}} of {{Large Language Models}} in {{Single-cell Data Analysis}}},
+  author = {Zhao, Hongyu and Liu, Tianyu and Li, Kexing and Wang, Yuge and Li, Hongyu},
+  date = {2023-10-12},
+  doi = {10.21203/rs.3.rs-3376641/v1},
+  url = {https://www.researchsquare.com/article/rs-3376641/v1},
+  urldate = {2024-09-08},
+  abstract = {Large Language Models (LLMs) or Foundation Models (FMs) have made significant strides in both industrial and scientific domains. In this paper, we evaluate the performance of LLMs in single-cell sequencing data analysis through comprehensive experiments across eight downstream tasks pertinent to single-cell data. By comparing seven different single-cell LLMs with task-specific methods, we found that single-cell LLMs may not consistently excel in all tasks than taskspecific methods. However, the emergent abilities and the successful applications of cross-species/cross-modality transfer learning of LLMs are promising. In addition, we present a systematic evaluation of the effects of hyper-parameters, initial settings, and stability for training single-cell LLMs based on a proposed scEval framework, and provide guidelines for pre-training and fine-tuning. Our work summarizes the current state of single-cell LLMs, and points to their constraints and avenues for future developments.},
+  langid = {english},
+  pubstate = {prepublished},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/BVLXI8VT/Zhao et al. - 2023 - Evaluating the Utilities of Large Language Models in Single-cell Data Analysis.pdf}
+}
+

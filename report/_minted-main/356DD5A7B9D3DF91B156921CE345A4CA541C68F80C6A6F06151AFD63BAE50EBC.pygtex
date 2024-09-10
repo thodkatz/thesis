@@ -1,0 +1,38 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{class} \PYG{n+nc}{submodel\PYGZus{}clus}\PYG{p}{(}\PYG{n}{torch}\PYG{o}{.}\PYG{n}{nn}\PYG{o}{.}\PYG{n}{Module}\PYG{p}{):}
+    \PYG{k}{def} \PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{bigmodel}\PYG{p}{):}
+        \PYG{n+nb}{super}\PYG{p}{(}\PYG{n}{submodel\PYGZus{}clus}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{p}{)}\PYG{o}{.}\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{()}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{encoders} \PYG{o}{=} \PYG{n}{bigmodel}\PYG{o}{.}\PYG{n}{encoders}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{fusers} \PYG{o}{=} \PYG{n}{bigmodel}\PYG{o}{.}\PYG{n}{fusers}\PYG{p}{[}\PYG{n}{bigmodel}\PYG{o}{.}\PYG{n}{best\PYGZus{}head}\PYG{p}{]}\PYG{o}{.}\PYG{n}{weights}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{projectors} \PYG{o}{=} \PYG{n}{bigmodel}\PYG{o}{.}\PYG{n}{projectors}\PYG{p}{[}\PYG{n}{bigmodel}\PYG{o}{.}\PYG{n}{best\PYGZus{}head}\PYG{p}{]}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{n\PYGZus{}head} \PYG{o}{=} \PYG{n}{bigmodel}\PYG{o}{.}\PYG{n}{n\PYGZus{}head}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{clusters} \PYG{o}{=} \PYG{n}{bigmodel}\PYG{o}{.}\PYG{n}{clusters}\PYG{p}{[}\PYG{n}{bigmodel}\PYG{o}{.}\PYG{n}{best\PYGZus{}head}\PYG{p}{]}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{prob\PYGZus{}layer} \PYG{o}{=} \PYG{n}{bigmodel}\PYG{o}{.}\PYG{n}{prob\PYGZus{}layer}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{best\PYGZus{}head} \PYG{o}{=} \PYG{n}{bigmodel}\PYG{o}{.}\PYG{n}{best\PYGZus{}head}
+
+    \PYG{k}{def} \PYG{n+nf}{fusing}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{fuser}\PYG{p}{,} \PYG{n}{latents}\PYG{p}{):}
+        \PYG{n}{weights} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{functional}\PYG{o}{.}\PYG{n}{softmax}\PYG{p}{(}\PYG{n}{fuser}\PYG{p}{,} \PYG{n}{dim}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{weighted\PYGZus{}latents} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{weights}\PYG{p}{[}\PYG{k+kc}{None}\PYG{p}{,} \PYG{p}{:]} \PYG{o}{*} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{stack}\PYG{p}{(}\PYG{n}{latents}\PYG{p}{,} \PYG{n}{dim}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{),} \PYG{n}{dim}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n}{weighted\PYGZus{}latents}
+
+    \PYG{k}{def} \PYG{n+nf}{forward}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{o}{*}\PYG{n}{modalities}\PYG{p}{):}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{latents} \PYG{o}{=} \PYG{p}{[}
+            \PYG{n}{encoder}\PYG{p}{(}\PYG{n}{modality}\PYG{p}{)}
+            \PYG{k}{for} \PYG{p}{(}\PYG{n}{encoder}\PYG{p}{,} \PYG{n}{modality}\PYG{p}{)} \PYG{o+ow}{in} \PYG{n+nb}{zip}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{encoders}\PYG{p}{,} \PYG{n}{modalities}\PYG{p}{)}
+        \PYG{p}{]}
+
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{fused\PYGZus{}latents} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{fusing}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{fusers}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{latents}\PYG{p}{)}
+
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hiddens} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{projectors}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{fused\PYGZus{}latents}\PYG{p}{)}
+
+        \PYG{k}{with} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{no\PYGZus{}grad}\PYG{p}{():}
+            \PYG{n}{w} \PYG{o}{=} \PYG{n+nb}{getattr}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{clusters}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}layers\PYGZdq{}}\PYG{p}{)[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{weight}\PYG{o}{.}\PYG{n}{data}\PYG{o}{.}\PYG{n}{clone}\PYG{p}{()}
+            \PYG{n}{w} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{functional}\PYG{o}{.}\PYG{n}{normalize}\PYG{p}{(}\PYG{n}{w}\PYG{p}{,} \PYG{n}{dim}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{p}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{)}
+            \PYG{n+nb}{getattr}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{clusters}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}layers\PYGZdq{}}\PYG{p}{)[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{weight}\PYG{o}{.}\PYG{n}{copy\PYGZus{}}\PYG{p}{(}\PYG{n}{w}\PYG{p}{)}
+
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{cluster\PYGZus{}outputs} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{clusters}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hiddens}\PYG{p}{)}
+
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{predictions} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{prob\PYGZus{}layer}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{cluster\PYGZus{}outputs}\PYG{p}{)}
+
+        \PYG{k}{return} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{predictions}
+\end{Verbatim}
