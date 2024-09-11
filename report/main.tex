@@ -38,7 +38,7 @@
 
 
 \title{\vspace{-1cm}
-UnitedNet Analysis}
+Multi-task learning in perturbation modeling survey}
 
 \author{Theo}
 
@@ -59,17 +59,41 @@ UnitedNet Analysis}
 \clearpage
 
 \section{Introduction}
-\label{sec:introduction}
 
-This is an attempt to do a thorough analysis of the multi-task framework \verb|UnitedNet| \cite{tangExplainableMultitaskLearning2023}. The original source code can be found at \url{https://github.com/LiuLab-Bioelectronics-Harvard/UnitedNet}. Forked repositories can be found by the \href{https://biodataanalysisgroup.github.io/}{Biodata Analysis Group} at \url{https://github.com/BiodataAnalysisGroup/UnitedNet},  as well a personal one at \url{https://github.com/thodkatz/UnitedNet}.
+The goal of this report is to analyze some case studies around the spectrum of perturbation modeling and multi-task learning in single cell sequencing. Eventually, we would like to explore a promising idea of leveraging multi-task learning for perturbation modeling, as it has been mentioned in surveys \cite{jiMachineLearningPerturbational2021}.
 
-Ultimately the goal is to dissect the components of the framework, so we can utilize them to a new and improved multi-task framework applied for perturbation modelling.
+For example, one of these studies, \verb|UnitedNet| \cite{tangExplainableMultitaskLearning2023}, has explored the potential of multi-task framework for generic single cell sequencing tasks such as cross modal prediction (e.g. rna → protein, protein → rna), and cell type classification.
 
-The paper is examined by integrating the code implementation details along with sketches for a more intuitive understanding. Some fundamental concepts of machine learning are introduced as well to have a coherent view.
+The \verb|scButterfly| \cite{caoScButterflyVersatileSinglecell2024}, aims to build upon this, and improves the cross modal prediction, indicating potential for perturbation modelling, and cell type annotation.
+
+On the other hand, \verb|scGen| \cite{lotfollahiScGenPredictsSinglecell2019} is another established framework for perturbation modeling, that explores the potential of vector arithmetic in the latent space to extrapolate perturbed gene expression profiles. Lastly, we will attempt to understand how transformers could be promising for a multi-task architecture as well.
+
+Ideally, we would like to address all the following requirements:
+\begin{itemize}
+  \itemsep -0.1em
+  \item Explainability and causality are crucial for single cell sequencing tasks. It can boost the confidence of making decisions for biological discovery and medical directions.
+  \item Multi-task learning, either with an architecture of simpler models e.g. autoencoder variations, or more sophisticated approaches with transformers, and foundational models.
+  \item Multi-omics (multi-modal). These usually includes RNA, and proteins expression levels.
+  \item Leverage spatial transcriptomics, that complements the multi-omics and valuable positional information.
+  \item Integrate perturbation modeling tasks.
+\end{itemize}
+
+
+As we will attempt to do a thorough analysis of the case studies mentioned above along with their source code, some fundamental concepts of machine learning are introduced as well to have a coherent view.
+
+Ultimately the goal is to dissect the components of the frameworks, so we can utilize them to a new and improved multi-task framework applied for perturbation modelling.
+
 
 \clearpage
 
-\section{Architecture}
+
+\section{UnitedNet}
+\label{sec:unitednet}
+
+This is an attempt to do a thorough analysis of the multi-task framework \verb|UnitedNet| \cite{tangExplainableMultitaskLearning2023}. The original source code can be found at \url{https://github.com/LiuLab-Bioelectronics-Harvard/UnitedNet}. Forked repositories can be found by the \href{https://biodataanalysisgroup.github.io/}{Biodata Analysis Group} at \url{https://github.com/BiodataAnalysisGroup/UnitedNet},  as well a personal one at \url{https://github.com/thodkatz/UnitedNet}.
+
+
+\subsection{Architecture}
 
 To illustrate the architecture of the model, the analysis will be performed for one of the datasets used in the paper, the ATAC-seq one. But it should be easily understood and generalizable for the rest as well. For the analysis of the data, see \fullref{sec:atacseq}.
 
@@ -92,7 +116,7 @@ Let's try to delve deeper into the architecture, and analyze what the above actu
 \clearpage
 
 
-\section{Multi-Layer-Perceptron (MLP)}
+\subsection{Multi-Layer-Perceptron (MLP)}
 \label{sec:mlp}
 
 As we can see, all the components referred to as encoders, decoders, discriminators, and projectors are neural networks of the type Multi-Layer Perceptron (MLP), which is considered the most fundamental feedforward neural network. Below, we present a simple definition of an MLP along with its mathematical description.
@@ -119,8 +143,7 @@ The interesting thing is that all we are trying to do is just simply fitting a f
 \clearpage
 
 
-
-\section{Autoencoder}
+\subsection{Autoencoder}
 
 \verb|UnitedNet|, for the ATAC-seq scenario, aims to solve two main tasks: 1) the classification of cell types and 2) the cross-modal prediction. A well-established method, especially for unlabeled data, is the use of unsupervised learning algorithms for representation learning. Representation learning is particularly useful for classification tasks, or any type of task, due to its feature extraction properties. To illustrate this, consider a simple autoencoder, which is one of the most common unsupervised architectures for representation learning.
 
@@ -164,11 +187,10 @@ Now let's try to understand in the next section, how the losses are computed and
 
 \clearpage
 
-\section{Losses}
+\subsection{Losses}
 \label{sec:losses}
 
 There are quite a few losses going on in the model. These are: 
-
 
 \begin{itemize}
   \itemsep -0.1em
@@ -195,7 +217,7 @@ It is worth mentioning that gradient calculation is linear with the loss functio
 
  \clearpage
 
-\subsection{Cross-entropy loss}
+\subsubsection{Cross-entropy loss}
 
 \begin{figure}[h!]
   \centering
@@ -210,7 +232,7 @@ Cross entropy is a widely used loss for classification tasks. Measumerements hav
 \clearpage
 
 
-\subsection{Reconstruction loss}
+\subsubsection{Reconstruction loss}
 
 \begin{figure}[h!]
   \centering
@@ -224,7 +246,7 @@ The reconstruction loss is calculated for each modality. The loss is based on th
 
 \clearpage
 
-\subsection{Translation loss}
+\subsubsection{Translation loss}
 
 \begin{figure}[h!]
   \centering
@@ -237,7 +259,7 @@ Similarly to the reconstruction loss, we have a translation loss, which measures
 \clearpage
 
 
-\subsection{Generator loss}
+\subsubsection{Generator loss}
 \label{sec:generatorloss}
 
 \begin{figure}[h!]
@@ -252,7 +274,7 @@ The total generator loss is calculated by summing the generator loss of each mod
 
 \clearpage
 
-\subsection{Discriminative loss}
+\subsubsection{Discriminative loss}
 \label{sec:discriminativeloss}
 
 \begin{figure}[h!]
@@ -270,7 +292,7 @@ Now the discriminator loss should influence only the weights of the discriminato
 \clearpage
 
 
-\subsection{Contrastive loss}
+\subsubsection{Contrastive loss}
 
 \begin{figure}[h!]
   \centering
@@ -287,13 +309,12 @@ Although the contrastive loss utilized information from the predictions, the opt
 \clearpage
 
 
-\section{Generative Adversarial Networks (GANs)}
+\subsection{Generative Adversarial Networks (GANs)}
 \label{sec:gans}
 
+As we have seen in the losses \fullref{sec:discriminativeloss}, and \fullref{sec:generatorloss}, the generator is responsible for fooling the discriminator, and the discriminator is responsible for identifying which data comes from the generator, and which is the original one. Thus, their tasks are adversarial and they compete with each other. This is an idea presented originally by \cite{goodfellowGenerativeAdversarialNetworks2014}.
 
-As we have have seen in the losses \fullref{sec:discriminativeloss}, and \fullref{sec:generatorloss}, the generator is responsible for fooling the discriminator, and the discriminator is responsible for identifying which data comes from the generator, and which is the original one. Thus, their tasks are adversarial and they compete with each other. This is an idea presented originally by \cite{goodfellowGenerativeAdversarialNetworks2014}.
-
-\section{Contrastive learning}
+\subsection{Contrastive learning}
 \label{sec:contrastive}
 
 We could explore how to improve the representations of the network by contrastive learning. Contrastive learning is part of the self-supervised paradigm, that flourishes lately.
@@ -303,9 +324,8 @@ We could explore how to improve the representations of the network by contrastiv
   \item Bootstrap Your Own Latent (BYOL)
 \end{itemize}
 
- \clearpage
 
-\section{Training}
+\subsection{Training}
 \label{sec:training}
 
 The two tasks as mentioned above, the 1) classification, and the 2) cross-modal prediction, they are being trained alternating, instead of jointly. This is claimed to have better results based on the authors.
@@ -339,10 +359,8 @@ The \verb|model.finetune| is exactly the same with the \verb|model.train|, but i
 Regarding \verb|model.transfer|, there is an actual leakage of the test set to the training of the model. We could assume that in the unsupervised task of the reconstruction, there is no harm for the model to see the test data, since our goal could be just the feature extraction for the subsequent classification task. Although this could be sensible since unsupervised is unsupervised meaning it requires no resources (e.g. labels), the evaluation of the model at the end is tested both on the classification and the cross modal task, which is incorrect in terms of fairly evaluating a model.
 
 
-\clearpage
 
-
-\section{Preprocessing}
+\subsection{Preprocessing}
 
 \subsection{ATACseq}
 \label{sec:atacseq}
@@ -356,11 +374,9 @@ Regarding \verb|model.transfer|, there is an actual leakage of the test set to t
   \caption{}
 \end{figure}
 
-\clearpage
 
 
-
-\section{Relevance analysis}
+\subsection{Relevance analysis}
 \label{sec:relevance}
 
 
@@ -459,62 +475,88 @@ Thus, feature-to-feature analysis should be based on the \verb|submodel_trans|. 
 
 For class type relevance analysis, we just need one network to use, the \verb|submodel_clas|.
 
+\subsection{Ideas to improve UnitedNet}
+\label{sec:improvements}
+
+\say{
+  Moreover, there are some remaining questions such as why multi-task learning can improve multi-modal data analysis, how to reduce randomness in the neural network training, how to design other loss functions to integrate more tasks (e.g., single-cell trajectory inferencing)
+}\cite{tangExplainableMultitaskLearning2023}
+
+\begin{itemize}
+  \itemsep -0.1em
+  \item Transformer
+  \item Monitor the losses. Currently, there are no coefficients for each loss. Thus, the scale of one loss could shadow the other \cite{kendallMultiTaskLearningUsing2018}.
+  \item Multi-task common loss
+  \item Improve representations e.g. Variational autoencoder
+  \item Resnet for encoder
+  \item Causal inference ?
+  \item Why they don't use a validation set? It seems they have only training, testing split.
+\end{itemize}
+
+
 \clearpage
 
 \section{Perturbation modeling}
 
 %As we have mentioned in \fullref{sec:introduction}, the goal is to design a new multi-modal multi-task framework for perturbation modelling, leveraging multi-omics, and potentially spatial information. 
 
-Let's examine the tasks of perturbation modelling.
-
-But what is a perturbation? What type? How the model can learn different types of perturbations? They can be encoded as directions in the latent space.
+Perturbation modeling refers to any sort of stimulation of cells. These can include knockout genes, drug responses, etc. Let's examine the tasks of perturbation modelling:
 
 \begin{itemize}
-  \item Out of distribution prediction of perturbed gene expression profile. That could mean either predict for a different cell, the perturbed gene expression profile for a particular perturbation, or it can be to predict for the same cell, but for a different perturbation. For example scGen \cite{lotfollahiScGenPredictsSinglecell2019} with the vector arithmetic can do both of these sub tasks.
-  \item Identify the type of perturbation (not listed in the mini review). But it could be a valid task, right?
+  \itemsep -0.1em
+  \item Out of distribution prediction of perturbed gene expression profile. That could mean either predict for a different cell, the perturbed gene expression profile for a particular perturbation, or it can be to predict for the same cell, but for a different perturbation. For example \vreb|scGen| \cite{lotfollahiScGenPredictsSinglecell2019} with the vector arithmetic can do both of these sub tasks.
+  \item Identify the type of perturbation. Generally, not listed officialy \cite{gavriilidisMinireviewPerturbationModelling2024}, but it could be a valid task, right?
   \item Synergistic or antagonistic interactions. Applying multiple perturbations? Does this mean that for a number of perturbations, what would be the gene expression profile?
 \end{itemize}
 
 Some challenges of perturbation are:
 
 \begin{itemize}
+  \itemsep -0.1em
   \item Unpaired data (alignment). There is no one to one correspondence of controlled and perturbed cell. Thus, techniques such as optimal transport are used to match control and perturbed cells.
   \item Batch effect. We need to detect the perturbation differences, and not the variability caused by the batch.
   \item Perturbation can have a generic effect across many cell types (shared perturbation effects) or to unique ones. Predicting perturbation for both categories is crucial.
-  \item Perturbation prediction across studies, and across species (human control cells + animal perturbed cells -> human perturbed cells)
+  \item Perturbation prediction across studies, and across species (human control cells + animal perturbed cells → human perturbed cells)
 \end{itemize}
 
-If we have gene expression measurements across different time point post-perturbation, we can leverage the positonal embeddings of transformers, or recurrent neural networks.
+\clearpage
+
+\subsection{Transformers}
+\label{sec:transformers}
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=\textwidth]{tranformers_single_cell.jpg}
+  \caption{\cite{szalataTransformersSinglecellOmics2024}}
+\end{figure}
 
 
-Our architecture can be based on transformers or simpler models such as variations of autoencoders (e.g. masked variational autoencoder).
+Regarding, transformers, there is a thorough survey \cite{szalataTransformersSinglecellOmics2024} with the main takeaway that is a very promising but not yet mature research direction. There are many flaws such as lack of an evaluation framework, instabilities, lack of diversifying data, and lack of the sequential property (equivalent of positional embeddings).
 
-Regarding, transformers, there is a thorough survey (\href{https://www.nature.com/articles/s41592-024-02353-z}{"Transformers in single-cell omics: a review and new perspectives"}) with the main takeaway that is a very promising but not yet mature research direction. There are many flaws such as lack of an evaluation framework, instabilities, lack of diversifying data, and lack of the sequential property (equivalent of positional embeddings). On the other hand, order can be induced by spatial transcriptomics, and then potentially visual transformer architectures can be leveraged.
+On the other hand, order can be induced by spatial transcriptomics, and then potentially visual transformer architectures can be leveraged. Alternatively, if we have gene expression measurements across different time point post-perturbation, we can leverage the positional embeddings of transformers, or recurrent neural networks.
 
-Among the foundational models, the one with complete documentation, interactive tutorials, and perturbation modelling case studies is scGPT. On the other, it is claimed that a perturbation foundational model is lacking \cite{szalataTransformersSinglecellOmics2024}.
+Among the foundational models, the one with complete documentation, interactive tutorials, and perturbation modelling case studies is \verb|scGPT|. On the other, it is claimed that a perturbation foundational model is lacking \cite{szalataTransformersSinglecellOmics2024}.
 
-Some things that we could potentially investigate would be to use a pretrained foundational model such as scGPT, and then fine-tuning it with a multi-task architecture for a series of downstream tasks. It is worth noting, that this is the equivalent of leveraging self-supervised, representation learning with the multi-task paradigm. This approach has been already tested for NLP tasks (\href{https://arxiv.org/pdf/1901.11504}{"Multi-Task Deep Neural Networks for Natural Language Understanding"}), and seems a well established approach.
+Some things that we could potentially investigate would be to use a pretrained foundational model such as \verb|scGPT|, and then fine-tuning it with a multi-task architecture for a series of downstream tasks. It is worth noting, that this is the equivalent of leveraging self-supervised, representation learning with the multi-task paradigm. This approach has been already tested for NLP tasks (\href{https://arxiv.org/pdf/1901.11504}{"Multi-Task Deep Neural Networks for Natural Language Understanding"}), and seems a well established approach.
 
-Thus, to have a more robust baseline to further our studies in perturbation modeling, we will use simpler models that are well established in the field. Specifically, the butterfly framework claims that.
-
-Alignment of variational autoencoders. There is a lot of work for two modalities, private and shared latent spaces, and promises that it can be extended for more modalities, but without any studies testing or verifying this. Thus, our first step could be to focus on two modalities, proteins, and RNA, including perturbation information. Afterwards, we could explore how can we integrate more modalities, e.g. niche, to take into account spatial information.
-
-The main key point of our research would be to check if a multi-task framework can benefit all the tasks described one by one by the butterfly framework. We could also leverage the latest optimal transport research on the perturbation perdiction task. We can also analyze any potential positive and negative transfer, and the importance of losses coefficients.
-
-Regarding an attempt to standardize the evaluation of transformers in single cell-data, we have \href{https://github.com/HelloWorldLTY/scEval}{scEval}\cite{zhaoEvaluatingUtilitiesLarge2023}, that showed that scGPT is probably the best overall one.
+Regarding an attempt to standardize the evaluation of transformers in single cell-data, we have \href{https://github.com/HelloWorldLTY/scEval}{scEval}\cite{zhaoEvaluatingUtilitiesLarge2023}, that showed that \verb|scGPT| is probably the best overall one.
 
 \begin{figure}[h!]
   \centering
   \includegraphics[width=\textwidth]{sceval.png}
 \end{figure}
 
-On the other hand, there is a very new spatial foundational model, the Nicheformer, and there is no comparison data.
+On the other hand, there is a very new spatial foundational model, the \verb|Nicheformer|, and there is no comparison data.
 
-\subsection{scButterfly}
+\clearpage
 
-The major disadvantage compared to scGen is that there isn't vector arithmetic, so the model can't estimate the gene expression post-perturbation for a series of perturbations.
+\section{scButterfly}
 
-\subsection{Datasets}
+The major disadvantage compared to \verb|scGen| is that there isn't vector arithmetic, so the model can't estimate the gene expression post-perturbation for a series of perturbations.
+
+\clearpage
+
+\section{Datasets}
 
 There is a tool as well to explore perturbation datasets \url{http://projects.sanderlab.org/scperturb/}. There is \href{https://github.com/scverse/pertpy}{pertpy} as well.
 
@@ -522,8 +564,7 @@ There is a tool as well to explore perturbation datasets \url{http://projects.sa
   \item ECCITE-seq
 \end{itemize}
 
-
-\subsection{Existing Methods}
+\section{Existing Methods}
 
 \begin{itemize}
   \item \href{https://www.biorxiv.org/content/10.1101/2024.04.15.589472v1}{Nicheformer}.
@@ -536,7 +577,7 @@ There is a tool as well to explore perturbation datasets \url{http://projects.sa
   \item CellOT/CINEMA-OT
 \end{itemize}
 
-\subsection{Spatial tasks}
+\section{Spatial tasks}
 
 \begin{itemize}
   \item Spatial density prediction or niche 
@@ -546,44 +587,20 @@ There is a tool as well to explore perturbation datasets \url{http://projects.sa
 \end{itemize}
 source: Nicheformer
 
-\section{Requirements}
+\clearpage
 
-\begin{itemize}
-  \item Explainability, causality is crucial for single cell
-  \item Multi-task learning has potential, either with an architecture of simpler models e.g. autoencoder variations, or more sophisticated approaches with transformers, and foundational models.
-  \item Multi-omics
-  \item Leverage spatial transcriptomics
-  \item Integrate perturbation modeling tasks
-\end{itemize}
+\section{Conclusion}
 
-Ideally, we would like to tackle all the above.
+Our architecture can be based on transformers or simpler models such as variations of autoencoders (e.g. masked variational autoencoder).
 
-\section{Ideas to improve UnitedNet}
-\label{sec:improvements}
+As we have seen in \fullref{sec:transformers}, transformes are not there yet. Thus implies that a lot of research opportunities exist. But since our goal is to focus on multi-task learning, we would like a more robust baseline. Thus, we will use simpler models that are well established in the field, that also can provide even comparable results with transformers \cite{szalataTransformersSinglecellOmics2024}. This is highlighted with the following passage:
 
-\say{
-  Moreover, there are some remaining questions such as why multi-task learning can improve multi-modal data analysis, how to reduce randomness in the neural network training, how to design other loss functions to integrate more tasks (e.g., single-cell trajectory inferencing)
-}\cite{tangExplainableMultitaskLearning2023}
+\say{ Preliminary results suggest that, while single-cell transformers may be able to generalize across datasets, state-of-the-art task-specific models as well as simpler models such as logistic regression often outperform them, even on tasks with few annotations, and that zero-shot performance of the current transformers is questionable} \cite{szalataTransformersSinglecellOmics2024}.
 
-\begin{itemize}
-  %\itemsep -0.1em
-  \item Transformer
-  \item Monitor the losses. Currently, there are no coefficients for each loss. Thus, the scale of one loss could shadow the other \cite{kendallMultiTaskLearningUsing2018}.
-  \item Multi-task common loss
-  \item Improve representations e.g. Variational autoencoder
-  \item Resnet for encoder
-  \item Causal inference ?
-  \item Why they don't use a validation set? It seems they have only training, testing split.
-\end{itemize}
+Alignment of variational autoencoders. There is a lot of work for two modalities, private and shared latent spaces, and promises that it can be extended for more modalities, but without any studies testing or verifying this. Thus, our first step could be to focus on two modalities, proteins, and RNA, including perturbation information. Afterwards, we could explore how can we integrate more modalities, e.g. niche, to take into account spatial information.
 
-\begin{figure}[h!]
-  \centering
-  \includegraphics[width=\textwidth]{tranformers_single_cell.jpg}
-  \caption{\url(https://www.nature.com/articles/s41592-024-02353-z)}
-\end{figure}
+The main key point of our research would be to check if a multi-task framework can benefit all the tasks described one by one, by the butterfly framework. We could also leverage the latest optimal transport research on the perturbation perdiction task. We can also analyze any potential positive and negative transfer, and the importance of losses coefficients.
 
-\say{ Preliminary results suggest that, while single-cell transformers may be able to generalize across datasets, state-of-the-art task-specific models as well as simpler models such as logistic regression often outperform them, even on tasks with few annotations, and that zero-shot performance of the current transformers is questionable}
-\url(https://www.nature.com/articles/s41592-024-02353-z)
 
 \clearpage
 

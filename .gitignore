@@ -5,3 +5,5 @@
 *.toc
 *.bbl
 *.blg
+*_minted*
+*.pyg
