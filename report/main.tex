@@ -68,12 +68,14 @@ The \verb|scButterfly| \cite{caoScButterflyVersatileSinglecell2024}, aims to bui
 
 On the other hand, \verb|scGen| \cite{lotfollahiScGenPredictsSinglecell2019} is another established framework for perturbation modeling, that explores the potential of vector arithmetic in the latent space to extrapolate perturbed gene expression profiles. Lastly, we will attempt to understand how transformers could be promising for a multi-task architecture as well.
 
+I should explore scVIDR.
+
 Ideally, we would like to address all the following requirements:
 \begin{itemize}
   \itemsep -0.1em
   \item Explainability and causality are crucial for single cell sequencing tasks. It can boost the confidence of making decisions for biological discovery and medical directions.
   \item Multi-task learning, either with an architecture of simpler models e.g. autoencoder variations, or more sophisticated approaches with transformers, and foundational models.
-  \item Multi-omics (multi-modal). These usually includes RNA, and proteins expression levels.
+  \item Multi-omics (multi-modal). These usually includes RNA, proteins expression levels, antibody-derived tag (ADT).
   \item Leverage spatial transcriptomics, that complements the multi-omics and valuable positional information.
   \item Integrate perturbation modeling tasks.
 \end{itemize}
@@ -504,7 +506,7 @@ Perturbation modeling refers to any sort of stimulation of cells. These can incl
 
 \begin{itemize}
   \itemsep -0.1em
-  \item Out of distribution prediction of perturbed gene expression profile. That could mean either predict for a different cell, the perturbed gene expression profile for a particular perturbation, or it can be to predict for the same cell, but for a different perturbation. For example \vreb|scGen| \cite{lotfollahiScGenPredictsSinglecell2019} with the vector arithmetic can do both of these sub tasks.
+  \item Out of distribution prediction of perturbed gene expression profile. That could mean either predict for a different cell, the perturbed gene expression profile for a particular perturbation, or it can be to predict for the same cell, but for a different perturbation. For example \verb|scGen| \cite{lotfollahiScGenPredictsSinglecell2019} with the vector arithmetic can do both of these sub tasks.
   \item Identify the type of perturbation. Generally, not listed officialy \cite{gavriilidisMinireviewPerturbationModelling2024}, but it could be a valid task, right?
   \item Synergistic or antagonistic interactions. Applying multiple perturbations? Does this mean that for a number of perturbations, what would be the gene expression profile?
 \end{itemize}
@@ -531,11 +533,11 @@ Some challenges of perturbation are:
 \end{figure}
 
 
-Regarding, transformers, there is a thorough survey \cite{szalataTransformersSinglecellOmics2024} with the main takeaway that is a very promising but not yet mature research direction. There are many flaws such as lack of an evaluation framework, instabilities, lack of diversifying data, and lack of the sequential property (equivalent of positional embeddings).
+Regarding, transformers, there is a thorough survey \cite{szalataTransformersSinglecellOmics2024} with the main takeaway that is a very promising but not yet a mature research direction. There are many flaws such as lack of an evaluation framework, instabilities, lack of diversifying data, and absence of the sequential property (equivalent of positional embeddings in the NLP domain). The single cell sequencing data doesn't offer the sequential property (although paradoxically contains the term sequencing),  because gene expression levels are captured in snapshots, without really knowing the chain of expression (this is one of the unknowns as well).
 
-On the other hand, order can be induced by spatial transcriptomics, and then potentially visual transformer architectures can be leveraged. Alternatively, if we have gene expression measurements across different time point post-perturbation, we can leverage the positional embeddings of transformers, or recurrent neural networks.
+On the other hand, order can be induced by spatial transcriptomics, and then potentially visual transformer architectures can be leveraged. Alternatively, if we have gene expression measurements across different time point post-perturbation, we can leverage the positional embeddings of transformers with respect to time as positional information, or recurrent neural networks.
 
-Among the foundational models, the one with complete documentation, interactive tutorials, and perturbation modelling case studies is \verb|scGPT|. On the other, it is claimed that a perturbation foundational model is lacking \cite{szalataTransformersSinglecellOmics2024}.
+Among the foundational models, the one with complete documentation, interactive tutorials, and perturbation modelling case studies is \verb|scGPT|. On the other, it is claimed that a perturbation foundational model is missing \cite{szalataTransformersSinglecellOmics2024}.
 
 Some things that we could potentially investigate would be to use a pretrained foundational model such as \verb|scGPT|, and then fine-tuning it with a multi-task architecture for a series of downstream tasks. It is worth noting, that this is the equivalent of leveraging self-supervised, representation learning with the multi-task paradigm. This approach has been already tested for NLP tasks (\href{https://arxiv.org/pdf/1901.11504}{"Multi-Task Deep Neural Networks for Natural Language Understanding"}), and seems a well established approach.
 
@@ -544,6 +546,7 @@ Regarding an attempt to standardize the evaluation of transformers in single cel
 \begin{figure}[h!]
   \centering
   \includegraphics[width=\textwidth]{sceval.png}
+  \caption{Comparison of foundational models in single cell \cite{zhaoEvaluatingUtilitiesLarge2023}}
 \end{figure}
 
 On the other hand, there is a very new spatial foundational model, the \verb|Nicheformer|, and there is no comparison data.
@@ -552,7 +555,14 @@ On the other hand, there is a very new spatial foundational model, the \verb|Nic
 
 \section{scButterfly}
 
-The major disadvantage compared to \verb|scGen| is that there isn't vector arithmetic, so the model can't estimate the gene expression post-perturbation for a series of perturbations.
+
+Some notes on \verb|scButterfly|:
+
+\begin{itemize}
+  \item The major disadvantage compared to \verb|scGen| is that there isn't vector arithmetic, so the model can't estimate the gene expression post-perturbation for a series of perturbations.
+  \item Perturbation extrapolation isn't explored in the latent space of the scButterfly's model. We could explore, if the model was able potentially to learn perturbations in the latent space as well, similar with the \verb|scGen|. If this is possible, then we would have two ways to extrapolate perturbation. How could we leverage this?
+\end{itemize}
+
 
 \clearpage
 
@@ -593,14 +603,18 @@ source: Nicheformer
 
 Our architecture can be based on transformers or simpler models such as variations of autoencoders (e.g. masked variational autoencoder).
 
-As we have seen in \fullref{sec:transformers}, transformes are not there yet. Thus implies that a lot of research opportunities exist. But since our goal is to focus on multi-task learning, we would like a more robust baseline. Thus, we will use simpler models that are well established in the field, that also can provide even comparable results with transformers \cite{szalataTransformersSinglecellOmics2024}. This is highlighted with the following passage:
+As we have seen in \fullref{sec:transformers}, transformers are not there yet. Thus implies that a lot of research opportunities exist. But since our goal is to focus on multi-task learning, we would like a more robust baseline. Thus, we will use simpler models that are well established in the field, that also can provide even comparable results with transformers \cite{szalataTransformersSinglecellOmics2024}. This is highlighted with the following passage:
 
 \say{ Preliminary results suggest that, while single-cell transformers may be able to generalize across datasets, state-of-the-art task-specific models as well as simpler models such as logistic regression often outperform them, even on tasks with few annotations, and that zero-shot performance of the current transformers is questionable} \cite{szalataTransformersSinglecellOmics2024}.
 
 Alignment of variational autoencoders. There is a lot of work for two modalities, private and shared latent spaces, and promises that it can be extended for more modalities, but without any studies testing or verifying this. Thus, our first step could be to focus on two modalities, proteins, and RNA, including perturbation information. Afterwards, we could explore how can we integrate more modalities, e.g. niche, to take into account spatial information.
 
-The main key point of our research would be to check if a multi-task framework can benefit all the tasks described one by one, by the butterfly framework. We could also leverage the latest optimal transport research on the perturbation perdiction task. We can also analyze any potential positive and negative transfer, and the importance of losses coefficients.
+The main key point of our research would be to check if a multi-task framework can benefit all the tasks described one by one, by the butterfly framework. We could also leverage the latest optimal transport research on the perturbation prediction task. We can also analyze any potential positive and negative transfer, and the importance of losses coefficients.
 
+\subsection{multi task learning with variational autoencoders}
+
+How can we implement multi-task learning with variational autoencoders?
+https://www.sciencedirect.com/science/article/pii/S0167865518302769
 
 \clearpage
 
