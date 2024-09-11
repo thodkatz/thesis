@@ -463,16 +463,28 @@ For class type relevance analysis, we just need one network to use, the \verb|su
 
 \section{Perturbation modeling}
 
-As we have mentioned in \fullref{sec:introduction}, the goal is to design a new multi-modal multi-task framework for perturbation modelling, leveraging multi-omics, and potentially spatial information. 
+%As we have mentioned in \fullref{sec:introduction}, the goal is to design a new multi-modal multi-task framework for perturbation modelling, leveraging multi-omics, and potentially spatial information. 
 
 Let's examine the tasks of perturbation modelling.
 
 But what is a perturbation? What type? How the model can learn different types of perturbations? They can be encoded as directions in the latent space.
 
 \begin{itemize}
-  \item Out of distribution prediction of perturbed gene expression profile. That could mean either predict for a different cell type, the perturbed gene expression profile for a particular perturbation, or it can be to predict for the same cell type, but for a different perturbation.
-  \item Identify the type of perturbation.
+  \item Out of distribution prediction of perturbed gene expression profile. That could mean either predict for a different cell, the perturbed gene expression profile for a particular perturbation, or it can be to predict for the same cell, but for a different perturbation. For example scGen \cite{lotfollahiScGenPredictsSinglecell2019} with the vector arithmetic can do both of these sub tasks.
+  \item Identify the type of perturbation (not listed in the mini review). But it could be a valid task, right?
+  \item Synergistic or antagonistic interactions. Applying multiple perturbations? Does this mean that for a number of perturbations, what would be the gene expression profile?
 \end{itemize}
+
+Some challenges of perturbation are:
+
+\begin{itemize}
+  \item Unpaired data (alignment). There is no one to one correspondence of controlled and perturbed cell. Thus, techniques such as optimal transport are used to match control and perturbed cells.
+  \item Batch effect. We need to detect the perturbation differences, and not the variability caused by the batch.
+  \item Perturbation can have a generic effect across many cell types (shared perturbation effects) or to unique ones. Predicting perturbation for both categories is crucial.
+  \item Perturbation prediction across studies, and across species (human control cells + animal perturbed cells -> human perturbed cells)
+\end{itemize}
+
+If we have gene expression measurements across different time point post-perturbation, we can leverage the positonal embeddings of transformers, or recurrent neural networks.
 
 
 Our architecture can be based on transformers or simpler models such as variations of autoencoders (e.g. masked variational autoencoder).
@@ -497,6 +509,10 @@ Regarding an attempt to standardize the evaluation of transformers in single cel
 \end{figure}
 
 On the other hand, there is a very new spatial foundational model, the Nicheformer, and there is no comparison data.
+
+\subsection{scButterfly}
+
+The major disadvantage compared to scGen is that there isn't vector arithmetic, so the model can't estimate the gene expression post-perturbation for a series of perturbations.
 
 \subsection{Datasets}
 
