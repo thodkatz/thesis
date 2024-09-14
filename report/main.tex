@@ -559,15 +559,45 @@ On the other hand, there is a very new spatial foundational model, the \verb|Nic
   \centering
   \includegraphics[width=.8\textwidth]{sc_butterfly.PNG}
   \caption{Architecture of scButterfly}
+  \label{fig:sc_butterfly}
 \end{figure}
 
-Some ideas mentioned initially to improve \verb|UnitedNet| \fullref{sec:improvements}, such as a) making use of validation sets for early stopping, b) using variants of autoencoders such as variational ones, c) learning the coefficients of the losses, we can see that they are applied by the \verb|scButterfly| framework.
-
-Some notes on \verb|scButterfly|:
+As we can see in the \ref{fig:sc_butterfly}, the architecture is fairly similar with \verb|UnitedNet|, with some improvements, that we had already mentioned as well in \fullref{sec:improvements}, before discovering \verb|scButterfly|. These are:
 
 \begin{itemize}
+  \itemsep -0.1em
+  \item Making use of validation sets for early stopping
+  \item Use a masked variational autoencoder
+  \item Learning the coefficients of the losses to balance them
+\end{itemize}
+
+They put a lot of emphasis in the pre-processing stage, and for the dna accessibility, they aim to remove the inter-chromosomal connections and focus on the intra-chromosomal connections.
+
+Although two specific modalities are depicted in \fullref{fig:sc_butterfly}, the framework can potentially work for any pair of modalities such as rna with dna accesibility, rna with proteins, controlled genes with perturbed genes. For the last one, this is their strategy to make use of the framework to predict perturbation, and it has been compared with \verb|scGen|. Some differences are:
+
+\begin{itemize}
+  \itemsep -0.1em
   \item The major disadvantage compared to \verb|scGen| is that there isn't vector arithmetic, so the model can't estimate the gene expression post-perturbation for a series of perturbations (e.g. 'control gene' + 'perturb1' + 'perturb2').
   \item Perturbation extrapolation isn't explored in the latent space of the scButterfly's model. We could explore, if the model was able potentially to learn perturbations in the latent space as well, similar with the \verb|scGen|. If this is possible, then we would have two ways to extrapolate perturbation. How could we leverage this?
+\end{itemize}
+
+\subsection{Training}
+
+Regarding training, they pretrain each modality for 100 epochs. The pretraining is based on the reconsutrction loss and the KL-divergence regulation. 
+
+After the pretraining, they compute first the discriminator loss, updating the weights, and then the translation loss, which is based on the cross modal prediction task.
+
+Differences in the training with \verb|UnitedNet|:
+
+\begin{itemize}
+  \itemsep -0.1em
+  \item Pretraining for the reconstruction task
+  \item Warming up
+  \item soft labels for the discriminator
+  \item No multi-task learning, thus lack of adversarial training.
+  \item Usage of dropout for reguralization
+  \item Validation sets and early stopping
+  \item Data augmentations
 \end{itemize}
 
 
@@ -610,7 +640,7 @@ source: Nicheformer
 
 Our architecture can be based on transformers or simpler models such as variations of autoencoders (e.g. masked variational autoencoder).
 
-As we have seen in \fullref{sec:transformers}, transformers are not there yet. Thus implies that a lot of research opportunities exist. But since our goal is to focus on multi-task learning, we would like a more robust baseline. Thus, we will use simpler models that are well established in the field, that also can provide even comparable results with transformers \cite{szalataTransformersSinglecellOmics2024}. This is highlighted with the following passage:
+As we have seen in \fullref{sec:transformers}, transformers are not there yet. On the other hand that implies that there is a lot of room for improvement and a lot of research opportunities. But since our goal is to focus on multi-task learning, we would like a more robust baseline. Thus, we will use simpler models that are well established in the field, that also can provide even comparable results with transformers \cite{szalataTransformersSinglecellOmics2024}. This is highlighted with the following passage:
 
 \say{ Preliminary results suggest that, while single-cell transformers may be able to generalize across datasets, state-of-the-art task-specific models as well as simpler models such as logistic regression often outperform them, even on tasks with few annotations, and that zero-shot performance of the current transformers is questionable} \cite{szalataTransformersSinglecellOmics2024}.
 
@@ -618,10 +648,21 @@ Alignment of variational autoencoders. There is a lot of work for two modalities
 
 The main key point of our research would be to check if a multi-task framework can benefit all the tasks described one by one, by the butterfly framework. We could also leverage the latest optimal transport research on the perturbation prediction task. We can also analyze any potential positive and negative transfer, and the importance of losses coefficients.
 
-\subsection{multi task learning with variational autoencoders}
+\subsection{multi-task learning with variational autoencoders}
 
 How can we implement multi-task learning with variational autoencoders?
 https://www.sciencedirect.com/science/article/pii/S0167865518302769
+
+\subsection{Tasks selection}
+
+Some tasks that we can try for our multi-task architecture could be:
+
+\begin{itemize}
+  \item Gene regulatory network prediction. But does it make sense to leverage multi-omics, aside from genes, to express a gene network? It could have potential, if the other omics can provide context for the network (is this biologically sound?).
+  \item Cell type annotation (clustering)
+  \item Cross modal prediction (that implicitly solves the perturbation prediction task)
+  \item Identify type of perturbation
+\end{itemize}
 
 \clearpage
 
