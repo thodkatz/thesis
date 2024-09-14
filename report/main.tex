@@ -555,11 +555,18 @@ On the other hand, there is a very new spatial foundational model, the \verb|Nic
 
 \section{scButterfly}
 
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=.8\textwidth]{sc_butterfly.PNG}
+  \caption{Architecture of scButterfly}
+\end{figure}
+
+Some ideas mentioned initially to improve \verb|UnitedNet| \fullref{sec:improvements}, such as a) making use of validation sets for early stopping, b) using variants of autoencoders such as variational ones, c) learning the coefficients of the losses, we can see that they are applied by the \verb|scButterfly| framework.
 
 Some notes on \verb|scButterfly|:
 
 \begin{itemize}
-  \item The major disadvantage compared to \verb|scGen| is that there isn't vector arithmetic, so the model can't estimate the gene expression post-perturbation for a series of perturbations.
+  \item The major disadvantage compared to \verb|scGen| is that there isn't vector arithmetic, so the model can't estimate the gene expression post-perturbation for a series of perturbations (e.g. 'control gene' + 'perturb1' + 'perturb2').
   \item Perturbation extrapolation isn't explored in the latent space of the scButterfly's model. We could explore, if the model was able potentially to learn perturbations in the latent space as well, similar with the \verb|scGen|. If this is possible, then we would have two ways to extrapolate perturbation. How could we leverage this?
 \end{itemize}
 
