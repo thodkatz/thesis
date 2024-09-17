@@ -68,7 +68,7 @@ The \verb|scButterfly| \cite{caoScButterflyVersatileSinglecell2024}, aims to bui
 
 On the other hand, \verb|scGen| \cite{lotfollahiScGenPredictsSinglecell2019} is another established framework for perturbation modeling, that explores the potential of vector arithmetic in the latent space to extrapolate perturbed gene expression profiles. Lastly, we will attempt to understand how transformers could be promising for a multi-task architecture as well.
 
-I should explore scVIDR.
+I should explore scVIDR. There is also a very new deep generative model including perturbations tasks https://github.com/mcgilldinglab/scCross (published 29 July). Multi cpa as well integrates multi-omics for perturbation modeling. Since we want to focus on multi-modal multi-task framework, we need to explore the multi-modal frameworks first and then later on the multi-task learning.
 
 Ideally, we would like to address all the following requirements:
 \begin{itemize}
@@ -506,7 +506,7 @@ Perturbation modeling refers to any sort of stimulation of cells. These can incl
 
 \begin{itemize}
   \itemsep -0.1em
-  \item Out of distribution prediction of perturbed gene expression profile. That could mean either predict for a different cell, the perturbed gene expression profile for a particular perturbation, or it can be to predict for the same cell, but for a different perturbation. For example \verb|scGen| \cite{lotfollahiScGenPredictsSinglecell2019} with the vector arithmetic can do both of these sub tasks.
+  \item Out of distribution prediction of perturbed gene expression profile. Perturbations can be either chemical (drug doses) or genetic (gene knockouts visa CRISPR). This out of distribution could mean to predict the perturbed gene expression profile for a perturbation on a different cell type that the model has not seen. Note that the model is trained on cells exposed to one perturbation, so we can't generalize on unseen perturbations, but unseen cells. Sometimes though predicting perturbation that the model has seen to a different cell type is characterized as unseen perturbation, that could lead to confusion (at least for me). Effectively it is an unseen perturbation, since you have never seen the combon new cell type + perturbation, but you have seen some cell types + perturbation.
   \item Identify the type of perturbation. Generally, not listed officialy \cite{gavriilidisMinireviewPerturbationModelling2024}, but it could be a valid task, right?
   \item Synergistic or antagonistic interactions. Applying multiple perturbations? Does this mean that for a number of perturbations, what would be the gene expression profile?
 \end{itemize}
@@ -562,6 +562,8 @@ On the other hand, there is a very new spatial foundational model, the \verb|Nic
   \label{fig:sc_butterfly}
 \end{figure}
 
+scButterfly \cite{caoScButterflyVersatileSinglecell2024} is a deep learning framework that aims to solve the cross modal prediction task. The authors put emphasis on this task, since it can be the baseline for combining it with other downstream tasks that usually lack one of the modalities and would benefit from a multi-omics input. MultiVI \cite{ashuachMultiVIDeepGenerative2023} is another framework used for integrating multi-omics, and its goal is to learn efficient representations (latent space) to be utilized for downstream tasks. It can be used in conjunction with scButterfly, where the last one would be responsible in case of missing modalities to predict them, so then they could be integrated by \verb|MultiVI|. 
+
 As we can see in the \ref{fig:sc_butterfly}, the architecture is fairly similar with \verb|UnitedNet|, with some improvements, that we had already mentioned as well in \fullref{sec:improvements}, before discovering \verb|scButterfly|. These are:
 
 \begin{itemize}
@@ -569,7 +571,7 @@ As we can see in the \ref{fig:sc_butterfly}, the architecture is fairly similar 
   \item Making use of validation sets for early stopping
   \item Use a masked variational autoencoder
   \item Learning the coefficients of the losses to balance them
-\end{itemize}
+\end{itemize} 
 
 They put a lot of emphasis in the pre-processing stage, and for the dna accessibility, they aim to remove the inter-chromosomal connections and focus on the intra-chromosomal connections.
 
