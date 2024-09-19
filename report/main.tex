@@ -59,6 +59,7 @@ Multi-task learning in perturbation modeling survey}
 \clearpage
 
 \section{Introduction}
+\label{sec:introduction}
 
 The goal of this report is to analyze some case studies around the spectrum of perturbation modeling and multi-task learning in single cell sequencing. Eventually, we would like to explore a promising idea of leveraging multi-task learning for perturbation modeling, as it has been mentioned in surveys \cite{jiMachineLearningPerturbational2021}.
 
@@ -67,8 +68,6 @@ For example, one of these studies, \verb|UnitedNet| \cite{tangExplainableMultita
 The \verb|scButterfly| \cite{caoScButterflyVersatileSinglecell2024}, aims to build upon this, and improves the cross modal prediction, indicating potential for perturbation modelling, and cell type annotation.
 
 On the other hand, \verb|scGen| \cite{lotfollahiScGenPredictsSinglecell2019} is another established framework for perturbation modeling, that explores the potential of vector arithmetic in the latent space to extrapolate perturbed gene expression profiles. Lastly, we will attempt to understand how transformers could be promising for a multi-task architecture as well.
-
-I should explore scVIDR. There is also a very new deep generative model including perturbations tasks https://github.com/mcgilldinglab/scCross (published 29 July). Multi cpa as well integrates multi-omics for perturbation modeling. Since we want to focus on multi-modal multi-task framework, we need to explore the multi-modal frameworks first and then later on the multi-task learning.
 
 Ideally, we would like to address all the following requirements:
 \begin{itemize}
@@ -502,14 +501,20 @@ For class type relevance analysis, we just need one network to use, the \verb|su
 
 %As we have mentioned in \fullref{sec:introduction}, the goal is to design a new multi-modal multi-task framework for perturbation modelling, leveraging multi-omics, and potentially spatial information. 
 
-Perturbation modeling refers to any sort of stimulation of cells. These can include knockout genes, drug responses, etc. Let's examine the tasks of perturbation modelling:
+Perturbation modeling refers to any sort of stimulation of cells. These can include knockout genes, drug responses, etc. Let's examine the tasks of perturbation modelling \cite{gavriilidisMinireviewPerturbationModelling2024}:
 
-\begin{itemize}
+\begin{enumerate}
   \itemsep -0.1em
-  \item Out of distribution prediction of perturbed gene expression profile. Perturbations can be either chemical (drug doses) or genetic (gene knockouts visa CRISPR). This out of distribution could mean to predict the perturbed gene expression profile for a perturbation on a different cell type that the model has not seen. Note that the model is trained on cells exposed to one perturbation, so we can't generalize on unseen perturbations, but unseen cells. Sometimes though predicting perturbation that the model has seen to a different cell type is characterized as unseen perturbation, that could lead to confusion (at least for me). Effectively it is an unseen perturbation, since you have never seen the combon new cell type + perturbation, but you have seen some cell types + perturbation.
-  \item Identify the type of perturbation. Generally, not listed officialy \cite{gavriilidisMinireviewPerturbationModelling2024}, but it could be a valid task, right?
-  \item Synergistic or antagonistic interactions. Applying multiple perturbations? Does this mean that for a number of perturbations, what would be the gene expression profile?
-\end{itemize}
+  \item Out of distribution prediction of perturbed gene expression profile. Perturbations can be either chemical (drug doses) or genetic (gene knockouts visa CRISPR). This out of distribution could mean to predict the perturbed gene expression profile for a perturbation on a different cell type that the model has not seen. Note that the model is trained on cells exposed to one or more perturbations, so we can't generalize on unseen perturbations, but unseen cells. On the other hand the closest that we can get to predict on unseen perturbation type is different drug dosage. There the perturbation is interpolated for the available drug doses. This task is solved by scVIDR \cite{kanaGenerativeModelingSinglecell2023}.
+  \item Based on the controlled and perturbed profile, predict the phenotypic changes (e.g. cell viability).
+  \item Identify the type of perturbation. It is not listed in the survey \cite{gavriilidisMinireviewPerturbationModelling2024}, but it could be a worth considering.
+  \item Synergistic or antagonistic interactions. This means for a pair of perturbations, to classify if the one enhances (synergistic) or cancels the other (antagonistic).
+  \item Target prediction. Identify the proteins that a drug compound binds to.
+  \item Identify the mechanism of the drug
+  \item Predict the chemical compound of a drug given a transcriptome profile.
+\end{enumerate}
+
+It is really important to find datasets that can provide the information needed to tackle these issues. For example the perturbation prediction needs perturbation before and after, the target prediction needs annotation between drug and which proteins the drug binds. As we can see in the \fullref{sec:datasets}, sci-plex is one that can provide a substantial amount of information per perturbation.
 
 Some challenges of perturbation are:
 
@@ -519,6 +524,8 @@ Some challenges of perturbation are:
   \item Batch effect. We need to detect the perturbation differences, and not the variability caused by the batch.
   \item Perturbation can have a generic effect across many cell types (shared perturbation effects) or to unique ones. Predicting perturbation for both categories is crucial.
   \item Perturbation prediction across studies, and across species (human control cells + animal perturbed cells → human perturbed cells)
+  \item Combining perturbations
+  \item Predict a type of an unknown type of perturbation.
 \end{itemize}
 
 \clearpage
@@ -579,8 +586,11 @@ Although two specific modalities are depicted in \fullref{fig:sc_butterfly}, the
 
 \begin{itemize}
   \itemsep -0.1em
-  \item The major disadvantage compared to \verb|scGen| is that there isn't vector arithmetic, so the model can't estimate the gene expression post-perturbation for a series of perturbations (e.g. 'control gene' + 'perturb1' + 'perturb2').
+  \item The major disadvantage compared to \verb|scGen| is that there isn't vector arithmetic, so the model can't estimate the gene expression post-perturbation for a series of perturbations (e.g. 'control gene' + 'perturb1' + 'perturb2') (\textbf{lack of combinatorial perturbation}).
+  \item \verb|scButtrfly| can work only for one type of perturbation.
+  \item \verb|scButterfly| requires pairs of control and perturbed samples to be trained on (optimal transport).
   \item Perturbation extrapolation isn't explored in the latent space of the scButterfly's model. We could explore, if the model was able potentially to learn perturbations in the latent space as well, similar with the \verb|scGen|. If this is possible, then we would have two ways to extrapolate perturbation. How could we leverage this?
+
 \end{itemize}
 
 \subsection{Training}
@@ -597,34 +607,43 @@ Differences in the training with \verb|UnitedNet|:
   \item Warming up
   \item soft labels for the discriminator
   \item No multi-task learning, thus lack of adversarial training.
-  \item Usage of dropout for reguralization
+  \item Usage of dropout for regularization
   \item Validation sets and early stopping
   \item Data augmentations
 \end{itemize}
 
+\section{scVIDR}
+
+This is a perturbation framework that can generalize on drug dosages. Usually existing frameworks predict perturbed profiles for seen types of perturbations. Analysis to be done.
+
+\section{scCross}
+
+A new (29 July 2024) deep generative model \url{https://github.com/mcgilldinglab/scCross}. Analysis to be done.
+
+\section{CPA}
+
+A versatile perturbation framework, using sci-plex as one of the datasets, being able to predict combinatorial perturbations.
 
 \clearpage
 
 \section{Datasets}
+\label{sec:datasets}
 
 There is a tool as well to explore perturbation datasets \url{http://projects.sanderlab.org/scperturb/}. There is \href{https://github.com/scverse/pertpy}{pertpy} as well.
 
 \begin{itemize}
   \item ECCITE-seq
+  \item The Library of Integrated Network-Based Cellular Signatures. It contains one modality, RNA for a series of perturbations based on drugs. This dataset can be leveraged for drug-target prediction tasks. A study that provides an easy to understand model is \url{https://pubmed.ncbi.nlm.nih.gov/35213968/}, they provide a table with the drug and the protein target as well. The goal is by using a gene expression profile to understand if the drug is effective.
+  \item DrugComb
+  \item DrugBank
+  \item sci-plex. This is one of the most versatile datasets that contain information that potentially can be leveraged for a series of tasks. It contains the gene expression profile before and after for a series of perturbations, along with targets, pathways, and phenotype metrics, such as cell viability.
 \end{itemize}
 
-\section{Existing Methods}
-
-\begin{itemize}
-  \item \href{https://www.biorxiv.org/content/10.1101/2024.04.15.589472v1}{Nicheformer}.
-  
-  Transformer for cellular representation, trained on spatial transcriptomics data. Fine tuned for downstream spatial tasks.
-
-  \item scGEN
-  \item GenKI
-  \item SCENIC+
-  \item CellOT/CINEMA-OT
-\end{itemize}
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=.8\textwidth]{sci-plex.jpeg}
+  \caption{sci-plex dataset}
+\end{figure}
 
 \section{Spatial tasks}
 
@@ -636,6 +655,18 @@ There is a tool as well to explore perturbation datasets \url{http://projects.sa
 \end{itemize}
 source: Nicheformer
 
+\section{Generic single cell tasks}
+
+\begin{itemize}
+  \item Cross modal prediction (rna -> protein, protein -> rna)
+  \item Cell type annotation
+  \item Gene regulatory network inference
+\end{itemize}
+
+\section{Evaluation}
+
+How we evaluate and what frameworks we will compare our implementation. To be done.
+
 \clearpage
 
 \section{Conclusion}
@@ -646,31 +677,42 @@ As we have seen in \fullref{sec:transformers}, transformers are not there yet. O
 
 \say{ Preliminary results suggest that, while single-cell transformers may be able to generalize across datasets, state-of-the-art task-specific models as well as simpler models such as logistic regression often outperform them, even on tasks with few annotations, and that zero-shot performance of the current transformers is questionable} \cite{szalataTransformersSinglecellOmics2024}.
 
-Alignment of variational autoencoders. There is a lot of work for two modalities, private and shared latent spaces, and promises that it can be extended for more modalities, but without any studies testing or verifying this. Thus, our first step could be to focus on two modalities, proteins, and RNA, including perturbation information. Afterwards, we could explore how can we integrate more modalities, e.g. niche, to take into account spatial information.
+To satisfy all the requirements mentioned in the \fullref{sec:introduction} is a great challenge. So far, the sci-plex has been identified as a dataset that provides information that can satisfy more than one tasks. The dataset contains only one modality, the gene expressions. On the other hand, that could fit greatly with \verb|scButterfly|, and bringing ideas from \verb|UnitedNet|, we can propose the following:
 
-The main key point of our research would be to check if a multi-task framework can benefit all the tasks described one by one, by the butterfly framework. We could also leverage the latest optimal transport research on the perturbation prediction task. We can also analyze any potential positive and negative transfer, and the importance of losses coefficients.
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=.6\textwidth]{my_multi_one_mod.PNG}
+  \caption{}
+  \label{}
+\end{figure}
 
-\subsection{multi-task learning with variational autoencoders}
+Essentially, the above is a design of multi-task framework for one type perturbation of gene profiles. We are missing multiple modalities, and multiple types of perturbations. On the other hand, it can serve as a baseline with great potential to start with. In our study we could focus on the challenges of multi-task learning and proposing different architectures within the scope of single modality, single type of perturbation. This framework can solve the follwing tasks:
 
-How can we implement multi-task learning with variational autoencoders?
-https://www.sciencedirect.com/science/article/pii/S0167865518302769
+\begin{enumerate}
+  \item Perturbation prediction for one type
+  \item Cellular responses (cell viability)
+  \item Target prediction
+  \item Mechanism (pathway) prediction
+\end{enumerate}
 
-\subsection{Tasks selection}
+The next step, that we could explore as well is to increase the number of types of perturbations. Then the gene encoder will share the parameters of the encoding across all perturbation types. That could be very promising to know if different perturbation types can help each other for perturbation modelling.
 
-Some tasks that we can try for our multi-task architecture could be:
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=.8\textwidth]{my_multi_many_mod.PNG}
+  \caption{}
+  \label{}
+\end{figure}
 
-\begin{itemize}
-  \item Gene regulatory network prediction. But does it make sense to leverage multi-omics, aside from genes, to express a gene network? It could have potential, if the other omics can provide context for the network (is this biologically sound?).
-  \item Cell type annotation (clustering)
-  \item Cross modal prediction (that implicitly solves the perturbation prediction task)
-  \item Identify type of perturbation
-\end{itemize}
+It should be noted that for the pairs of perturbation will serve as different input for the tasks of target prediction, cell viability, and pathways, since they can have different labels and are based on type of perturbation. They shouldn't be concatenated.
+
+For some tasks such as target prediction, the requirement could be to have as inputs the type of perturbation and the gene expression profile. Currently, we have formulated the task by having as inputs the before and after gene expression profile. But still the task can be feasible, by using the model that is able to do perturbation prediction, and then using the result as input for the target prediction task. 
+
 
 \clearpage
 
 \bibliographystyle{plain}
 \bibliography{bib.bib}
-
 
 
 \end{document}
