@@ -629,8 +629,13 @@ A versatile perturbation framework, using sci-plex as one of the datasets, being
 \section{Datasets}
 \label{sec:datasets}
 
-There is a tool as well to explore perturbation datasets \url{http://projects.sanderlab.org/scperturb/}. There is \href{https://github.com/scverse/pertpy}{pertpy} as well.
+Tools to explore datasets:
+\begin{itemize}
+  \item \url{http://projects.sanderlab.org/scperturb/}
+  \item \href{https://github.com/scverse/pertpy}{pertpy}
+\end{itemize}
 
+Datasets:
 \begin{itemize}
   \item ECCITE-seq
   \item The Library of Integrated Network-Based Cellular Signatures. It contains one modality, RNA for a series of perturbations based on drugs. This dataset can be leveraged for drug-target prediction tasks. A study that provides an easy to understand model is \url{https://pubmed.ncbi.nlm.nih.gov/35213968/}, they provide a table with the drug and the protein target as well. The goal is by using a gene expression profile to understand if the drug is effective.
@@ -647,13 +652,14 @@ There is a tool as well to explore perturbation datasets \url{http://projects.sa
 
 \section{Spatial tasks}
 
+Tasks mentioned at \cite{schaarNicheformerFoundationModel}:
+
 \begin{itemize}
   \item Spatial density prediction or niche 
   \item Region label prediction 
   \item Inferring niche from gene expression profile
   \item Transfer spatial labels to disassociated cells
 \end{itemize}
-source: Nicheformer
 
 \section{Generic single cell tasks}
 
@@ -707,6 +713,9 @@ The next step, that we could explore as well is to increase the number of types 
 It should be noted that for the pairs of perturbation will serve as different input for the tasks of target prediction, cell viability, and pathways, since they can have different labels and are based on type of perturbation. They shouldn't be concatenated.
 
 For some tasks such as target prediction, the requirement could be to have as inputs the type of perturbation and the gene expression profile. Currently, we have formulated the task by having as inputs the before and after gene expression profile. But still the task can be feasible, by using the model that is able to do perturbation prediction, and then using the result as input for the target prediction task. 
+
+To get these pairs of control and stimulated, we will use the optimal transport theory as it was used for the \verb|scButterfly|. We could split the cells before and after per cell type, and try to find the pairs within the cell type for before and after peturbation. One assumption for this is that the cell type doesn't change after peturbation.
+
 
 
 \clearpage
