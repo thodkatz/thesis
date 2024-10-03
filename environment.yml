@@ -1,9 +1,13 @@
 name: thesis
 channels:
+  - pytorch
   - conda-forge
 dependencies:
-  - python=3.12
+  - python=3.9.*
+  - pytorch
+  - pytorch-cuda
+  - torchvision
+  - torchaudio
+  - torchmetrics
   - setuptools
   - pip
-  - pip:
-    - -e .

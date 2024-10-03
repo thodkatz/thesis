@@ -11,16 +11,18 @@ setup(
     packages=find_packages(where="thesis"),
     install_requires=[
         "scanpy",
-        "matplotlib",
-        "seaborn",
         "numpy",
         "adata",
-        "pandas"
     ],
-    extras_require={"dev": [
+    extras_require={
+        "dev": [
+            "matplotlib",
+            "seaborn",
+            "pandas"
         ],
-                    "unitednet": [
-                        "jupyter",
-                        "UnitedNet @ git+https://github.com/thodkatz/UnitedNet.git",
+        "unifly": [
+            "jupyter",
+            "UnitedNet @ git+https://github.com/thodkatz/UnitedNet.git",
+            "scButterfly @ git+https://github.com/thodkatz/scButterfly.git"
         ]},
 )
