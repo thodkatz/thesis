@@ -17,5 +17,10 @@ setup(
         "adata",
         "pandas"
     ],
-    extras_require={"dev": []},
+    extras_require={"dev": [
+        ],
+                    "unitednet": [
+                        "jupyter",
+                        "UnitedNet @ git+https://github.com/thodkatz/UnitedNet.git",
+        ]},
 )

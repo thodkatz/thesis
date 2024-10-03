@@ -7,3 +7,8 @@
 *.blg
 *_minted*
 *.pyg
+
+# src
+data
+saved_results
+*.egg-info
