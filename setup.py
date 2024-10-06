@@ -14,8 +14,10 @@ setup(
         "numpy",
         "adata",
         "pertpy",
-        "scipy<1.13", # https://discourse.pymc.io/t/importerror-cannot-import-name-gaussian-from-scipy-signal/14170, due to pertpy
-        "jax<0.4.24", # https://github.com/scverse/pertpy/issues/545, due to pertpy
+        # "scvi-tools>1.1.6"
+        # "scipy<1.13", # https://discourse.pymc.io/t/importerror-cannot-import-name-gaussian-from-scipy-signal/14170, due to pertpy
+        # "jax<0.4.24", # https://github.com/scverse/pertpy/issues/545, due to pertpy
+        # "jaxlib<0.4.24", # jax and jaxlib need to match
     ],
     extras_require={
         "dev": [

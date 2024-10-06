@@ -40,6 +40,7 @@ class UnitedNet:
         self._set_device()
 
     def train(self, adatas_train, save_path=None,adatas_val=None,init_classify=False,verbose=False):
+        
         writer = SummaryWriter(f'./runs/{self.experiment_name}/train')
         if save_path is not None:
             os.makedirs(save_path, exist_ok=True)
