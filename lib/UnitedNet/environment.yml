@@ -1,0 +1,10 @@
+name: unitednet
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python 3.9.*
+  - pytorch
+  - pytorch-cuda # gpu support
+  - pip
+  - setuptools

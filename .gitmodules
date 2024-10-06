@@ -1,0 +1,6 @@
+[submodule "UnitedNet"]
+	path = lib/UnitedNet
+	url = https://github.com/thodkatz/UnitedNet.git
+[submodule "lib/scButterfly"]
+	path = lib/scButterfly
+	url = https://github.com/thodkatz/scButterfly.git
