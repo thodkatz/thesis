@@ -21,7 +21,8 @@ setup(
             "matplotlib",
             "seaborn",
             "pandas",
-            "jupyter"
+            "jupyter",
+            "black"
         ]
     },
 )
