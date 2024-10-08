@@ -1,4 +1,4 @@
-# Multi-task learning in perturbational modeling
+# Multi-task learning in perturbation modeling
 
 # Usage
 

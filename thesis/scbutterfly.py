@@ -74,7 +74,7 @@ def run_batch(name: str, file_path: str, control: AnnData, perturb: AnnData, id_
         logging_path = file_path,
         RNA_data = control,
         ATAC_data = perturb,
-        name=f"butterfly/ellagic_acid/batch{batch}"
+        name=f"butterfly/{name}/batch{batch}"
     )
 
     model.train(
