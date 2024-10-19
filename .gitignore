@@ -8,6 +8,8 @@
 *_minted*
 *.pyg
 
+runs
+
 # src
 data
 saved_results

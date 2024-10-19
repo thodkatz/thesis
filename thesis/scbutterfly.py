@@ -2,7 +2,7 @@ from anndata import AnnData
 from scButterfly.train_model_perturb import Model
 from scButterfly.split_datasets import unpaired_split_dataset_perturb, unpaired_split_dataset_perturb_no_reusing
 import torch.nn as nn
-from typing import List
+from typing import List, Callable
 from thesis import ROOT
 import pandas as pd
 
@@ -157,22 +157,17 @@ def run_batch(name: str, file_path: str, control: AnnData, perturb: AnnData, id_
     return pd_metrics
     
 def run_sciplex3(name: str, dataset: AnnData):
-    file_path = str(ROOT / "saved_results" / "butterfly" / "perturb" / name)
-    batch_list = list(range(0, len(dataset.obs["celltype"].cat.categories)))
-    control, perturb = prepare_data_sciplex3(dataset=dataset)
-    
-    id_list, _ = unpaired_split_dataset_perturb(control, perturb)
-    
-    pd_metrics = run_dataset(name=name, file_path=file_path, control=control, perturb=perturb, id_list=id_list, batch_list=batch_list)
-    pd_metrics.to_csv(f"{file_path}/metrics.csv")
+    _run_sciplex3(name=name, dataset=dataset, split_func=unpaired_split_dataset_perturb)
     
 def run_sciplex3_no_reusing(name: str, dataset: AnnData):
+    _run_sciplex3(name=name, dataset=dataset, split_func=unpaired_split_dataset_perturb_no_reusing)
+    
+    
+def _run_sciplex3(name: str, dataset: AnnData, split_func: Callable):
     file_path = str(ROOT / "saved_results" / "butterfly" / "perturb" / name)
     batch_list = list(range(0, len(dataset.obs["celltype"].cat.categories)))
     control, perturb = prepare_data_sciplex3(dataset=dataset)
-    
-    id_list = unpaired_split_dataset_perturb_no_reusing(control, perturb)
-    
-    pd_metrics = run_dataset(name=name, file_path=file_path, control=control, perturb=perturb, id_list=id_list, batch_list=batch_list, train=True)
+    id_list = split_func(control, perturb)
+    pd_metrics = run_dataset(name=name, file_path=file_path, control=control, perturb=perturb, id_list=id_list, batch_list=batch_list)
     pd_metrics.to_csv(f"{file_path}/metrics.csv")
  
