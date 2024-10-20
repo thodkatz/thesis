@@ -16,3 +16,5 @@ saved_results
 *.egg-info
 
 __pycache__
+
+.vscode
