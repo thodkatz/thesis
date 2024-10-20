@@ -4,3 +4,12 @@
 [submodule "lib/UnitedNet"]
 	path = lib/UnitedNet
 	url = https://github.com/thodkatz/UnitedNet.git
+[submodule "lib/scPreGAN"]
+	path = lib/scPreGAN
+	url = https://github.com/thodkatz/scPreGAN
+[submodule "lib/scVIDR"]
+	path = lib/scVIDR
+	url = https://github.com/thodkatz/scVIDR
+[submodule "lib/scgen"]
+	path = lib/scgen
+	url = https://github.com/thodkatz/scgen.git
