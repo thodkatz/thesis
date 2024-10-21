@@ -55,11 +55,25 @@ def _run_dataset(
 ):
     for idx, batch in enumerate(batch_list):
         print("name", name, "Batch", batch)
-        _run_batch(name=name, control=control, perturb=perturb, id_list=id_list, batch=batch, perturbation_name=perturbation_name, dosage=dosage)
+        _run_batch(
+            name=name,
+            control=control,
+            perturb=perturb,
+            id_list=id_list,
+            batch=batch,
+            perturbation_name=perturbation_name,
+            dosage=dosage,
+        )
 
 
 def _run_batch(
-    name: str, control: AnnData, perturb: AnnData, id_list: List, batch: int, perturbation_name: str, dosage: int
+    name: str,
+    control: AnnData,
+    perturb: AnnData,
+    id_list: List,
+    batch: int,
+    perturbation_name: str,
+    dosage: int,
 ):
     (
         train_id_control,
@@ -108,7 +122,7 @@ def _run_batch(
         ATAC_data=perturb,
         name=f"butterfly/{name}/batch{batch}",
     )
-    
+
     if is_finished_batch(name, batch):
         print("Batch already trained", batch)
         print("Loading model")
@@ -203,7 +217,6 @@ def _run_batch(
         return_predict=False,
     )
 
-
     data = {
         "model": "butterfly",
         "dataset": name,
@@ -257,7 +270,14 @@ def _run(
     )
 
 
-def _run_sciplex3(name: str, dataset: AnnData, perturbation_name: str, dosage: int, split_func: Callable, batch: Optional[int] = None):
+def _run_sciplex3(
+    name: str,
+    dataset: AnnData,
+    perturbation_name: str,
+    dosage: int,
+    split_func: Callable,
+    batch: Optional[int] = None,
+):
     control, perturb = _get_control_perturb_sciplex3(dataset)
     return _run(
         name=name,
@@ -267,19 +287,41 @@ def _run_sciplex3(name: str, dataset: AnnData, perturbation_name: str, dosage: i
         split_func=split_func,
         batch_idx=batch,
         perturbation_name=perturbation_name,
-        dosage=dosage
+        dosage=dosage,
     )
 
 
-def run_sciplex3(name: str, dataset: AnnData, perturbation_name: str, dosage: int, batch: Optional[int] = None):
+def run_sciplex3(
+    name: str,
+    dataset: AnnData,
+    perturbation_name: str,
+    dosage: int,
+    batch: Optional[int] = None,
+):
     return _run_sciplex3(
-        name=name, dataset=dataset, split_func=unpaired_split_dataset_perturb, batch=batch, perturbation_name=perturbation_name, dosage=dosage
+        name=name,
+        dataset=dataset,
+        split_func=unpaired_split_dataset_perturb,
+        batch=batch,
+        perturbation_name=perturbation_name,
+        dosage=dosage,
     )
 
 
-def run_sciplex3_no_reusing(name: str, dataset: AnnData, perturbation_name: str, dosage: int, batch: Optional[int] = None):
+def run_sciplex3_no_reusing(
+    name: str,
+    dataset: AnnData,
+    perturbation_name: str,
+    dosage: int,
+    batch: Optional[int] = None,
+):
     return _run_sciplex3(
-        name=name, dataset=dataset, split_func=unpaired_split_dataset_perturb_no_reusing, batch=batch, perturbation_name=perturbation_name, dosage=dosage
+        name=name,
+        dataset=dataset,
+        split_func=unpaired_split_dataset_perturb_no_reusing,
+        batch=batch,
+        perturbation_name=perturbation_name,
+        dosage=dosage,
     )
 
 
@@ -316,11 +358,13 @@ def run_nault_all_dosages(dataset: AnnData, name="nault"):
             split_func=unpaired_split_dataset_perturb,
             cell_type_key="celltype",
             perturbation_name="tcdd",
-            dosage=drug_dosage
+            dosage=drug_dosage,
         )
 
 
-def run_nault_dosage(name: str, dataset: AnnData, drug_dosage: int, batch: Optional[int] = None):
+def run_nault_dosage(
+    name: str, dataset: AnnData, drug_dosage: int, batch: Optional[int] = None
+):
     control, perturb = _get_control_perturb_nault(dataset, drug_dosage)
     return _run(
         name=name,
@@ -330,7 +374,7 @@ def run_nault_dosage(name: str, dataset: AnnData, drug_dosage: int, batch: Optio
         cell_type_key="celltype",
         batch_idx=batch,
         perturbation_name="tcdd",
-        dosage=drug_dosage
+        dosage=drug_dosage,
     )
 
 
@@ -344,7 +388,7 @@ def run_pbmc(name: str, dataset: AnnData, batch: Optional[int] = None):
         cell_type_key="cell_type",
         batch_idx=batch,
         perturbation_name="ifn-b",
-        dosage=0
+        dosage=0,
     )
 
 
