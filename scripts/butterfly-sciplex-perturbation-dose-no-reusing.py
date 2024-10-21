@@ -13,5 +13,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     dataset = get_sciplex3_per_perturbation(perturbation_type=args.perturbation_type, drug_dosage=args.drug_dosage)
-    run_sciplex3_no_reusing(name=args.name, dataset=dataset)
+    run_sciplex3_no_reusing(name=args.name, dataset=dataset, perturbation_name=args.perturbation_type, dosage=args.drug_dosage)
     

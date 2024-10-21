@@ -1,27 +1,34 @@
 #!/bin/bash
 
-REPO=/home/thodkatz/thesis/ssh/thesis
-echo $REPO
+REPO=~/thesis/ssh/thesis
+echo "Repo: "$REPO
+HELPER=../embl-resources/slurm/submit_gpu.py
+echo "sbatch script path: "$HELPER
+
 
 butterfly_pbmc() {
-    python $REPO/scripts/butterfly-pbmc.py 
+    for i in {0..6}
+    do
+        echo "Number: $i"
+        $HELPER $REPO/scripts/butterfly-pbmc.py --batch $i
+    done
 }
 
-butterfly_sciplex3_perturbation_dose_no_resuing() {
-    python $REPO/scripts/butterfly-sciplex3-perturbation-dose-no-resuing.py
-}
+# butterfly_sciplex3_perturbation_dose_no_resuing() {
+#     python $REPO/scripts/butterfly-sciplex3-perturbation-dose-no-resuing.py
+# }
 
-butterfly_sciplex3_perturbation() {
+# butterfly_sciplex3_perturbation() {
 
-}
+# }
 
-butterfly_nault() {
+# butterfly_nault() {
     
-}
+# }
 
-butterfly_nault_no_filtering() {
+# butterfly_nault_no_filtering() {
 
-}
+# }
 
 # dataset1: sc.AnnData = sciplex3[
 #     (sciplex3.obs["perturbation"] == "Ellagic acid")
@@ -46,3 +53,6 @@ butterfly_nault_no_filtering() {
 # dataset3 = dataset3[
 #     (dataset3.obs["dose_value"] == 1000) | (dataset3.obs["perturbation"] == "control")
 # ]
+
+
+butterfly_pbmc
