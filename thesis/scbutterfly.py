@@ -17,37 +17,12 @@ from thesis.utils import ModelConfig
 
 REFRESH = False
 
+BUTTERFLY_SAVED_RESULTS_PATH = SAVED_RESULTS_PATH / "butterfly" / "perturb"
 
-def is_finished_batch(dataset_name: str, experiment_name: str, batch: int):
+
+def is_finished_batch(model_config: ModelConfig, batch: int):
     # test_train is the last metrics file
-    return (
-        Path(
-            f"{get_batch_path(dataset_name, experiment_name, batch)}/test_train/metrics.csv"
-        ).exists()
-        and not REFRESH
-    )
-
-
-def get_batch_metrics_path(dataset_name: str, experiment_name: str, batch: int):
-    return (
-        f"{get_experiment_path(dataset_name, experiment_name)}/batch{batch}/metrics.csv"
-    )
-
-
-def get_batch_path(dataset_name: str, experiment_name, batch: int):
-    return f"{get_experiment_path(dataset_name, experiment_name)}/batch{batch}"
-
-
-def get_dataset_path(name: str):
-    return f"{get_model_path()}/{name}"
-
-
-def get_experiment_path(dataset_name: str, experiment_name: str):
-    return f"{get_dataset_path(dataset_name)}/{experiment_name}"
-
-
-def get_model_path():
-    return SAVED_RESULTS_PATH / "butterfly" / "perturb"
+    return model_config.is_finished_batch(batch) and not REFRESH
 
 
 def _run_dataset(
@@ -90,9 +65,7 @@ def _run_batch(
     A_kl_div = 1 / ATAC_input_dim * 20
     kl_div = R_kl_div + A_kl_div
 
-    file_path = get_batch_path(
-        model_config.dataset_name, model_config.experiment_name, batch
-    )
+    file_path = str(model_config.get_batch_path(batch))
 
     model = Model(
         R_encoder_nlayer=2,
@@ -125,9 +98,7 @@ def _run_batch(
         name=f"butterfly/{model_config.dataset_name}/{model_config.experiment_name}/batch{batch}",
     )
 
-    if is_finished_batch(
-        model_config.dataset_name, model_config.experiment_name, batch
-    ):
+    if is_finished_batch(model_config, batch):
         print("Batch already trained", batch)
         print("Loading model")
         load_model = file_path
@@ -243,7 +214,6 @@ def _run(
     else:
         batch_list = list(range(0, len(control.obs[cell_type_key].cat.categories)))
 
-
     id_list, _ = split_func(control, perturb)
     _run_dataset(
         model_config=model_config,
@@ -263,7 +233,7 @@ def _run_sciplex3(
     batch: Optional[int] = None,
 ):
     control, perturb = _get_control_perturb_sciplex3(dataset)
-    
+
     model_config = ModelConfig(
         model_name="scbutterfly",
         dataset_name="sciplex3",
@@ -271,8 +241,9 @@ def _run_sciplex3(
         perturbation=perturbation_name,
         cell_type_key="celltype",
         dosage=dosage,
+        output_path=BUTTERFLY_SAVED_RESULTS_PATH,
     )
-    
+
     return _run(
         model_config=model_config,
         control=control,
@@ -289,7 +260,7 @@ def run_sciplex3(
     batch: Optional[int] = None,
 ):
     return _run_sciplex3(
-        name="generic",
+        name="",
         dataset=dataset,
         split_func=unpaired_split_dataset_perturb,
         batch=batch,
@@ -340,7 +311,7 @@ def run_nault_all_dosages(dataset: AnnData, experiment_name: str):
             continue
         print("Drug dosage", drug_dosage)
         control, perturb = _get_control_perturb_nault(dataset, drug_dosage)
-        
+
         model_config = ModelConfig(
             model_name="scbutterfly",
             dataset_name="nault",
@@ -348,8 +319,9 @@ def run_nault_all_dosages(dataset: AnnData, experiment_name: str):
             perturbation="tcdd",
             cell_type_key="celltype",
             dosage=drug_dosage,
+            output_path=BUTTERFLY_SAVED_RESULTS_PATH,
         )
-        
+
         _run(
             model_config=model_config,
             control=control,
@@ -362,7 +334,7 @@ def run_nault_dosage(
     name: str, dataset: AnnData, drug_dosage: int, batch: Optional[int] = None
 ):
     control, perturb = _get_control_perturb_nault(dataset, drug_dosage)
-    
+
     model_config = ModelConfig(
         model_name="scbutterfly",
         dataset_name="nault",
@@ -370,8 +342,9 @@ def run_nault_dosage(
         perturbation="tcdd",
         cell_type_key="celltype",
         dosage=drug_dosage,
+        output_path=BUTTERFLY_SAVED_RESULTS_PATH,
     )
-    
+
     return _run(
         model_config=model_config,
         control=control,
@@ -390,6 +363,7 @@ def run_pbmc(experiment_name: str, dataset: AnnData, batch: Optional[int] = None
         experiment_name=experiment_name,
         perturbation="ifn-b",
         cell_type_key="cell_type",
+        output_path=BUTTERFLY_SAVED_RESULTS_PATH,
     )
 
     return _run(

@@ -19,6 +19,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 from thesis.utils import ModelConfig, append_csv
 from thesis import METRICS_PATH
+import anndata as ad
 
 
 @dataclass(frozen=True)
@@ -128,7 +129,7 @@ def evaluation(
     input.obs["condition"] = "control"
     ground_truth.obs["condition"] = "stimulated"
 
-    eval_adata = sc.AnnData.concatenate(input, ground_truth, predicted)
+    eval_adata = ad.concat([input, ground_truth, predicted])
 
     fig_list = []
 

@@ -9,8 +9,21 @@ class ModelConfig:
     dataset_name: str
     experiment_name: str
     perturbation: str
+    output_path: Path
     dosage: int = 0
     cell_type_key: str = "celltype"
+    
+    def get_experiment_path(self) -> Path:
+        return self.output_path / self.experiment_name
+    
+    def get_batch_path(self, batch: int) -> Path:
+        return self.get_experiment_path() / f"batch{batch}"
+    
+    def get_batch_metrics_path(self) -> Path:
+        return self.get_experiment_path() / "metrics.csv"
+    
+    def is_finished_batch(self, batch: int) -> bool:
+        return self.get_batch_metrics_path().exists()
     
 
 def append_csv(df: DataFrame, path: Path):
