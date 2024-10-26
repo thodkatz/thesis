@@ -1,6 +1,17 @@
 import pandas as pd
 from pandas import DataFrame
 from pathlib import Path
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class ModelConfig:
+    model_name: str
+    dataset_name: str
+    experiment_name: str
+    perturbation: str
+    dosage: int = 0
+    cell_type_key: str = "celltype"
+    
 
 def append_csv(df: DataFrame, path: Path):
     if not path.exists():
