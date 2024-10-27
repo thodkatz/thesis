@@ -9,7 +9,7 @@ import torch.nn as nn
 from typing import List, Callable, Optional
 from thesis import SAVED_RESULTS_PATH
 import pandas as pd
-from thesis.evaluation import evaluation
+from thesis.evaluation import evaluation_out_of_sample
 import numpy as np
 from pathlib import Path
 from thesis.utils import ModelConfig
@@ -17,7 +17,6 @@ from thesis.utils import ModelConfig
 
 REFRESH = False
 
-BUTTERFLY_SAVED_RESULTS_PATH = SAVED_RESULTS_PATH / "butterfly" / "perturb"
 
 
 def is_finished_batch(model_config: ModelConfig, batch: int):
@@ -66,6 +65,7 @@ def _run_batch(
     kl_div = R_kl_div + A_kl_div
 
     file_path = str(model_config.get_batch_path(batch))
+    tensorboard_path = model_config.get_batch_log_path(batch)
 
     model = Model(
         R_encoder_nlayer=2,
@@ -92,10 +92,10 @@ def _run_batch(
         R_noise_rate=0.5,
         A_noise_rate=0.5,
         chrom_list=[],
-        logging_path=file_path,
+        model_config_log_path=file_path,
         RNA_data=control,
         ATAC_data=perturb,
-        name=f"butterfly/{model_config.dataset_name}/{model_config.experiment_name}/batch{batch}",
+        tensorboard_path=tensorboard_path
     )
 
     if is_finished_batch(model_config, batch):
@@ -135,35 +135,29 @@ def _run_batch(
         A_pretrain_kl_warmup=50,
         translation_kl_warmup=50,
         load_model=load_model,
-        logging_path=file_path,
     )
 
     test_file_path = f"{file_path}/test"
     input_test, ground_truth_test, predicted_test = model.test(
         test_id_r=test_id_control,
         test_id_a=test_id_perturb,
-        model_path=None,
-        load_model=False,
-        output_path=test_file_path,
     )
-    evaluation(
+    evaluation_out_of_sample(
         model_config=model_config,
         input=input_test,
         ground_truth=ground_truth_test,
         predicted=predicted_test,
         output_path=Path(test_file_path),
+        append_metrics=True,
         save_plots=False,
     )
 
     test_file_path = f"{file_path}/test_validation"
-    model.test(
+    input_test, ground_truth_test, predicted_test = model.test(
         test_id_r=validation_id_control,
         test_id_a=validation_id_perturb,
-        model_path=None,
-        load_model=False,
-        output_path=test_file_path,
     )
-    evaluation(
+    evaluation_out_of_sample(
         model_config=model_config,
         input=input_test,
         ground_truth=ground_truth_test,
@@ -177,11 +171,8 @@ def _run_batch(
     input_train, ground_truth_train, predicted_train = model.test(
         test_id_r=train_id_control,
         test_id_a=train_id_perturb,
-        model_path=None,
-        load_model=False,
-        output_path=test_file_path,
     )
-    evaluation(
+    evaluation_out_of_sample(
         model_config=model_config,
         input=input_train,
         ground_truth=ground_truth_train,
@@ -241,7 +232,7 @@ def _run_sciplex3(
         perturbation=perturbation_name,
         cell_type_key="celltype",
         dosage=dosage,
-        output_path=BUTTERFLY_SAVED_RESULTS_PATH,
+        root_path=SAVED_RESULTS_PATH,
     )
 
     return _run(
@@ -319,7 +310,7 @@ def run_nault_all_dosages(dataset: AnnData, experiment_name: str):
             perturbation="tcdd",
             cell_type_key="celltype",
             dosage=drug_dosage,
-            output_path=BUTTERFLY_SAVED_RESULTS_PATH,
+            root_path=SAVED_RESULTS_PATH,
         )
 
         _run(
@@ -342,7 +333,7 @@ def run_nault_dosage(
         perturbation="tcdd",
         cell_type_key="celltype",
         dosage=drug_dosage,
-        output_path=BUTTERFLY_SAVED_RESULTS_PATH,
+        root_path=SAVED_RESULTS_PATH,
     )
 
     return _run(
@@ -363,7 +354,7 @@ def run_pbmc(experiment_name: str, dataset: AnnData, batch: Optional[int] = None
         experiment_name=experiment_name,
         perturbation="ifn-b",
         cell_type_key="cell_type",
-        output_path=BUTTERFLY_SAVED_RESULTS_PATH,
+        root_path=SAVED_RESULTS_PATH,
     )
 
     return _run(
