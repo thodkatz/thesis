@@ -1,5 +1,4 @@
-import thesis.scbutterfly as scbutterfly
-
+import thesis.scPreGan as scpregan
 from thesis.datasets import get_pbmc
 import argparse
 import torch
@@ -11,4 +10,4 @@ if __name__ == "__main__":
     parser.add_argument('--batch', type=int, required=False, help="batch id")
     args = parser.parse_args()
     print("CUDA", torch.cuda.is_available())
-    scbutterfly.run_pbmc(experiment_name="", dataset=dataset, batch=args.batch)
+    scpregan.run_pbmc(experiment_name="", dataset=dataset, batch=args.batch)

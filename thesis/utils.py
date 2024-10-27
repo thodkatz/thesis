@@ -15,8 +15,11 @@ class ModelConfig:
     cell_type_key: str = "celltype"
     
     def get_batch_path(self, batch: int, prefix: Optional[Path] = None) -> Path:
+        return self.get_perturbation_path(prefix=prefix) / f"batch{batch}"
+    
+    def get_perturbation_path(self, prefix: Optional[Path] = None) -> Path:
         prefix = prefix or self.root_path
-        return prefix / self.model_name / self.dataset_name / self.experiment_name / f"batch{batch}"
+        return prefix / self.model_name / self.experiment_name / self.dataset_name / self.perturbation / f'dosage{self.dosage}'
     
     def get_batch_metrics_path(self, batch: int) -> Path:
         return self.get_batch_path(batch=batch) / "metrics.csv"

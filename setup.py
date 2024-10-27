@@ -14,7 +14,8 @@ setup(
         "numpy",
         "adata",
         "pertpy",
-        "tensorboard"
+        "tensorboard",
+        "scvi-tools<=0.20.0" # scgen
     ],
     extras_require={
         "dev": [

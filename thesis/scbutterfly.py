@@ -13,10 +13,14 @@ from thesis.evaluation import evaluation_out_of_sample
 import numpy as np
 from pathlib import Path
 from thesis.utils import ModelConfig
+from thesis.datasets import (
+    get_control_perturb_nault,
+    get_control_perturb_pbmc,
+    get_control_perturb_sciplex3,
+)
 
 
 REFRESH = False
-
 
 
 def is_finished_batch(model_config: ModelConfig, batch: int):
@@ -95,7 +99,7 @@ def _run_batch(
         model_config_log_path=file_path,
         RNA_data=control,
         ATAC_data=perturb,
-        tensorboard_path=tensorboard_path
+        tensorboard_path=tensorboard_path,
     )
 
     if is_finished_batch(model_config, batch):
@@ -183,7 +187,7 @@ def _run_batch(
     )
 
 
-def _run(
+def run(
     model_config: ModelConfig,
     control: AnnData,
     perturb: AnnData,
@@ -223,7 +227,7 @@ def _run_sciplex3(
     split_func: Callable,
     batch: Optional[int] = None,
 ):
-    control, perturb = _get_control_perturb_sciplex3(dataset)
+    control, perturb = get_control_perturb_sciplex3(dataset)
 
     model_config = ModelConfig(
         model_name="scbutterfly",
@@ -235,7 +239,7 @@ def _run_sciplex3(
         root_path=SAVED_RESULTS_PATH,
     )
 
-    return _run(
+    return run(
         model_config=model_config,
         control=control,
         perturb=perturb,
@@ -276,77 +280,42 @@ def run_sciplex3_no_reusing(
     )
 
 
-def _get_control_perturb_sciplex3(dataset: AnnData):
-    num_perturbations = dataset.obs.perturbation.unique()
-    assert len(num_perturbations) == 2
-    dataset.obs["condition"] = dataset.obs["perturbation"].apply(
-        lambda x: "control" if x == "control" else "stimulated"
-    )
-    control = dataset[dataset.obs.condition == "control"]
-    perturb = dataset[dataset.obs.condition == "stimulated"]
-    return control, perturb
+def run_nault_dosage(
+    experiment_name: str,
+    dataset: AnnData,
+    dosage: Optional[int] = None,
+    batch: Optional[int] = None,
+):
+    drug_dosages = dataset.obs["Dose"].unique()
+    if dosage is None:
+        drug_dosage_list = drug_dosages
+    else:
+        drug_dosage_list = [dosage]
 
-
-def _get_control_perturb_nault(dataset: AnnData, drug_dosage: int):
-    control = dataset[dataset.obs["Dose"] == 0]
-    assert drug_dosage in dataset.obs["Dose"].unique()
-    perturb = dataset[dataset.obs["Dose"] == drug_dosage]
-    control.obs["condition"] = "control"
-    perturb.obs["condition"] = "stimulated"
-    return control, perturb
-
-
-def run_nault_all_dosages(dataset: AnnData, experiment_name: str):
-    for drug_dosage in dataset.obs["Dose"].unique():
-        if drug_dosage == 0:
-            continue
-        print("Drug dosage", drug_dosage)
-        control, perturb = _get_control_perturb_nault(dataset, drug_dosage)
+    for dose in drug_dosage_list:
+        control, perturb = get_control_perturb_nault(dataset, dose)
 
         model_config = ModelConfig(
             model_name="scbutterfly",
             dataset_name="nault",
-            experiment_name="all_drug_dosages",
+            experiment_name=experiment_name,
             perturbation="tcdd",
             cell_type_key="celltype",
-            dosage=drug_dosage,
+            dosage=dose,
             root_path=SAVED_RESULTS_PATH,
         )
 
-        _run(
+        run(
             model_config=model_config,
             control=control,
             perturb=perturb,
             split_func=unpaired_split_dataset_perturb,
+            batch_idx=batch,
         )
 
 
-def run_nault_dosage(
-    name: str, dataset: AnnData, drug_dosage: int, batch: Optional[int] = None
-):
-    control, perturb = _get_control_perturb_nault(dataset, drug_dosage)
-
-    model_config = ModelConfig(
-        model_name="scbutterfly",
-        dataset_name="nault",
-        experiment_name=name,
-        perturbation="tcdd",
-        cell_type_key="celltype",
-        dosage=drug_dosage,
-        root_path=SAVED_RESULTS_PATH,
-    )
-
-    return _run(
-        model_config=model_config,
-        control=control,
-        perturb=perturb,
-        split_func=unpaired_split_dataset_perturb,
-        batch_idx=batch,
-    )
-
-
 def run_pbmc(experiment_name: str, dataset: AnnData, batch: Optional[int] = None):
-    control, perturb = _get_control_perturb_pbmc(dataset)
+    control, perturb = get_control_perturb_pbmc(dataset)
 
     model_config = ModelConfig(
         model_name="scbutterfly",
@@ -357,16 +326,10 @@ def run_pbmc(experiment_name: str, dataset: AnnData, batch: Optional[int] = None
         root_path=SAVED_RESULTS_PATH,
     )
 
-    return _run(
+    run(
         model_config=model_config,
         control=control,
         perturb=perturb,
         split_func=unpaired_split_dataset_perturb,
         batch_idx=batch,
     )
-
-
-def _get_control_perturb_pbmc(dataset: AnnData):
-    control = dataset[dataset.obs["condition"] == "control"]
-    perturb = dataset[dataset.obs["condition"] == "stimulated"]
-    return control, perturb

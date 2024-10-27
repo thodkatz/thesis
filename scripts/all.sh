@@ -1,16 +1,18 @@
 #!/bin/bash
 
-REPO=~/thesis/ssh/thesis
+REPO=/g/kreshuk/katzalis/repos/thesis
 echo "Repo: "$REPO
-HELPER=../embl-resources/slurm/submit_gpu.py
+HELPER=$REPO/scripts/submit_gpu.py
 echo "sbatch script path: "$HELPER
 
 
-butterfly_pbmc() {
+pbmc() {
     for i in {0..6}
     do
         echo "Number: $i"
         $HELPER $REPO/scripts/butterfly-pbmc.py --batch $i
+        $HELPER $REPO/scripts/scpregan-pbmc.py --batch $i
+        $HELPER $REPO/scripts/scpregan-pbmc-reproducible.py --batch $i
     done
 }
 
@@ -55,4 +57,4 @@ butterfly_pbmc() {
 # ]
 
 
-butterfly_pbmc
+pbmc

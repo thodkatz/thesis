@@ -262,6 +262,7 @@ def evaluation_out_of_sample(
     }
     pd_data = pd.DataFrame(data)
     pd_data.to_csv(output_path / "metrics.csv", index=False)
+    print("Writing metrics to", output_path / "metrics.csv")
 
     if append_metrics:
         append_csv(pd_data, METRICS_PATH)
