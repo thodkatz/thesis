@@ -1,19 +1,16 @@
 from anndata import AnnData
-from matplotlib.dates import MO
 from scButterfly.train_model_perturb import Model
 from scButterfly.split_datasets import (
     unpaired_split_dataset_perturb,
     unpaired_split_dataset_perturb_no_reusing,
 )
 import torch.nn as nn
-from typing import List, Callable, Optional
+from typing import Callable, Optional
 from thesis import SAVED_RESULTS_PATH
-import pandas as pd
 from thesis.evaluation import evaluation_out_of_sample
-import numpy as np
 from pathlib import Path
 from thesis.utils import ModelConfig
-from thesis.datasets import (
+from thesis.datasets_pipelines import (
     get_control_perturb_nault,
     get_control_perturb_pbmc,
     get_control_perturb_sciplex3,
@@ -23,36 +20,26 @@ from thesis.datasets import (
 REFRESH = False
 
 
-
-def _run_dataset(
-    model_config: ModelConfig,
-    control: AnnData,
-    perturb: AnnData,
-    id_list: List,
-    batch_list: List[int],
-):
-    for idx, batch in enumerate(batch_list):
-        print("config", model_config, "Batch", batch)
-        _run_batch(
-            model_config=model_config,
-            control=control,
-            perturb=perturb,
-            id_list=id_list,
-            batch=batch,
-        )
-
-
 def _run_batch(
     model_config: ModelConfig,
     control: AnnData,
     perturb: AnnData,
-    id_list: List,
+    split_func: Callable,
     batch: int,
 ):
     if model_config.is_finished_batch(batch, refresh=REFRESH):
         print("Batch already trained", batch)
         return
+
+    cell_type_key = model_config.cell_type_key
+    control.obs["cell_type"] = control.obs[cell_type_key]
+    perturb.obs["cell_type"] = perturb.obs[cell_type_key]
+    control.obs.index = [str(i) for i in range(control.X.shape[0])]
+    perturb.obs.index = [str(i) for i in range(perturb.X.shape[0])]
     
+    id_list, _ = split_func(control, perturb)
+
+
     (
         train_id_control,
         train_id_perturb,
@@ -101,8 +88,6 @@ def _run_batch(
         ATAC_data=perturb,
         tensorboard_path=tensorboard_path,
     )
-
-
 
     model.train(
         R_encoder_lr=0.001,
@@ -189,35 +174,31 @@ def run(
     batch_idx: Optional[int] = None,
 ):
     cell_type_key = model_config.cell_type_key
-    control.obs["cell_type"] = control.obs[cell_type_key]
-    perturb.obs["cell_type"] = perturb.obs[cell_type_key]
-    control.obs.index = [str(i) for i in range(control.X.shape[0])]
-    perturb.obs.index = [str(i) for i in range(perturb.X.shape[0])]
-
     assert sorted(control.obs[cell_type_key].unique()) == sorted(
         perturb.obs[cell_type_key].unique()
     )
-    # batch_list = [batch_list[0]]
-    if batch_idx is not None:
-        batch_list = [batch_idx]
+    cell_types = control.obs[cell_type_key].unique().tolist()
+    if batch_idx is None:
+        batch_list = [idx for idx, _ in enumerate(cell_types)]
     else:
-        batch_list = list(range(0, len(control.obs[cell_type_key].cat.categories)))
+        batch_list = [batch_idx]
 
-    id_list, _ = split_func(control, perturb)
-    _run_dataset(
-        model_config=model_config,
-        control=control,
-        perturb=perturb,
-        id_list=id_list,
-        batch_list=batch_list,
-    )
+    for idx, batch in enumerate(batch_list):
+        print("config", model_config, "Batch", batch)
+        _run_batch(
+            model_config=model_config,
+            control=control,
+            perturb=perturb,
+            split_func=split_func,
+            batch=batch,
+        )
 
 
 def _run_sciplex3(
     name: str,
     dataset: AnnData,
     perturbation_name: str,
-    dosage: int,
+    dosage: float,
     split_func: Callable,
     batch: Optional[int] = None,
 ):
@@ -245,7 +226,7 @@ def _run_sciplex3(
 def run_sciplex3(
     dataset: AnnData,
     perturbation_name: str,
-    dosage: int,
+    dosage: float,
     batch: Optional[int] = None,
 ):
     return _run_sciplex3(
@@ -261,7 +242,7 @@ def run_sciplex3(
 def run_sciplex3_no_reusing(
     dataset: AnnData,
     perturbation_name: str,
-    dosage: int,
+    dosage: float,
     batch: Optional[int] = None,
 ):
     return _run_sciplex3(

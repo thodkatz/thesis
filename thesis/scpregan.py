@@ -1,5 +1,5 @@
 from scPreGAN.reproducibility.scPreGAN_OOD_prediction import train_and_predict
-from thesis.datasets import get_control_perturb_pbmc
+from thesis.datasets_pipelines import get_control_perturb_pbmc
 from typing import Optional
 from anndata import AnnData
 from thesis import SAVED_RESULTS_PATH
@@ -22,7 +22,8 @@ def run_pbmc(experiment_name: str, dataset: AnnData, batch: Optional[int] = None
         root_path=SAVED_RESULTS_PATH,
     )
 
-    cell_types = dataset.obs["cell_type"].unique().tolist()
+    cell_type_key = model_config.cell_type_key
+    cell_types = dataset.obs[cell_type_key].unique().tolist()
 
     if batch is None:
         batch_list = [idx for idx, _ in enumerate(cell_types)]
@@ -41,7 +42,7 @@ def _run_batch(model_config: ModelConfig, dataset: AnnData, batch: int):
 
     condition_key = "condition"
     condition = {"case": "stimulated", "control": "control"}
-    cell_type_key = "cell_type"
+    cell_type_key = model_config.cell_type_key
 
     cell_types = dataset.obs[cell_type_key].unique().tolist()
     target_cell_type = cell_types[batch]
@@ -75,10 +76,10 @@ def _run_batch(model_config: ModelConfig, dataset: AnnData, batch: int):
     )
 
     control_test_adata = control_adata[
-        control_adata.obs["cell_type"] == target_cell_type
+        control_adata.obs[cell_type_key] == target_cell_type
     ]
     perturb_test_adata = perturb_adata[
-        perturb_adata.obs["cell_type"] == target_cell_type
+        perturb_adata.obs[cell_type_key] == target_cell_type
     ]
 
     pred_perturbed_adata = model.predict(
@@ -93,7 +94,7 @@ def _run_batch(model_config: ModelConfig, dataset: AnnData, batch: int):
         ground_truth=perturb_test_adata,
         predicted=pred_perturbed_adata,
         output_path=model_config.get_batch_path(batch),
-        save_plots=True,
+        save_plots=False,
         append_metrics=True,
     )
 
@@ -108,7 +109,8 @@ def run_pbmc_reproducible(dataset: AnnData, batch: Optional[int] = None):
         root_path=SAVED_RESULTS_PATH,
     )
 
-    cell_types = dataset.obs["cell_type"].unique().tolist()
+    cell_type_key = model_config.cell_type_key
+    cell_types = dataset.obs[cell_type_key].unique().tolist()
 
     if batch is None:
         batch_list = [idx for idx, _ in enumerate(cell_types)]
@@ -159,6 +161,8 @@ def _run_batch_reproducible(model_config: ModelConfig, dataset: AnnData, batch: 
         "z_dim": 16,
     }
 
+    cell_type_key = model_config.cell_type_key
+
     pred_perturbed_reproducible_adata = train_and_predict(
         opt=opt,
         config=config,
@@ -171,10 +175,10 @@ def _run_batch_reproducible(model_config: ModelConfig, dataset: AnnData, batch: 
     target_cell_type = cell_types[batch]
 
     control_test_adata = control_adata[
-        control_adata.obs["cell_type"] == target_cell_type
+        control_adata.obs[cell_type_key] == target_cell_type
     ]
     perturb_test_adata = perturb_adata[
-        perturb_adata.obs["cell_type"] == target_cell_type
+        perturb_adata.obs[cell_type_key] == target_cell_type
     ]
 
     evaluation_out_of_sample(
@@ -183,6 +187,6 @@ def _run_batch_reproducible(model_config: ModelConfig, dataset: AnnData, batch: 
         ground_truth=perturb_test_adata,
         predicted=pred_perturbed_reproducible_adata,
         output_path=model_config.get_batch_path(batch),
-        save_plots=True,
+        save_plots=False,
         append_metrics=True,
     )

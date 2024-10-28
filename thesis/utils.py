@@ -11,7 +11,7 @@ class ModelConfig:
     experiment_name: str
     perturbation: str
     root_path: Path
-    dosage: int = 0
+    dosage: float = 0
     cell_type_key: str = "celltype"
     
     def get_batch_path(self, batch: int, prefix: Optional[Path] = None) -> Path:

@@ -16,45 +16,32 @@ pbmc() {
     done
 }
 
-# butterfly_sciplex3_perturbation_dose_no_resuing() {
-#     python $REPO/scripts/butterfly-sciplex3-perturbation-dose-no-resuing.py
-# }
+sciplex3() {
+    for i in {0..2}
+    do
+        echo "Number: $i"
+        $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose-no-reusing.py --perturbation "Ellagic acid" --dosage 10000 --batch $i
+        $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose-no-reusing.py --perturbation "Divalproex Sodium" --dosage 1000 --batch $i
+        $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose.py --perturbation "Ellagic acid" --dosage 10000 --batch $i
+        $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose.py --perturbation "Divalproex Sodium" --dosage 1000 --batch $i
+    done
+}
 
-# butterfly_sciplex3_perturbation() {
+nault() {
+    for dosage in 0.01 0.03 0.1 0.3 1.0 3.0 10.0 30.0
+    do
+        for batch in {0..10}
+        do
+            echo "Dosage: $dosage, Batch: $batch"
+            $HELPER $REPO/scripts/butterfly-nault.py --dosage $dosage --batch $batch
+            $HELPER $REPO/scripts/scpregan-nault.py --dosage $dosage --batch $batch            
+            #$HELPER $REPO/scripts/butterfly-nault-no-filtering.py --dosage $dosage --batch $batch
+        done
+    done
+}
 
-# }
+#pbmc
 
-# butterfly_nault() {
-    
-# }
+nault
 
-# butterfly_nault_no_filtering() {
-
-# }
-
-# dataset1: sc.AnnData = sciplex3[
-#     (sciplex3.obs["perturbation"] == "Ellagic acid")
-#     | (sciplex3.obs["perturbation"] == "control")
-# ]
-# dataset1 = dataset1[
-#     (dataset1.obs["dose_value"] == 10000) | (dataset1.obs["perturbation"] == "control")
-# ]
-
-# dataset2: sc.AnnData = sciplex3[
-#     (sciplex3.obs["perturbation"] == "UNC1999")
-#     | (sciplex3.obs["perturbation"] == "control")
-# ]
-# dataset2 = dataset2[
-#     (dataset2.obs["dose_value"] == 1000) | (dataset2.obs["perturbation"] == "control")
-# ]
-
-# dataset3: sc.AnnData = sciplex3[
-#     (sciplex3.obs["perturbation"] == "Ellagic acid")
-#     | (sciplex3.obs["perturbation"] == "control")
-# ]
-# dataset3 = dataset3[
-#     (dataset3.obs["dose_value"] == 1000) | (dataset3.obs["perturbation"] == "control")
-# ]
-
-
-pbmc
+#sciplex3
