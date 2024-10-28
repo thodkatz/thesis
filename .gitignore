@@ -18,3 +18,5 @@ saved_results
 __pycache__
 
 .vscode
+
+slurm_scripts

@@ -14,6 +14,9 @@ def write_slurm_template(script, out_path, env_name,
                          n_threads, gpu_type, n_gpus,
                          mem_limit, time_limit, qos, env_vars):
     slurm_template = ("#!/bin/bash\n"
+                      '#SBATCH -o ./slurm_scripts/%x_%j.out\n'
+                      '#SBATCH -e ./slurm_scripts/%x_%j.err\n'
+                      '#SBATCH --nodelist=gpu[40-43]\n'
                       "#SBATCH -A kreshuk\n"
                       "#SBATCH -N 1\n"
                       f"#SBATCH -c {n_threads}\n"
@@ -24,11 +27,9 @@ def write_slurm_template(script, out_path, env_name,
                       f"#SBATCH --mail-user=theodoros.katzalis@embl.de\n"
                       "#SBATCH -p gpu-el8\n"
                     #   f"#SBATCH -C 'gpu=3090|gpu=2080Ti'\n"
-                      f"#SBATCH --gres=gpu:1\n\n"
+                      f"#SBATCH --gres=shard:1\n\n"
                       "module load cuDNN\n"
-                      "echo Visible GPUS: $CUDA_VISIBLE_DEVICES\n"
                       "source ~/.bashrc\n"
-                      "echo Visible GPUs: $CUDA_VISIBLE_DEVICES\n"
                       "echo Hostname: $HOSTNAME\n"
                       "nvidia-smi\n"
                       f"conda activate {env_name}\n"
@@ -39,14 +40,14 @@ def write_slurm_template(script, out_path, env_name,
         f.write(slurm_template)
 
 
-def submit_slurm(script, input_, n_threads=8, n_gpus=1,
-                 gpu_type='2080Ti', mem_limit='64G',
+def submit_slurm(script, input_, n_threads=4, n_gpus=1,
+                 gpu_type='2080Ti', mem_limit='8050',
                  time_limit=TWO_DAYS, qos='normal',
                  env_name=None, env_vars=None):
     """ Submit python script that needs gpus with given inputs on a slurm node.
     """
 
-    tmp_folder = os.path.expanduser('~/.slurm_scripts')
+    tmp_folder = os.path.expanduser('./slurm_scripts')
     os.makedirs(tmp_folder, exist_ok=True)
 
     print("Submitting training script %s to cluster" % script)
@@ -56,8 +57,7 @@ def submit_slurm(script, input_, n_threads=8, n_gpus=1,
     dt = datetime.now().strftime('%Y_%m_%d_%M')
     tmp_name = os.path.splitext(script_name)[0] + dt
     batch_script = os.path.join(tmp_folder, '%s.sh' % tmp_name)
-    log = os.path.join(tmp_folder, '%s.log' % tmp_name)
-    err = os.path.join(tmp_folder, '%s.err' % tmp_name)
+
 
     if env_name is None:
         env_name = os.environ.get('CONDA_DEFAULT_ENV', None)
@@ -65,12 +65,11 @@ def submit_slurm(script, input_, n_threads=8, n_gpus=1,
             raise RuntimeError("Could not find conda")
 
     print("\nBatch script saved at", batch_script)
-    print("Log will be written to %s\nError log to %s" % (log, err))
     write_slurm_template(script, batch_script, env_name,
                          int(n_threads), gpu_type, int(n_gpus),
                          mem_limit, int(time_limit), qos, env_vars)
 
-    cmd = ['sbatch', '-o', log, '-e', err, '-J', script_name, batch_script]
+    cmd = ['sbatch', batch_script]
     cmd.extend(input_)
     subprocess.run(cmd)
 

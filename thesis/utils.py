@@ -24,8 +24,8 @@ class ModelConfig:
     def get_batch_metrics_path(self, batch: int) -> Path:
         return self.get_batch_path(batch=batch) / "metrics.csv"
     
-    def is_finished_batch(self, batch: int) -> bool:
-        return self.get_batch_metrics_path(batch=batch).exists()
+    def is_finished_batch(self, batch: int, refresh: bool  = False) -> bool:
+        return self.get_batch_metrics_path(batch=batch).exists() and not refresh
     
     def get_log_path(self) -> Path:
         return self.root_path / "runs"

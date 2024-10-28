@@ -30,10 +30,15 @@ def run_pbmc(experiment_name: str, dataset: AnnData, batch: Optional[int] = None
         batch_list = [batch]
 
     for batch_idx in batch_list:
+        print("config", model_config, "Batch", batch_idx)
         _run_batch(model_config=model_config, dataset=dataset, batch=batch_idx)
 
 
 def _run_batch(model_config: ModelConfig, dataset: AnnData, batch: int):
+    if model_config.is_finished_batch(batch=batch, refresh=REFRESH):
+        print(f"Batch {batch} already finished")
+        return
+
     condition_key = "condition"
     condition = {"case": "stimulated", "control": "control"}
     cell_type_key = "cell_type"

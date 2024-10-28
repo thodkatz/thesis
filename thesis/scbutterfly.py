@@ -23,10 +23,6 @@ from thesis.datasets import (
 REFRESH = False
 
 
-def is_finished_batch(model_config: ModelConfig, batch: int):
-    # test_train is the last metrics file
-    return model_config.is_finished_batch(batch) and not REFRESH
-
 
 def _run_dataset(
     model_config: ModelConfig,
@@ -53,6 +49,10 @@ def _run_batch(
     id_list: List,
     batch: int,
 ):
+    if model_config.is_finished_batch(batch, refresh=REFRESH):
+        print("Batch already trained", batch)
+        return
+    
     (
         train_id_control,
         train_id_perturb,
@@ -102,12 +102,7 @@ def _run_batch(
         tensorboard_path=tensorboard_path,
     )
 
-    if is_finished_batch(model_config, batch):
-        print("Batch already trained", batch)
-        print("Loading model")
-        load_model = file_path
-    else:
-        load_model = None
+
 
     model.train(
         R_encoder_lr=0.001,
@@ -138,10 +133,9 @@ def _run_batch(
         R_pretrain_kl_warmup=50,
         A_pretrain_kl_warmup=50,
         translation_kl_warmup=50,
-        load_model=load_model,
+        load_model=None,
     )
 
-    test_file_path = f"{file_path}/test"
     input_test, ground_truth_test, predicted_test = model.test(
         test_id_r=test_id_control,
         test_id_a=test_id_perturb,
@@ -151,7 +145,7 @@ def _run_batch(
         input=input_test,
         ground_truth=ground_truth_test,
         predicted=predicted_test,
-        output_path=Path(test_file_path),
+        output_path=Path(file_path),
         append_metrics=True,
         save_plots=False,
     )
