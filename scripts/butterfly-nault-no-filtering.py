@@ -11,9 +11,7 @@ if __name__ == "__main__":
     print("CUDA", torch.cuda.is_available())
 
     butterfly_pmbc = ButterflyPipeline(
-        dataset_pipeline=NaultNoFilteringPipeline(
-            perturbation=args.perturbation, dosage=args.dosage
-        ),
+        dataset_pipeline=NaultNoFilteringPipeline(dosage=args.dosage),
         experiment_name="",
     )
     butterfly_pmbc(batch=args.batch, append_metrics=True, save_plots=False)
