@@ -5,39 +5,32 @@ echo "Repo: "$REPO
 HELPER=$REPO/scripts/submit_gpu.py
 echo "sbatch script path: "$HELPER
 
-
 pbmc() {
-    for batch in {0..6}
-    do
-        echo "Number: $batch"
-        #$HELPER $REPO/scripts/butterfly-pbmc.py --batch $batch
-        #$HELPER $REPO/scripts/scpregan-pbmc.py --batch $batch
-        #$HELPER $REPO/scripts/scpregan-pbmc-reproducible.py --batch $batch
-        $HELPER $REPO/scripts/scgen-pbmc.py --batch $batch
+    for batch in {0..6}; do
+        for model in scbutterfly scgen scpregan scpregan-reproducible; do
+            echo "Model: $model, Number: $batch"
+            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset pbmc
+        done
     done
 }
 
 sciplex3() {
-    for i in {0..2}
-    do
-        echo "Number: $i"
-        # $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose-no-reusing.py --perturbation "Ellagic acid" --dosage 10000 --batch $i
-        # $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose-no-reusing.py --perturbation "Divalproex Sodium" --dosage 1000 --batch $i
-        # $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose.py --perturbation "Ellagic acid" --dosage 10000 --batch $i
-        # $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose.py --perturbation "Divalproex Sodium" --dosage 1000 --batch $i
+    for batch in {0..2}; do
+        for model in scbutterfly scbutterfly-no-reusing scgen scpregan; do
+            echo "Model: $model, Number: $batch"
+            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset sciplex3 --perturbation 'Ellagic acid' --dosage 10000
+            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset sciplex3 --perturbation 'Divalproex Sodium' --dosage 1000
+        done
     done
 }
 
 nault() {
-    for dosage in 0.01 0.03 0.1 0.3 1.0 3.0 10.0 30.0
-    do
-        for batch in {0..10}
-        do
-            echo "Dosage: $dosage, Batch: $batch"
-            #$HELPER $REPO/scripts/butterfly-nault.py --dosage $dosage --batch $batch
-            #$HELPER $REPO/scripts/scpregan-nault.py --dosage $dosage --batch $batch            
-            #$HELPER $REPO/scripts/butterfly-nault-no-filtering.py --dosage $dosage --batch $batch
-            $HELPER $REPO/scripts/scgen-nault.py --dosage $dosage --batch $batch
+    for dosage in 0.01 0.03 0.1 0.3 1.0 3.0 10.0 30.0; do
+        for batch in {0..10}; do
+            for model in scbutterfly scgen scpregan; do
+                echo "Model: $model, Dosage: $dosage, Batch: $batch"
+                $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset nault --dosage $dosage
+            done
         done
     done
 }

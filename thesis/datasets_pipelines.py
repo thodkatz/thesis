@@ -4,7 +4,6 @@ from thesis import DATA_PATH
 import scanpy as sc
 from thesis.preprocessing_pipelines import (
     PreprocessingGenericPipeline,
-    PreprocessingNoFilteringPipeline,
     PreprocessingPipeline,
 )
 from anndata import AnnData
@@ -31,6 +30,14 @@ class Sciplex3SplitControlPerturbPipeline(SplitControlPerturbPipeline):
     def __call__(
         self, dataset: AnnData, perturbation: str, dosage: float
     ) -> Tuple[AnnData, AnnData]:
+        dataset = dataset[
+            (dataset.obs["perturbation"] == perturbation)
+            | (dataset.obs["perturbation"] == "control")
+        ]
+        dataset = dataset[
+            (dataset.obs["dose_value"] == dosage)
+            | (dataset.obs["perturbation"] == "control")
+        ]
         num_perturbations = dataset.obs.perturbation.unique()
         assert len(num_perturbations) == 2
         dataset.obs["condition"] = dataset.obs["perturbation"].apply(
@@ -66,35 +73,32 @@ class DatasetPipeline(ABC):
         self.perturbation = perturbation
         self.dosage = dosage
         self.cell_type_key = cell_type_key
-        
+
         if preprocessing_pipeline is None:
             dataset = dataset
         else:
             dataset = preprocessing_pipeline(dataset)
-        
+
         self.control, self.perturb = split_control_perturb_pipeline(
             dataset, self.perturbation, self.dosage
         )
-        
+
         self.dataset = self.control.concatenate(self.perturb)
-
-
 
     def __str__(self) -> str:
         return self.__class__.__name__
 
 
 class PbmcPipeline(DatasetPipeline):
-    def __init__(self):
+    def __init__(self, perturbation: str = "", dosage: float = 0.0, preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline()):
         pbmc_data = DATA_PATH / "pbmc/pbmc.h5ad"
         dataset = sc.read_h5ad(pbmc_data)
         perturbation = "ifn-b"
-        dosage = 0
         cell_type_key = "cell_type"
         super().__init__(
             dataset=dataset,
             perturbation=perturbation,
-            dosage=dosage,
+            dosage=0.0,
             cell_type_key=cell_type_key,
             preprocessing_pipeline=None,
             split_control_perturb_pipeline=PbmcSplitControlPerturbPipeline(),
@@ -105,7 +109,8 @@ class NaultPipeline(DatasetPipeline):
     def __init__(
         self,
         dosage: float,
-        preprocessing: PreprocessingPipeline = PreprocessingGenericPipeline(),
+        perturbation: str = "",
+        preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
     ):
         nault_data = DATA_PATH / "scvidr/nault2021_multiDose.h5ad"
         dataset = sc.read_h5ad(nault_data)
@@ -115,38 +120,26 @@ class NaultPipeline(DatasetPipeline):
             perturbation="tcdd",
             dosage=dosage,
             cell_type_key=cell_type_key,
-            preprocessing_pipeline=preprocessing,
+            preprocessing_pipeline=preprocessing_pipeline,
             split_control_perturb_pipeline=NaultSplitControlPerturbPipeline(),
         )
 
 
-class NaultNoFilteringPipeline(NaultPipeline):
-    def __init__(self, dosage: float):
-        super().__init__(
-            dosage=dosage,
-            preprocessing=PreprocessingNoFilteringPipeline(),
-        )
-
-
 class Sciplex3Pipeline(DatasetPipeline):
-    def __init__(self, perturbation: str, dosage: float):
+    def __init__(
+        self,
+        perturbation: str,
+        dosage: float,
+        preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
+    ):
         sciplex_data = DATA_PATH / "srivatsan_2020_sciplex3.h5ad"
         dataset = sc.read_h5ad(sciplex_data)
-        dataset = dataset[
-            (dataset.obs["perturbation"] == perturbation)
-            | (dataset.obs["perturbation"] == "control")
-        ]
-        dataset = dataset[
-            (dataset.obs["dose_value"] == dosage)
-            | (dataset.obs["perturbation"] == "control")
-        ]
-
         cell_type_key = "cell_type"
         super().__init__(
             dataset=dataset,
             perturbation=perturbation,
             dosage=dosage,
             cell_type_key=cell_type_key,
-            preprocessing_pipeline=None,
+            preprocessing_pipeline=preprocessing_pipeline,
             split_control_perturb_pipeline=Sciplex3SplitControlPerturbPipeline(),
         )
