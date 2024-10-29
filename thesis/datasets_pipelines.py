@@ -112,7 +112,7 @@ class NaultPipeline(DatasetPipeline):
         cell_type_key = "celltype"
         super().__init__(
             dataset=dataset,
-            perturbation="",
+            perturbation="tcdd",
             dosage=dosage,
             cell_type_key=cell_type_key,
             preprocessing_pipeline=preprocessing,
