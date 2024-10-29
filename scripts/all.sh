@@ -7,12 +7,13 @@ echo "sbatch script path: "$HELPER
 
 
 pbmc() {
-    for i in {0..6}
+    for batch in {0..6}
     do
-        echo "Number: $i"
-        $HELPER $REPO/scripts/butterfly-pbmc.py --batch $i
-        $HELPER $REPO/scripts/scpregan-pbmc.py --batch $i
-        $HELPER $REPO/scripts/scpregan-pbmc-reproducible.py --batch $i
+        echo "Number: $batch"
+        #$HELPER $REPO/scripts/butterfly-pbmc.py --batch $batch
+        #$HELPER $REPO/scripts/scpregan-pbmc.py --batch $batch
+        #$HELPER $REPO/scripts/scpregan-pbmc-reproducible.py --batch $batch
+        $HELPER $REPO/scripts/scgen-pbmc.py --batch $batch
     done
 }
 
@@ -20,10 +21,10 @@ sciplex3() {
     for i in {0..2}
     do
         echo "Number: $i"
-        $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose-no-reusing.py --perturbation "Ellagic acid" --dosage 10000 --batch $i
-        $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose-no-reusing.py --perturbation "Divalproex Sodium" --dosage 1000 --batch $i
-        $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose.py --perturbation "Ellagic acid" --dosage 10000 --batch $i
-        $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose.py --perturbation "Divalproex Sodium" --dosage 1000 --batch $i
+        # $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose-no-reusing.py --perturbation "Ellagic acid" --dosage 10000 --batch $i
+        # $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose-no-reusing.py --perturbation "Divalproex Sodium" --dosage 1000 --batch $i
+        # $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose.py --perturbation "Ellagic acid" --dosage 10000 --batch $i
+        # $HELPER $REPO/scripts/butterfly-sciplex-perturbation-dose.py --perturbation "Divalproex Sodium" --dosage 1000 --batch $i
     done
 }
 
@@ -33,9 +34,10 @@ nault() {
         for batch in {0..10}
         do
             echo "Dosage: $dosage, Batch: $batch"
-            $HELPER $REPO/scripts/butterfly-nault.py --dosage $dosage --batch $batch
-            $HELPER $REPO/scripts/scpregan-nault.py --dosage $dosage --batch $batch            
+            #$HELPER $REPO/scripts/butterfly-nault.py --dosage $dosage --batch $batch
+            #$HELPER $REPO/scripts/scpregan-nault.py --dosage $dosage --batch $batch            
             #$HELPER $REPO/scripts/butterfly-nault-no-filtering.py --dosage $dosage --batch $batch
+            $HELPER $REPO/scripts/scgen-nault.py --dosage $dosage --batch $batch
         done
     done
 }

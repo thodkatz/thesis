@@ -1,3 +1,4 @@
+from weakref import ref
 import pandas as pd
 from pandas import DataFrame
 from pathlib import Path
@@ -24,8 +25,27 @@ class ModelConfig:
     def get_batch_metrics_path(self, batch: int) -> Path:
         return self.get_batch_path(batch=batch) / "metrics.csv"
     
-    def is_finished_batch(self, batch: int, refresh: bool  = False) -> bool:
-        return self.get_batch_metrics_path(batch=batch).exists() and not refresh
+    def is_finished_evaluation(self, batch: int, refresh: bool  = False) -> bool:
+        exists = self.get_batch_metrics_path(batch=batch).exists()
+        print("Metrics path exist", exists, "refresh", refresh)
+        return exists and not refresh
+    
+    def is_finished_batch_training(self, batch: int, refresh: bool = False) -> bool:
+        exists = self.get_training_finished_flag_batch_file(batch=batch).exists()
+        print("Training finished flag exist", exists, "refresh", refresh)
+        return exists and not refresh
+    
+    def log_training_batch_is_finished(self, batch: int):
+        training_flag_file = self.get_training_finished_flag_batch_file(batch=batch)
+        print("Writing training finished flag to", training_flag_file)
+        with open(training_flag_file, "w") as f:
+            f.write("")
+            
+    def get_training_finished_flag_file(self, root: Path) -> Path:
+        return root / "training_finished.txt"
+            
+    def get_training_finished_flag_batch_file(self, batch: int) -> Path:
+        return self.get_training_finished_flag_file(self.get_batch_path(batch=batch))
     
     def get_log_path(self) -> Path:
         return self.root_path / "runs"

@@ -19,6 +19,7 @@ from thesis.datasets_pipelines import (
 )
 from thesis import DATA_PATH, SAVED_RESULTS_PATH
 import scButterfly.train_model_perturb as scbutterfly
+from scgen import SCGEN
 
 from scButterfly.split_datasets import (
     unpaired_split_dataset_perturb,
@@ -28,6 +29,8 @@ from scButterfly.split_datasets import (
 InputAdata = AnnData
 PredictedAdata = AnnData
 GroundTruthAdata = AnnData
+
+Predict = Tuple[InputAdata, GroundTruthAdata, PredictedAdata]
 
 
 class ModelPipeline(ABC):
@@ -48,7 +51,12 @@ class ModelPipeline(ABC):
         self._dataset_pipeline = dataset_pipeline
 
     @abstractmethod
-    def _run(self, batch: int) -> Tuple[InputAdata, GroundTruthAdata, PredictedAdata]:
+    def _run(
+        self,
+        batch: int,
+        refresh_training: bool = False,
+        refresh_evaluation: bool = False,
+    ) -> Optional[Predict]:
         pass
 
     def __call__(
@@ -56,13 +64,19 @@ class ModelPipeline(ABC):
         batch: int,
         append_metrics: bool = True,
         save_plots: bool = True,
-        refresh: bool = False,
+        refresh_training: bool = False,
+        refresh_evaluation: bool = False,
     ):
-        if self._model_config.is_finished_batch(batch=batch, refresh=refresh):
-            print(f"Batch {batch} already finished")
-            return
 
-        input_adata, ground_truth_adata, predicted_adata = self._run(batch)
+        predict = self._run(
+            batch=batch,
+            refresh_training=refresh_training,
+            refresh_evaluation=refresh_evaluation,
+        )
+        if predict is None:
+            return
+        else:
+            input_adata, ground_truth_adata, predicted_adata = predict
         file_path = self._model_config.get_batch_path(batch=batch)
         self.evaluation(
             input=input_adata,
@@ -118,7 +132,12 @@ class ButterflyPipeline(ModelPipeline):
             self._dataset_pipeline.control, self._dataset_pipeline.perturb
         )[0]
 
-    def _run(self, batch: int):
+    def _run(
+        self,
+        batch: int,
+        refresh_training: bool = False,
+        refresh_evaluation: bool = False,
+    ) -> Optional[Predict]:
         cell_type_key = self._model_config.cell_type_key
         control = self._dataset_pipeline.control
         perturb = self._dataset_pipeline.perturb
@@ -179,6 +198,13 @@ class ButterflyPipeline(ModelPipeline):
             tensorboard_path=tensorboard_path,
         )
 
+        if self._model_config.is_finished_batch_training(
+            batch=batch, refresh=refresh_training
+        ):
+            load_model = file_path
+        else:
+            load_model = None
+
         model.train(
             R_encoder_lr=0.001,
             A_encoder_lr=0.001,
@@ -208,8 +234,14 @@ class ButterflyPipeline(ModelPipeline):
             R_pretrain_kl_warmup=50,
             A_pretrain_kl_warmup=50,
             translation_kl_warmup=50,
-            load_model=None,
+            load_model=load_model,
         )
+        self._model_config.log_training_batch_is_finished(batch=batch)
+
+        if self._model_config.is_finished_evaluation(
+            batch=batch, refresh=refresh_evaluation
+        ):
+            return
 
         input_test, ground_truth_test, predicted_test = model.test(
             test_id_r=test_id_control, test_id_a=test_id_perturb
@@ -238,7 +270,12 @@ class ScPreGanPipeline(ModelPipeline):
             experiment_name=experiment_name,
         )
 
-    def _run(self, batch: int) -> Tuple[InputAdata, GroundTruthAdata, PredictedAdata]:
+    def _run(
+        self,
+        batch: int,
+        refresh_training: bool = False,
+        refresh_evaluation: bool = False,
+    ) -> Optional[Predict]:
         condition_key = "condition"
         condition = {"case": "stimulated", "control": "control"}
         cell_type_key = self._model_config.cell_type_key
@@ -269,12 +306,23 @@ class ScPreGanPipeline(ModelPipeline):
             n_features=n_features, n_classes=n_classes, use_cuda=True
         )
 
+        load_model = self._model_config.is_finished_batch_training(
+            batch=batch, refresh=refresh_training
+        )
+
         model.train(
             train_data=train_data,
             output_path=output_path,
             tensorboard_path=tensorboard_path,
             niter=self._epochs,
+            load_model=load_model,
         )
+        self._model_config.log_training_batch_is_finished(batch=batch)
+
+        if self._model_config.is_finished_evaluation(
+            batch=batch, refresh=refresh_evaluation
+        ):
+            return
 
         control_test_adata = control_adata[
             control_adata.obs[cell_type_key] == target_cell_type
@@ -293,7 +341,12 @@ class ScPreGanPipeline(ModelPipeline):
 
 
 class ScPreGanReproduciblePipeline(ScPreGanPipeline):
-    def _run(self, batch: int) -> Tuple[InputAdata, GroundTruthAdata, PredictedAdata]:
+    def _run(
+        self,
+        batch: int,
+        refresh_training: bool = False,
+        refresh_evaluation: bool = False,
+    ) -> Optional[Predict]:
         output_path_reproducible = self._model_config.get_batch_path(batch=batch)
 
         dataset = self._dataset_pipeline.dataset
@@ -355,3 +408,81 @@ class ScPreGanReproduciblePipeline(ScPreGanPipeline):
         ]
 
         return control_test_adata, perturb_test_adata, pred_perturbed_reproducible_adata
+
+
+class ScGenPipeline(ModelPipeline):
+    def __init__(
+        self,
+        experiment_name: str,
+        dataset_pipeline: DatasetPipeline,
+        debug: bool = False,
+    ):
+        self._epochs = 1 if debug else 100
+
+        super().__init__(
+            dataset_pipeline=dataset_pipeline,
+            experiment_name=experiment_name,
+        )
+
+    def _run(
+        self,
+        batch: int,
+        refresh_training: bool = False,
+        refresh_evaluation: bool = False,
+    ) -> Optional[Predict]:
+        dataset = self._dataset_pipeline.dataset
+        cell_type_key = self._model_config.cell_type_key
+        cell_types = dataset.obs[cell_type_key].unique().tolist()
+        target_cell_type = cell_types[batch]
+        train_pbmc = dataset[
+            ~(
+                (dataset.obs[cell_type_key] == target_cell_type)
+                & (dataset.obs["condition"] == "stimulated")
+            )
+        ]
+
+        output_path = self._model_config.get_batch_path(batch=batch)
+
+        # must be a bug of scvi-tools, needs the copy to setup anndata
+        train_pbmc = train_pbmc.copy()
+        SCGEN.setup_anndata(train_pbmc, batch_key="condition", labels_key=cell_type_key)
+        model = SCGEN(adata=train_pbmc)
+
+        if self._model_config.is_finished_batch_training(
+            batch=batch, refresh=refresh_training
+        ):
+            model = model.load(str(output_path), train_pbmc)
+        else:
+            model.train(
+                max_epochs=self._epochs,
+                batch_size=32,
+                early_stopping=True,
+                early_stopping_patience=25,
+            )
+            model.save(str(output_path), overwrite=True)
+
+        self._model_config.log_training_batch_is_finished(batch=batch)
+
+        if self._model_config.is_finished_evaluation(
+            batch=batch, refresh=refresh_evaluation
+        ):
+            return None
+
+        control_test_adata = self._dataset_pipeline.control
+        perturb_test_adata = self._dataset_pipeline.perturb
+
+        perturb_test_adata = perturb_test_adata[
+            perturb_test_adata.obs[cell_type_key] == target_cell_type
+        ]
+
+        control_test_adata = control_test_adata[
+            control_test_adata.obs[cell_type_key] == target_cell_type
+        ]
+
+        pred, delta = model.predict(
+            ctrl_key="control",
+            stim_key="stimulated",
+            celltype_to_predict=target_cell_type,
+        )
+
+        return control_test_adata, perturb_test_adata, pred
