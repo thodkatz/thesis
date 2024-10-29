@@ -20,6 +20,7 @@ setup(
     extras_require={
         "dev": [
             "matplotlib",
+            'plotly'
             "seaborn",
             "pandas",
             "jupyter",
