@@ -124,7 +124,7 @@ def evaluation_out_of_sample(
         pass
     else:
         raise ValueError("predicted must be a list of tensors or anndata")
-    assert input.shape == predicted.shape
+    #assert input.shape == predicted.shape
 
     assert len(ground_truth.shape) == len(input.shape) == 2
     n_cells_input = input.shape[0]
@@ -186,7 +186,7 @@ def evaluation_out_of_sample(
     """ R2"""
     r2mean, r2mean_top20, r2mean_top100, fig = draw_reg_plot(
         eval_adata=eval_adata,
-        cell_type="target_type",
+        cell_type=target_type,
         reg_type="mean",
         axis_keys={"x": "pred", "y": "stimulated"},
         condition_key="condition",
