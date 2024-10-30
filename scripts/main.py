@@ -1,11 +1,11 @@
-from thesis.model_pipelines import (
+from thesis.model import (
     ButterflyPipeline,
     ButterflyPipelineNoReusing,
     ScGenPipeline,
     ScPreGanPipeline,
     ScPreGanReproduciblePipeline,
 )
-from thesis.datasets_pipelines import (
+from thesis.datasets import (
     DatasetSinglePerturbationPipeline,
     NaultPipeline,
     PbmcPipeline,
@@ -14,7 +14,7 @@ from thesis.datasets_pipelines import (
 import argparse
 import torch
 
-from thesis.preprocessing_pipelines import (
+from thesis.preprocessing import (
     PreprocessingGenericPipeline,
     PreprocessingNoFilteringPipeline,
 )

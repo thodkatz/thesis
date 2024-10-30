@@ -14,7 +14,7 @@ from torch import Tensor
 from thesis.evaluation import evaluation_out_of_sample
 
 from thesis.utils import FileModelUtils
-from thesis.datasets_pipelines import (
+from thesis.datasets import (
     DatasetSinglePerturbationPipeline,
     DatasetPipeline,
 )

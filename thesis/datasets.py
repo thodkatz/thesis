@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 from thesis import DATA_PATH
 import scanpy as sc
-from thesis.preprocessing_pipelines import (
+from thesis.preprocessing import (
     PreprocessingGenericPipeline,
     PreprocessingPipeline,
 )
