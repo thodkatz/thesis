@@ -13,8 +13,9 @@ from torch import Tensor
 
 from thesis.evaluation import evaluation_out_of_sample
 
-from thesis.utils import ModelConfig
+from thesis.utils import FileModelUtils
 from thesis.datasets_pipelines import (
+    DatasetSinglePerturbationPipeline,
     DatasetPipeline,
 )
 from thesis import DATA_PATH, SAVED_RESULTS_PATH
@@ -32,16 +33,26 @@ GroundTruthAdata = AnnData
 
 Predict = Tuple[InputAdata, GroundTruthAdata, PredictedAdata]
 
+DatasetPipelines = Union[DatasetPipeline, DatasetSinglePerturbationPipeline]
 
 class ModelPipeline(ABC):
     def __init__(
         self,
-        dataset_pipeline: DatasetPipeline,
+        dataset_pipeline: DatasetPipelines,
         experiment_name: str,
     ) -> None:
-        self._model_config = ModelConfig(
+        if isinstance(dataset_pipeline, DatasetPipeline):
+            dataset_pipeline = DatasetSinglePerturbationPipeline(
+                dataset_pipeline
+            )
+        elif isinstance(dataset_pipeline, DatasetSinglePerturbationPipeline):
+            dataset_pipeline = dataset_pipeline
+        else:
+            raise ValueError()
+            
+        self._model_config = FileModelUtils(
             model_name=str(self),
-            dataset_name=str(dataset_pipeline),
+            dataset_name=str(dataset_pipeline.dataset_pipeline),
             experiment_name=experiment_name,
             perturbation=dataset_pipeline.perturbation,
             dosage=dataset_pipeline.dosage,
@@ -113,7 +124,7 @@ class ModelPipeline(ABC):
 class ButterflyPipeline(ModelPipeline):
     def __init__(
         self,
-        dataset_pipeline: DatasetPipeline,
+        dataset_pipeline: DatasetPipelines,
         experiment_name: str,
         debug=False,
     ):
@@ -260,7 +271,7 @@ class ScPreGanPipeline(ModelPipeline):
     def __init__(
         self,
         experiment_name: str,
-        dataset_pipeline: DatasetPipeline,
+        dataset_pipeline: DatasetPipelines,
         debug: bool = False,
     ):
         self._epochs = 1 if debug else 20_000
@@ -280,7 +291,7 @@ class ScPreGanPipeline(ModelPipeline):
         condition = {"case": "stimulated", "control": "control"}
         cell_type_key = self._model_config.cell_type_key
 
-        dataset = self._dataset_pipeline.dataset
+        dataset = self._dataset_pipeline.dataset_perturbation
         cell_types = dataset.obs[cell_type_key].unique().tolist()
         target_cell_type = cell_types[batch]
 
@@ -344,12 +355,10 @@ class ScPreGanReproduciblePipeline(ScPreGanPipeline):
     def _run(
         self,
         batch: int,
-        refresh_training: bool = False,
-        refresh_evaluation: bool = False,
     ) -> Optional[Predict]:
         output_path_reproducible = self._model_config.get_batch_path(batch=batch)
 
-        dataset = self._dataset_pipeline.dataset
+        dataset = self._dataset_pipeline.dataset_perturbation
 
         cell_types = dataset.obs[self._model_config.cell_type_key].unique().tolist()
         target_cell_type = cell_types[batch]
@@ -414,7 +423,7 @@ class ScGenPipeline(ModelPipeline):
     def __init__(
         self,
         experiment_name: str,
-        dataset_pipeline: DatasetPipeline,
+        dataset_pipeline: DatasetPipelines,
         debug: bool = False,
     ):
         self._epochs = 1 if debug else 100
@@ -430,7 +439,7 @@ class ScGenPipeline(ModelPipeline):
         refresh_training: bool = False,
         refresh_evaluation: bool = False,
     ) -> Optional[Predict]:
-        dataset = self._dataset_pipeline.dataset
+        dataset = self._dataset_pipeline.dataset_perturbation
         cell_type_key = self._model_config.cell_type_key
         cell_types = dataset.obs[cell_type_key].unique().tolist()
         target_cell_type = cell_types[batch]

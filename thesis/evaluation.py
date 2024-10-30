@@ -17,7 +17,7 @@ from scButterfly.model_utlis import get_pearson2
 from scButterfly.draw_cluster import draw_reg_plot
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
-from thesis.utils import ModelConfig, append_csv
+from thesis.utils import FileModelUtils, append_csv
 from thesis import METRICS_PATH
 import anndata as ad
 
@@ -108,7 +108,7 @@ class MetricsPerGene:
 
 
 def evaluation_out_of_sample(
-    model_config: ModelConfig,
+    model_config: FileModelUtils,
     input: AnnData,
     ground_truth: AnnData,
     predicted: Union[List[Tensor], AnnData],

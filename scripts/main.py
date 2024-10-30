@@ -1,5 +1,16 @@
-from thesis.model_pipelines import ButterflyPipeline, ButterflyPipelineNoReusing, ScGenPipeline, ScPreGanPipeline, ScPreGanReproduciblePipeline
-from thesis.datasets_pipelines import NaultPipeline, PbmcPipeline, Sciplex3Pipeline
+from thesis.model_pipelines import (
+    ButterflyPipeline,
+    ButterflyPipelineNoReusing,
+    ScGenPipeline,
+    ScPreGanPipeline,
+    ScPreGanReproduciblePipeline,
+)
+from thesis.datasets_pipelines import (
+    DatasetSinglePerturbationPipeline,
+    NaultPipeline,
+    PbmcPipeline,
+    Sciplex3Pipeline,
+)
 import argparse
 import torch
 
@@ -11,13 +22,21 @@ from thesis.preprocessing_pipelines import (
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run scbutterfly nault")
     parser.add_argument("--debug", action="store_true", help="debug mode")
-    parser.add_argument("--experiment", type=str, required=False, help="experiment name")
-    parser.add_argument("--perturbation", type=str, required=False, help="perturbation")
-    parser.add_argument("--dosage", type=float, required=False, help="drug dosage")
+    parser.add_argument(
+        "--experiment", type=str, required=False, help="experiment name"
+    )
+    parser.add_argument("--perturbation", type=str, required=True, help="perturbation")
+    parser.add_argument("--dosage", type=float, required=True, help="drug dosage")
     parser.add_argument("--batch", type=int, required=True, help="batch id")
     parser.add_argument(
         "--model",
-        choices=["scgen", "scbutterfly", "scbutterfly-no-reusing", "scpregan", "scpregan-reproducible"],
+        choices=[
+            "scgen",
+            "scbutterfly",
+            "scbutterfly-no-reusing",
+            "scpregan",
+            "scpregan-reproducible",
+        ],
         help="Chooose model",
     )
     parser.add_argument(
@@ -55,13 +74,15 @@ if __name__ == "__main__":
     }
 
     model_pipeline = model2class[args.model](
-        dataset_pipeline=datasets2class[args.dataset](
+        dataset_pipeline=DatasetSinglePerturbationPipeline(
+            dataset_pipeline=datasets2class[args.dataset](
+                preprocessing_pipeline=preprocessing2class[args.preprocessing]()
+            ),
             perturbation=args.perturbation,
-            preprocessing_pipeline=preprocessing2class[args.preprocessing](),
             dosage=args.dosage,
         ),
         experiment_name=args.experiment,
-        debug=args.debug
+        debug=args.debug,
     )
 
     model_pipeline(batch=args.batch, append_metrics=True, save_plots=False)

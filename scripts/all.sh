@@ -9,7 +9,7 @@ pbmc() {
     for batch in {0..6}; do
         for model in scbutterfly scgen scpregan scpregan-reproducible; do
             echo "Model: $model, Number: $batch"
-            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset pbmc
+            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset pbmc --perturbation ifn-b --dosage 0.0
         done
     done
 }
@@ -18,8 +18,8 @@ sciplex3() {
     for batch in {0..2}; do
         for model in scbutterfly scbutterfly-no-reusing scgen scpregan; do
             echo "Model: $model, Number: $batch"
-            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset sciplex3 --perturbation 'Ellagic acid' --dosage 10000
-            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset sciplex3 --perturbation 'Divalproex Sodium' --dosage 1000
+            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset sciplex3 --perturbation 'Ellagic acid' --dosage 10000.0
+            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset sciplex3 --perturbation 'Divalproex Sodium' --dosage 1000.0
         done
     done
 }
@@ -29,7 +29,7 @@ nault() {
         for batch in {0..10}; do
             for model in scbutterfly scgen scpregan; do
                 echo "Model: $model, Dosage: $dosage, Batch: $batch"
-                $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset nault --dosage $dosage
+                $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset nault --dosage $dosage --perturbation tcdd
             done
         done
     done

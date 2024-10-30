@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 @dataclass(frozen=True)
-class ModelConfig:
+class FileModelUtils:
     model_name: str
     dataset_name: str
     experiment_name: str
