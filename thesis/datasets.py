@@ -23,7 +23,9 @@ class DatasetPipeline(ABC):
         if preprocessing_pipeline is None:
             self.dataset = dataset
         else:
+            print("Preprocessing started")
             self.dataset = preprocessing_pipeline(dataset)
+            print("Preprocessing finished")
 
     @abstractmethod
     def get_control_perturb(
@@ -40,7 +42,7 @@ class DatasetSinglePerturbationPipeline:
         self,
         dataset_pipeline: DatasetPipeline,
         perturbation: str = "",
-        dosage: float = 0,
+        dosage: float = 0.0,
     ):
         self.dataset_pipeline = dataset_pipeline
         self.perturbation = perturbation

@@ -81,7 +81,7 @@ if __name__ == "__main__":
             perturbation=args.perturbation,
             dosage=args.dosage,
         ),
-        experiment_name=args.experiment,
+        experiment_name=args.experiment or "",
         debug=args.debug,
     )
 

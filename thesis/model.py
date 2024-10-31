@@ -3,6 +3,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 from scPreGAN.model.util import load_anndata
+import torch
 import torch.nn as nn
 import scPreGAN as scpregan
 from scPreGAN.reproducibility.scPreGAN_OOD_prediction import train_and_predict
@@ -59,6 +60,8 @@ class ModelPipeline(ABC):
             cell_type_key=dataset_pipeline.cell_type_key,
             root_path=SAVED_RESULTS_PATH,
         )
+        print("Model config", self._model_config)
+        print("Torch seed", torch.seed(), torch.random.initial_seed())
         self._dataset_pipeline = dataset_pipeline
 
     @abstractmethod
