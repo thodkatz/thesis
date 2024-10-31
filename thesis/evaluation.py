@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from thesis.utils import FileModelUtils, append_csv
 from thesis import METRICS_PATH
 import anndata as ad
+import pertpy
 
 
 @dataclass(frozen=True)
@@ -109,62 +110,63 @@ class MetricsPerGene:
 
 def evaluation_out_of_sample(
     model_config: FileModelUtils,
-    input: AnnData,
+    control: AnnData,
     ground_truth: AnnData,
     predicted: Union[List[Tensor], AnnData],
     output_path: Path,
     append_metrics: bool = True,
     save_plots: bool = True,
-):
+) -> AnnData:
     os.makedirs(output_path, exist_ok=True)
 
     if isinstance(predicted, list) and isinstance(predicted[0], Tensor):
-        predicted = tensor2adata(predicted, input.var, input.obs)
+        predicted = tensor2adata(predicted, control.var, control.obs)
     elif isinstance(predicted, AnnData):
         pass
     else:
         raise ValueError("predicted must be a list of tensors or anndata")
-    #assert input.shape == predicted.shape
+    # assert input.shape == predicted.shape
 
-    assert len(ground_truth.shape) == len(input.shape) == 2
-    n_cells_input = input.shape[0]
+    assert len(ground_truth.shape) == len(control.shape) == 2
+    n_cells_input = control.shape[0]
     n_cells_stimulated = ground_truth.shape[0]
-    n_genes = input.shape[1]
+    n_genes = control.shape[1]
     assert n_genes == ground_truth.shape[1]
     assert n_cells_input > 0
     assert n_cells_stimulated > 0
 
     predicted_cell_types = predicted.obs[model_config.cell_type_key].unique()
     ground_truth_cell_types = ground_truth.obs[model_config.cell_type_key].unique()
-    control_cell_types = input.obs[model_config.cell_type_key].unique()
+    control_cell_types = control.obs[model_config.cell_type_key].unique()
     assert all(predicted_cell_types == ground_truth_cell_types)
     assert all(predicted_cell_types == control_cell_types)
     target_type = predicted.obs[model_config.cell_type_key][0]
 
     predicted.obs["condition"] = "pred"
-    input.obs["condition"] = "control"
+    control.obs["condition"] = "control"
     ground_truth.obs["condition"] = "stimulated"
 
-    eval_adata = ad.concat([input, ground_truth, predicted])
+    eval_adata = ad.concat([control, ground_truth, predicted])
 
     fig_list = []
 
-    # cluster metrics?
-    # sc.pp.pca(predicted) # should I use this
-    # sc.pp.neighbors(predicted)
+    sc.pp.pca(eval_adata)
+    sc.pp.neighbors(eval_adata)
 
-    """ PCA """
-    if save_plots:
-        sc.tl.pca(eval_adata)
-        fig_condition = sc.pl.pca(
-            eval_adata,
-            color="condition",
-            frameon=False,
-            title=f"PCA of  {target_type} by condition",
-            return_fig=True,
-            show=False,
+    predicted = eval_adata[eval_adata.obs["condition"] == "pred"]
+    control = eval_adata[eval_adata.obs["condition"] == "control"]
+    ground_truth = eval_adata[eval_adata.obs["condition"] == "stimulated"]
+
+    distance_metrics = ["edistance", "wasserstein", "euclidean", "mean_pairwise", "mmd"]
+    distance_scores = {}
+    for distance_metric in distance_metrics:
+        print(f"Computing distance {distance_metric}")
+        distance = pertpy.tl.Distance(distance_metric, obsm_key="X_pca")
+        distance_scores[distance_metric] = distance.compare_distance(
+            pert=ground_truth.obsm["X_pca"],
+            ctrl=control.obsm["X_pca"],
+            pred=predicted.obsm["X_pca"],
         )
-        fig_list.append(fig_condition)
 
     """ DEGs """
     sc.tl.rank_genes_groups(
@@ -176,6 +178,8 @@ def evaluation_out_of_sample(
     )
     degs_sti = eval_adata.uns["rank_genes_groups"]["names"]["stimulated"]
     degs_pred = eval_adata.uns["rank_genes_groups"]["names"]["pred"]
+
+    top_deg = degs_sti[0]
 
     result = eval_adata.uns["rank_genes_groups"]
     groups = result["names"].dtype.names
@@ -214,8 +218,23 @@ def evaluation_out_of_sample(
     df_deg_20.to_csv(output_path / "r2_degs_20.csv", index=False)
     df_deg_100.to_csv(output_path / "r2_degs_100.csv", index=False)
 
-    """ dotplot """
     if save_plots:
+        # todo add latent space
+        """latent space visualization"""
+
+        """ PCA """
+        sc.tl.pca(eval_adata)
+        fig_condition = sc.pl.pca(
+            eval_adata,
+            color="condition",
+            frameon=False,
+            title=f"PCA of  {target_type} by condition",
+            return_fig=True,
+            show=False,
+        )
+        fig_list.append(fig_condition)
+
+        """ dotplot """
         marker_genes = degs_sti[:20]
         dotplot_fig = sc.pl.dotplot(
             eval_adata, marker_genes, groupby="condition", return_fig=True, show=False
@@ -224,8 +243,15 @@ def evaluation_out_of_sample(
         print("saving dotplot to", dotplot_path)
         dotplot_fig.savefig(str(dotplot_path))
 
-    """ save to pdf """
-    if save_plots:
+        "violin plot"
+        violin_path = output_path / "violin.pdf"
+        print("saving violin plot to", violin_path)
+        prev_fig_dir = sc.settings.figdir
+        sc.settings.figdir = str(output_path)  # I know but scanpy is quite opinionated
+        sc.pl.violin(eval_adata, keys=top_deg, groupby="condition", save=".pdf")
+        sc.settings.figdir = prev_fig_dir
+
+        """ save to pdf """
         with PdfPages(output_path / "evaluation.pdf") as pdf:
             for i in range(len(fig_list)):
                 pdf.savefig(figure=fig_list[i], dpi=200, bbox_inches="tight")
@@ -259,6 +285,11 @@ def evaluation_out_of_sample(
         "average_fractions_diff": [np.nanmean(diff.fractions)],
         "average_mean_degs20_diff": [np.nanmean(diff.get_mean_degs(20))],
         "average_mean_degs100_diff": [np.nanmean(diff.get_mean_degs(100))],
+        "edistance": distance_scores['edistance'],
+        "wasserstein": distance_scores['wasserstein'],
+        "euclidean": distance_scores['euclidean'],
+        "mean_pairwise": distance_scores['mean_pairwise'],
+        "mmd": distance_scores['mmd'],
     }
     pd_data = pd.DataFrame(data)
     pd_data.to_csv(output_path / "metrics.csv", index=False)
@@ -266,3 +297,4 @@ def evaluation_out_of_sample(
 
     if append_metrics:
         append_csv(pd_data, METRICS_PATH)
+    return eval_adata
