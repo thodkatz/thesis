@@ -85,4 +85,10 @@ if __name__ == "__main__":
         debug=args.debug,
     )
 
-    model_pipeline(batch=args.batch, append_metrics=True, save_plots=False)
+    model_pipeline(
+        batch=args.batch,
+        append_metrics=True,
+        save_plots=False,
+        refresh_training=False,
+        refresh_evaluation=True,
+    )

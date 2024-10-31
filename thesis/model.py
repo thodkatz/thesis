@@ -89,7 +89,7 @@ class ModelPipeline(ABC):
         else:
             input_adata, ground_truth_adata, predicted_adata = predict
         file_path = self._model_config.get_batch_path(batch=batch)
-        self.evaluation(
+        return self.evaluation(
             input=input_adata,
             ground_truth=ground_truth_adata,
             predicted=predicted_adata,
@@ -106,10 +106,10 @@ class ModelPipeline(ABC):
         output_path: Path,
         append_metrics: bool = True,
         save_plots: bool = True,
-    ):
-        evaluation_out_of_sample(
+    ) -> AnnData:
+        return evaluation_out_of_sample(
             model_config=self._model_config,
-            input=input,
+            control=input,
             ground_truth=ground_truth,
             predicted=predicted,
             output_path=output_path,

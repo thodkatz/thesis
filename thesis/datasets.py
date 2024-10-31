@@ -40,7 +40,7 @@ class DatasetSinglePerturbationPipeline:
         self,
         dataset_pipeline: DatasetPipeline,
         perturbation: str = "",
-        dosage: float = 0.0,
+        dosage: float = 0,
     ):
         self.dataset_pipeline = dataset_pipeline
         self.perturbation = perturbation
