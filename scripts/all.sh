@@ -7,7 +7,7 @@ echo "sbatch script path: "$HELPER
 
 pbmc() {
     for batch in {0..6}; do
-        for model in scbutterfly scgen scpregan scpregan-reproducible; do
+        for model in scbutterfly scgen scpregan; do
             echo "Model: $model, Number: $batch"
             $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset pbmc --perturbation ifn-b --dosage 0.0
         done
@@ -35,8 +35,8 @@ nault() {
     done
 }
 
-#pbmc
+pbmc
 
-nault
+#nault
 
 #sciplex3
