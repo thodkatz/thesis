@@ -1,6 +1,5 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from pyexpat import model
 from typing import List, Tuple, Optional, Union
 import numpy as np
 from numpy.typing import NDArray
@@ -109,14 +108,13 @@ class MetricsPerGene:
 
 
 def evaluation_out_of_sample(
-    model_config: FileModelUtils,
     control: AnnData,
     ground_truth: AnnData,
     predicted: Union[List[Tensor], AnnData],
     output_path: Path,
-    append_metrics: bool = True,
+    cell_type_key: str = "cell_type",
     save_plots: bool = True,
-) -> AnnData:
+) -> Tuple[pd.DataFrame, AnnData]:
     os.makedirs(output_path, exist_ok=True)
 
     if isinstance(predicted, list) and isinstance(predicted[0], Tensor):
@@ -135,12 +133,12 @@ def evaluation_out_of_sample(
     assert n_cells_input > 0
     assert n_cells_stimulated > 0
 
-    predicted_cell_types = predicted.obs[model_config.cell_type_key].unique()
-    ground_truth_cell_types = ground_truth.obs[model_config.cell_type_key].unique()
-    control_cell_types = control.obs[model_config.cell_type_key].unique()
+    predicted_cell_types = predicted.obs[cell_type_key].unique()
+    ground_truth_cell_types = ground_truth.obs[cell_type_key].unique()
+    control_cell_types = control.obs[cell_type_key].unique()
     assert all(predicted_cell_types == ground_truth_cell_types)
     assert all(predicted_cell_types == control_cell_types)
-    target_type = predicted.obs[model_config.cell_type_key][0]
+    target_type = predicted.obs[cell_type_key][0]
 
     predicted.obs["condition"] = "pred"
     control.obs["condition"] = "control"
@@ -158,15 +156,15 @@ def evaluation_out_of_sample(
     ground_truth = eval_adata[eval_adata.obs["condition"] == "stimulated"]
 
     distance_metrics = ["edistance", "wasserstein", "euclidean", "mean_pairwise", "mmd"]
-    distance_scores = {}
+    distance_scores = pd.DataFrame()
     for distance_metric in distance_metrics:
         print(f"Computing distance {distance_metric}")
         distance = pertpy.tl.Distance(distance_metric, obsm_key="X_pca")
-        distance_scores[distance_metric] = distance.compare_distance(
+        distance_scores[distance_metric] = [distance.compare_distance(
             pert=ground_truth.obsm["X_pca"],
             ctrl=control.obsm["X_pca"],
             pred=predicted.obsm["X_pca"],
-        )
+        )]
 
     """ DEGs """
     sc.tl.rank_genes_groups(
@@ -203,7 +201,7 @@ def evaluation_out_of_sample(
 
     key_dict = {
         "condition_key": "condition",
-        "cell_type_key": model_config.cell_type_key,
+        "cell_type_key": cell_type_key,
         "ctrl_key": "control",
         "stim_key": "stimulated",
         "pred_key": "pred",
@@ -268,33 +266,23 @@ def evaluation_out_of_sample(
     ground_truth_evaluation.save(f"{output_path}/ground_truth")
     predicted_evaluation.save(f"{output_path}/predicted")
 
-    data = {
-        "model": [model_config.model_name],
-        "dataset": [model_config.dataset_name],
-        "experiment_name": [model_config.experiment_name],
-        "perturbation": [model_config.perturbation],
-        "dose": [model_config.dosage],
-        "DEGs": [common_nums],
-        "r2mean": [r2mean],
-        "r2mean_top20": [r2mean_top20],
-        "r2mean_top100": [r2mean_top100],
-        "r2mean_top20_boostrap_mean": [df_deg_20["r2_degs_mean"].mean()],
-        "r2mean_top100_boostrap_mean": [df_deg_100["r2_degs_mean"].mean()],
-        "cell_type_test": [target_type],
-        "average_mean_expressed_diff": [np.nanmean(diff.mean_expressed)],
-        "average_fractions_diff": [np.nanmean(diff.fractions)],
-        "average_mean_degs20_diff": [np.nanmean(diff.get_mean_degs(20))],
-        "average_mean_degs100_diff": [np.nanmean(diff.get_mean_degs(100))],
-        "edistance": distance_scores['edistance'],
-        "wasserstein": distance_scores['wasserstein'],
-        "euclidean": distance_scores['euclidean'],
-        "mean_pairwise": distance_scores['mean_pairwise'],
-        "mmd": distance_scores['mmd'],
-    }
-    pd_data = pd.DataFrame(data)
-    pd_data.to_csv(output_path / "metrics.csv", index=False)
+
+    pd_data = pd.DataFrame()
+    pd_data['DEGs'] = [common_nums]
+    pd_data['r2mean'] = [r2mean]
+    pd_data['r2mean_top20'] = [r2mean_top20]
+    pd_data['r2mean_top100'] = [r2mean_top100]
+    pd_data['r2mean_top20_boostrap_mean'] = [df_deg_20["r2_degs_mean"].mean()]
+    pd_data['r2mean_top100_boostrap_mean'] = [df_deg_100["r2_degs_mean"].mean()]
+    pd_data['cell_type_test'] = [target_type]
+    pd_data['average_mean_expressed_diff'] = [np.nanmean(diff.mean_expressed)]
+    pd_data['average_fractions_diff'] = [np.nanmean(diff.fractions)]
+    pd_data['average_mean_degs20_diff'] = [np.nanmean(diff.get_mean_degs(20))]
+    pd_data['average_mean_degs100_diff'] = [np.nanmean(diff.get_mean_degs(100))]
+    df = pd.concat([pd_data, distance_scores], axis=1)
+        
+    df.to_csv(output_path / "metrics.csv", index=False)
     print("Writing metrics to", output_path / "metrics.csv")
 
-    if append_metrics:
-        append_csv(pd_data, METRICS_PATH)
-    return eval_adata
+
+    return pd_data, eval_adata

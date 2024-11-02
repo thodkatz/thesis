@@ -4,9 +4,11 @@ from thesis.model import (
     ScGenPipeline,
     ScPreGanPipeline,
     ScPreGanReproduciblePipeline,
+    VidrSinglePipeline,
 )
 from thesis.datasets import (
-    DatasetSinglePerturbationPipeline,
+    DatasetSinglePerturbationMultipleDosePipeline,
+    DatasetSinglePerturbationSingleDosePipeline,
     NaultPipeline,
     PbmcPipeline,
     Sciplex3Pipeline,
@@ -22,11 +24,12 @@ from thesis.preprocessing import (
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run scbutterfly nault")
     parser.add_argument("--debug", action="store_true", help="debug mode")
+    parser.add_argument("--multi", action="store_true", help="multiple doses")
     parser.add_argument(
         "--experiment", type=str, required=False, help="experiment name"
     )
     parser.add_argument("--perturbation", type=str, required=True, help="perturbation")
-    parser.add_argument("--dosage", type=float, required=True, help="drug dosage")
+    parser.add_argument("--dosage", type=float, required=False, help="drug dosage")
     parser.add_argument("--batch", type=int, required=True, help="batch id")
     parser.add_argument(
         "--model",
@@ -36,6 +39,7 @@ if __name__ == "__main__":
             "scbutterfly-no-reusing",
             "scpregan",
             "scpregan-reproducible",
+            "vidr",
         ],
         help="Chooose model",
     )
@@ -60,6 +64,7 @@ if __name__ == "__main__":
         "scpregan": ScPreGanPipeline,
         "scpregan-reproducible": ScPreGanReproduciblePipeline,
         "scbutterfly-no-reusing": ButterflyPipelineNoReusing,
+        "vidr": VidrSinglePipeline,
     }
 
     preprocessing2class = {
@@ -72,15 +77,25 @@ if __name__ == "__main__":
         "nault": NaultPipeline,
         "sciplex3": Sciplex3Pipeline,
     }
+    
+    if not args.multi:
+        dataset_pipeline = DatasetSinglePerturbationSingleDosePipeline(
+                dataset_pipeline=datasets2class[args.dataset](
+                    preprocessing_pipeline=preprocessing2class[args.preprocessing]()
+                ),
+                perturbation=args.perturbation,
+                dosage=args.dosage,
+            )
+    else:
+        dataset_pipeline = DatasetSinglePerturbationMultipleDosePipeline(
+                dataset_pipeline=datasets2class[args.dataset](
+                    preprocessing_pipeline=preprocessing2class[args.preprocessing]()
+                ),
+                perturbation=args.perturbation,
+            )     
 
     model_pipeline = model2class[args.model](
-        dataset_pipeline=DatasetSinglePerturbationPipeline(
-            dataset_pipeline=datasets2class[args.dataset](
-                preprocessing_pipeline=preprocessing2class[args.preprocessing]()
-            ),
-            perturbation=args.perturbation,
-            dosage=args.dosage,
-        ),
+        dataset_pipeline=dataset_pipeline,
         experiment_name=args.experiment or "",
         debug=args.debug,
     )
@@ -90,5 +105,5 @@ if __name__ == "__main__":
         append_metrics=True,
         save_plots=False,
         refresh_training=False,
-        refresh_evaluation=True,
+        refresh_evaluation=False,
     )

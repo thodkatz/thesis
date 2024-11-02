@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, cast
 from scPreGAN.model.util import load_anndata
 import torch
 import torch.nn as nn
@@ -11,15 +11,18 @@ from scPreGAN.reproducibility.scPreGAN_OOD_prediction import train_and_predict
 import scanpy as sc
 from anndata import AnnData
 from torch import Tensor
+import pandas as pd
+from vidr import vidr
 
 from thesis.evaluation import evaluation_out_of_sample
 
-from thesis.utils import FileModelUtils
+from thesis.utils import FileModelUtils, append_csv
 from thesis.datasets import (
-    DatasetSinglePerturbationPipeline,
+    DatasetSinglePerturbationMultipleDosePipeline,
+    DatasetSinglePerturbationSingleDosePipeline,
     DatasetPipeline,
 )
-from thesis import DATA_PATH, SAVED_RESULTS_PATH
+from thesis import DATA_PATH, METRICS_PATH, SAVED_RESULTS_PATH
 import scButterfly.train_model_perturb as scbutterfly
 from scgen import SCGEN
 
@@ -32,37 +35,45 @@ InputAdata = AnnData
 PredictedAdata = AnnData
 GroundTruthAdata = AnnData
 
-Predict = Tuple[InputAdata, GroundTruthAdata, PredictedAdata]
+Predict = Tuple[InputAdata, List[GroundTruthAdata], List[PredictedAdata]]
 
-DatasetPipelines = Union[DatasetPipeline, DatasetSinglePerturbationPipeline]
+DatasetPipelines = Union[
+    DatasetSinglePerturbationMultipleDosePipeline,
+    DatasetSinglePerturbationSingleDosePipeline,
+]
+
 
 class ModelPipeline(ABC):
     def __init__(
         self,
-        dataset_pipeline: DatasetPipelines,
+        dataset_perturbation_pipeline: DatasetPipelines,
         experiment_name: str,
     ) -> None:
-        if isinstance(dataset_pipeline, DatasetPipeline):
-            dataset_pipeline = DatasetSinglePerturbationPipeline(
-                dataset_pipeline
-            )
-        elif isinstance(dataset_pipeline, DatasetSinglePerturbationPipeline):
-            dataset_pipeline = dataset_pipeline
-        else:
-            raise ValueError()
-            
         self._model_config = FileModelUtils(
             model_name=str(self),
-            dataset_name=str(dataset_pipeline.dataset_pipeline),
+            dataset_name=str(object=dataset_perturbation_pipeline.dataset_pipeline),
             experiment_name=experiment_name,
-            perturbation=dataset_pipeline.perturbation,
-            dosage=dataset_pipeline.dosage,
-            cell_type_key=dataset_pipeline.cell_type_key,
+            perturbation=dataset_perturbation_pipeline.perturbation,
+            dosages=(
+                [dataset_perturbation_pipeline.dosage]
+                if isinstance(
+                    dataset_perturbation_pipeline,
+                    DatasetSinglePerturbationSingleDosePipeline,
+                )
+                else dataset_perturbation_pipeline.dosages
+            ),
+            cell_type_key=dataset_perturbation_pipeline.dataset_pipeline.cell_type_key,
             root_path=SAVED_RESULTS_PATH,
         )
         print("Model config", self._model_config)
         print("Torch seed", torch.seed(), torch.random.initial_seed())
-        self._dataset_pipeline = dataset_pipeline
+        self._dataset_perturbation_pipeline = dataset_perturbation_pipeline
+
+    def is_single_dose(self):
+        return isinstance(
+            self._dataset_perturbation_pipeline,
+            DatasetSinglePerturbationSingleDosePipeline,
+        )
 
     @abstractmethod
     def _run(
@@ -92,33 +103,57 @@ class ModelPipeline(ABC):
         else:
             input_adata, ground_truth_adata, predicted_adata = predict
         file_path = self._model_config.get_batch_path(batch=batch)
-        return self.evaluation(
-            input=input_adata,
-            ground_truth=ground_truth_adata,
-            predicted=predicted_adata,
-            append_metrics=append_metrics,
-            save_plots=save_plots,
-            output_path=file_path,
+
+        assert (
+            len(ground_truth_adata)
+            == len(predicted_adata)
+            == len(self._model_config.dosages)
         )
+        for idx, (ground_truth, predicted) in enumerate(
+            zip(ground_truth_adata, predicted_adata)
+        ):
+            dose = self._model_config.dosages[idx]
+            dose_file_path = file_path / f"dose{dose}" if not self.is_single_dose() else file_path
+            self.evaluation(
+                control=input_adata,
+                ground_truth=ground_truth,
+                predicted=predicted,
+                output_path=dose_file_path,
+                dose=dose,
+                append_metrics=append_metrics,
+                save_plots=save_plots,
+            )
 
     def evaluation(
         self,
-        input: AnnData,
+        control: AnnData,
         ground_truth: AnnData,
         predicted: Union[List[Tensor], AnnData],
         output_path: Path,
+        dose: float,
         append_metrics: bool = True,
         save_plots: bool = True,
-    ) -> AnnData:
-        return evaluation_out_of_sample(
-            model_config=self._model_config,
-            control=input,
+    ):
+        df, eval_adata = evaluation_out_of_sample(
+            control=control,
             ground_truth=ground_truth,
             predicted=predicted,
             output_path=output_path,
-            append_metrics=append_metrics,
             save_plots=save_plots,
+            cell_type_key=self._model_config.cell_type_key,
         )
+
+        experiment_df = pd.DataFrame()
+        experiment_df["model"] = [self._model_config.model_name]
+        experiment_df["dataset"] = [self._model_config.dataset_name]
+        experiment_df["experiment_name"] = [self._model_config.experiment_name]
+        experiment_df["perturbation"] = [self._model_config.perturbation]
+        experiment_df["dose"] = [dose]
+        all_df = pd.concat([experiment_df, df], axis=1)
+
+        if append_metrics:
+            append_csv(all_df, METRICS_PATH)
+        return eval_adata
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -127,7 +162,7 @@ class ModelPipeline(ABC):
 class ButterflyPipeline(ModelPipeline):
     def __init__(
         self,
-        dataset_pipeline: DatasetPipelines,
+        dataset_pipeline: DatasetSinglePerturbationSingleDosePipeline,
         experiment_name: str,
         debug=False,
     ):
@@ -137,13 +172,19 @@ class ButterflyPipeline(ModelPipeline):
         self._num_workers = 0 if debug else 4
 
         super().__init__(
-            dataset_pipeline=dataset_pipeline,
+            dataset_perturbation_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
+        )
+
+        # why pylance can't understand this?
+        self._dataset_perturbation_pipeline = cast(
+            DatasetSinglePerturbationSingleDosePipeline, self._dataset_perturbation_pipeline
         )
 
     def split_func(self):
         return unpaired_split_dataset_perturb(
-            self._dataset_pipeline.control, self._dataset_pipeline.perturb
+            self._dataset_perturbation_pipeline.control,
+            self._dataset_perturbation_pipeline.perturb,
         )[0]
 
     def _run(
@@ -153,8 +194,8 @@ class ButterflyPipeline(ModelPipeline):
         refresh_evaluation: bool = False,
     ) -> Optional[Predict]:
         cell_type_key = self._model_config.cell_type_key
-        control = self._dataset_pipeline.control
-        perturb = self._dataset_pipeline.perturb
+        control = self._dataset_perturbation_pipeline.control
+        perturb = self._dataset_perturbation_pipeline.perturb
 
         control.obs["cell_type"] = control.obs[cell_type_key]
         perturb.obs["cell_type"] = perturb.obs[cell_type_key]
@@ -260,13 +301,14 @@ class ButterflyPipeline(ModelPipeline):
         input_test, ground_truth_test, predicted_test = model.test(
             test_id_r=test_id_control, test_id_a=test_id_perturb
         )
-        return input_test, ground_truth_test, predicted_test
+        return input_test, [ground_truth_test], [predicted_test]
 
 
 class ButterflyPipelineNoReusing(ButterflyPipeline):
     def split_func(self):
         return unpaired_split_dataset_perturb_no_reusing(
-            self._dataset_pipeline.control, self._dataset_pipeline.perturb
+            self._dataset_perturbation_pipeline.control,
+            self._dataset_perturbation_pipeline.perturb,
         )
 
 
@@ -274,14 +316,18 @@ class ScPreGanPipeline(ModelPipeline):
     def __init__(
         self,
         experiment_name: str,
-        dataset_pipeline: DatasetPipelines,
+        dataset_pipeline: DatasetSinglePerturbationSingleDosePipeline,
         debug: bool = False,
     ):
         self._epochs = 1 if debug else 20_000
 
         super().__init__(
-            dataset_pipeline=dataset_pipeline,
+            dataset_perturbation_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
+        )
+
+        self._dataset_perturbation_pipeline = cast(
+            DatasetSinglePerturbationSingleDosePipeline, self._dataset_perturbation_pipeline
         )
 
     def _run(
@@ -294,7 +340,7 @@ class ScPreGanPipeline(ModelPipeline):
         condition = {"case": "stimulated", "control": "control"}
         cell_type_key = self._model_config.cell_type_key
 
-        dataset = self._dataset_pipeline.dataset_perturbation
+        dataset = self._dataset_perturbation_pipeline.dataset_perturbation
         cell_types = dataset.obs[cell_type_key].unique().tolist()
         target_cell_type = cell_types[batch]
 
@@ -351,17 +397,19 @@ class ScPreGanPipeline(ModelPipeline):
             condition_key=condition_key,
         )
 
-        return control_test_adata, perturb_test_adata, pred_perturbed_adata
+        return control_test_adata, [perturb_test_adata], [pred_perturbed_adata]
 
 
 class ScPreGanReproduciblePipeline(ScPreGanPipeline):
     def _run(
         self,
         batch: int,
+        refresh_training: bool = False,
+        refresh_evaluation: bool = False,
     ) -> Optional[Predict]:
         output_path_reproducible = self._model_config.get_batch_path(batch=batch)
 
-        dataset = self._dataset_pipeline.dataset_perturbation
+        dataset = self._dataset_perturbation_pipeline.dataset_perturbation
 
         cell_types = dataset.obs[self._model_config.cell_type_key].unique().tolist()
         target_cell_type = cell_types[batch]
@@ -409,8 +457,8 @@ class ScPreGanReproduciblePipeline(ScPreGanPipeline):
             tensorboard_path=self._model_config.get_batch_log_path(batch),
         )
 
-        control_adata = self._dataset_pipeline.control
-        perturb_adata = self._dataset_pipeline.perturb
+        control_adata = self._dataset_perturbation_pipeline.control
+        perturb_adata = self._dataset_perturbation_pipeline.perturb
 
         control_test_adata = control_adata[
             control_adata.obs[cell_type_key] == target_cell_type
@@ -419,7 +467,11 @@ class ScPreGanReproduciblePipeline(ScPreGanPipeline):
             perturb_adata.obs[cell_type_key] == target_cell_type
         ]
 
-        return control_test_adata, perturb_test_adata, pred_perturbed_reproducible_adata
+        return (
+            control_test_adata,
+            [perturb_test_adata],
+            [pred_perturbed_reproducible_adata],
+        )
 
 
 class ScGenPipeline(ModelPipeline):
@@ -432,8 +484,12 @@ class ScGenPipeline(ModelPipeline):
         self._epochs = 1 if debug else 100
 
         super().__init__(
-            dataset_pipeline=dataset_pipeline,
+            dataset_perturbation_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
+        )
+
+        self._dataset_perturbation_pipeline = cast(
+            DatasetSinglePerturbationSingleDosePipeline, self._dataset_perturbation_pipeline
         )
 
     def _run(
@@ -442,11 +498,11 @@ class ScGenPipeline(ModelPipeline):
         refresh_training: bool = False,
         refresh_evaluation: bool = False,
     ) -> Optional[Predict]:
-        dataset = self._dataset_pipeline.dataset_perturbation
+        dataset = self._dataset_perturbation_pipeline.dataset_perturbation
         cell_type_key = self._model_config.cell_type_key
         cell_types = dataset.obs[cell_type_key].unique().tolist()
         target_cell_type = cell_types[batch]
-        train_pbmc = dataset[
+        train_adata = dataset[
             ~(
                 (dataset.obs[cell_type_key] == target_cell_type)
                 & (dataset.obs["condition"] == "stimulated")
@@ -456,14 +512,16 @@ class ScGenPipeline(ModelPipeline):
         output_path = self._model_config.get_batch_path(batch=batch)
 
         # must be a bug of scvi-tools, needs the copy to setup anndata
-        train_pbmc = train_pbmc.copy()
-        SCGEN.setup_anndata(train_pbmc, batch_key="condition", labels_key=cell_type_key)
-        model = SCGEN(adata=train_pbmc)
+        train_adata = train_adata.copy()
+        SCGEN.setup_anndata(
+            train_adata, batch_key="condition", labels_key=cell_type_key
+        )
+        model = SCGEN(adata=train_adata)
 
         if self._model_config.is_finished_batch_training(
             batch=batch, refresh=refresh_training
         ):
-            model = model.load(str(output_path), train_pbmc)
+            model = model.load(str(output_path), train_adata)
         else:
             model.train(
                 max_epochs=self._epochs,
@@ -480,8 +538,8 @@ class ScGenPipeline(ModelPipeline):
         ):
             return None
 
-        control_test_adata = self._dataset_pipeline.control
-        perturb_test_adata = self._dataset_pipeline.perturb
+        control_test_adata = self._dataset_perturbation_pipeline.control
+        perturb_test_adata = self._dataset_perturbation_pipeline.perturb
 
         perturb_test_adata = perturb_test_adata[
             perturb_test_adata.obs[cell_type_key] == target_cell_type
@@ -497,4 +555,158 @@ class ScGenPipeline(ModelPipeline):
             celltype_to_predict=target_cell_type,
         )
 
-        return control_test_adata, perturb_test_adata, pred
+        return control_test_adata, [perturb_test_adata], [pred]
+
+
+class VidrSinglePipeline(ModelPipeline):
+    def __init__(
+        self,
+        experiment_name: str,
+        dataset_pipeline: DatasetPipelines,
+        debug: bool = False,
+    ):
+        self._epochs = 1 if debug else 100
+
+        super().__init__(
+            dataset_perturbation_pipeline=dataset_pipeline,
+            experiment_name=experiment_name,
+        )
+        
+        print("Single dose", self.is_single_dose())
+        
+    def get_train(self, target_cell_type: str):
+        cell_type_key = self._model_config.cell_type_key
+        if self.is_single_dose():
+            dataset = self._dataset_perturbation_pipeline.dataset_perturbation
+            return dataset[
+                ~(
+                    (dataset.obs[cell_type_key] == target_cell_type)
+                    & (dataset.obs['condition'] == 'stimulated')
+                )
+            ]
+        else:
+            dose_key = self._model_config.dose_key
+            dataset = self._dataset_perturbation_pipeline.dataset_pipeline.dataset
+            control_dose = 0.0
+            return dataset[
+            ~(
+                (dataset.obs[cell_type_key] == target_cell_type)
+                & (dataset.obs[dose_key] > control_dose)
+            )
+        ]
+            
+    def get_stim_test(self, target_cell_type: str):
+        cell_type_key = self._model_config.cell_type_key
+        if self.is_single_dose():
+            perturb = self._dataset_perturbation_pipeline.perturb
+            return perturb[
+                (
+                    (perturb.obs[cell_type_key] == target_cell_type)
+                )
+            ]
+        else:
+            dose_key = self._model_config.dose_key
+            dataset = self._dataset_perturbation_pipeline.dataset_pipeline.dataset
+            control_dose = 0.0
+            return dataset[
+            (
+                (dataset.obs[cell_type_key] == target_cell_type)
+                & (dataset.obs[dose_key] > control_dose)
+            )
+        ]
+            
+    def get_control(self, target_cell_type: str):
+        dataset = self._dataset_perturbation_pipeline.dataset_pipeline.dataset
+        cell_type_key = self._model_config.cell_type_key
+        if self.is_single_dose():
+            control = self._dataset_perturbation_pipeline.control
+            return control[
+                (
+                    (control.obs[cell_type_key] == target_cell_type)
+                )
+            ]
+        else:
+            dose_key = self._model_config.dose_key
+            control_dose = 0.0
+            return dataset[
+            (
+                (dataset.obs[cell_type_key] == target_cell_type)
+                & (dataset.obs[dose_key] == control_dose)
+            )
+        ]
+            
+    def get_dosages(self):
+        assert not self.is_single_dose()
+        dataset = self._dataset_perturbation_pipeline.dataset_pipeline.dataset
+        dosages = sorted(dataset.obs[self._model_config.dose_key].unique().tolist())
+        assert dosages[1:] == self._model_config.dosages
+        return dosages
+
+    def _run(
+        self,
+        batch: int,
+        refresh_training: bool = False,
+        refresh_evaluation: bool = False,
+    ) -> Optional[Predict]:
+        dataset = self._dataset_perturbation_pipeline.dataset_pipeline.dataset
+        cell_type_key = self._model_config.cell_type_key
+        dose_key = self._model_config.dose_key
+        cell_types = dataset.obs[cell_type_key].unique().tolist()
+        target_cell_type = cell_types[batch]
+
+        train_adata = self.get_train(target_cell_type)
+        perturb_test_adata = self.get_stim_test(target_cell_type)
+        control_test_adata = self.get_control(target_cell_type)
+
+        output_path = self._model_config.get_batch_path(batch=batch)
+
+        # must be a bug of scvi-tools, needs the copy to setup anndata
+        train_adata = train_adata.copy()
+        vidr.VIDR.setup_anndata(
+            train_adata, batch_key=dose_key, labels_key=cell_type_key
+        )
+        model = vidr.VIDR(adata=train_adata)
+
+        if self._model_config.is_finished_batch_training(
+            batch=batch, refresh=refresh_training
+        ):
+            model = model.load(str(output_path), train_adata)
+        else:
+            model.train(
+                max_epochs=self._epochs,
+                batch_size=128,
+                early_stopping=True,
+                early_stopping_patience=25,
+            )
+            model.save(str(output_path), overwrite=True)
+
+        self._model_config.log_training_batch_is_finished(batch=batch)
+
+        if self._model_config.is_finished_evaluation(
+            batch=batch, refresh=refresh_evaluation
+        ):
+            return None
+
+        pred, delta, reg = model.predict(
+            ctrl_key=0.0,
+            treat_key=self._dataset_perturbation_pipeline.dosage if self.is_single_dose() else 30.0,
+            cell_type_to_predict=target_cell_type,
+            regression=True,
+            continuous=not self.is_single_dose(),
+            doses=None if self.is_single_dose() else self.get_dosages(),  # except 0.0
+        )
+        
+        perturb_test_adata_per_dose = []
+        predictions = []
+        if not self.is_single_dose():
+            pred = cast(dict, pred)
+            doses = sorted(pred.keys())
+            for dose in doses:
+                stim_per_dose = perturb_test_adata[perturb_test_adata.obs[dose_key] == dose]
+                predictions.append(pred[dose])
+                perturb_test_adata_per_dose.append(stim_per_dose)
+        else:
+            perturb_test_adata_per_dose.append(perturb_test_adata)
+            predictions.append(pred)
+
+        return control_test_adata, perturb_test_adata_per_dose, predictions

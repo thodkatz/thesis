@@ -27,7 +27,7 @@ sciplex3() {
 nault() {
     for dosage in 0.01 0.03 0.1 0.3 1.0 3.0 10.0 30.0; do
         for batch in {0..10}; do
-            for model in scbutterfly scgen scpregan; do
+            for model in scbutterfly scgen scpregan vidr; do
                 echo "Model: $model, Dosage: $dosage, Batch: $batch"
                 $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset nault --dosage $dosage --perturbation tcdd
             done
@@ -35,8 +35,18 @@ nault() {
     done
 }
 
-pbmc
+nault_multi() {
+    for batch in {0..10}; do
+        for model in vidr; do
+            echo "Model: $model, Dosage: $dosage, Batch: $batch"
+            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset nault --dosage $dosage --perturbation tcdd --multi
+        done
+    done
+}
 
-#nault
+#pbmc
+
+nault_multi
+nault
 
 #sciplex3

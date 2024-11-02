@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 from thesis import DATA_PATH
 import scanpy as sc
 from thesis.preprocessing import (
@@ -37,7 +37,7 @@ class DatasetPipeline(ABC):
         return self.__class__.__name__
 
 
-class DatasetSinglePerturbationPipeline:
+class DatasetSinglePerturbationSingleDosePipeline:
     def __init__(
         self,
         dataset_pipeline: DatasetPipeline,
@@ -51,11 +51,23 @@ class DatasetSinglePerturbationPipeline:
             perturbation=perturbation, dosage=dosage
         )
         self.dataset_perturbation = self.control.concatenate(self.perturb)
-        
-    @property
-    def cell_type_key(self) -> str:
-        return self.dataset_pipeline.cell_type_key
-    
+
+
+class DatasetSinglePerturbationMultipleDosePipeline:
+    def __init__(
+        self,
+        dataset_pipeline: DatasetPipeline,
+        dosages: Optional[List[float]] = None,
+        perturbation: str = "",
+    ):
+        if dosages is None:
+            dosages = sorted(dataset_pipeline.dataset.obs['Dose'].unique().tolist())
+            dosages.remove(0)
+        else:
+            dosages = dosages
+        self.dataset_pipeline = dataset_pipeline
+        self.dosages = dosages
+        self.perturbation = perturbation
 
 
 class PbmcPipeline(DatasetPipeline):
@@ -70,8 +82,11 @@ class PbmcPipeline(DatasetPipeline):
             cell_type_key=cell_type_key,
             preprocessing_pipeline=None,
         )
+        self.dataset.obs['Dose'] = 0
 
-    def get_control_perturb(self, perturbation: str, dosage: float) -> Tuple[AnnData, AnnData]:
+    def get_control_perturb(
+        self, perturbation: str, dosage: float
+    ) -> Tuple[AnnData, AnnData]:
         control = self.dataset[self.dataset.obs["condition"] == "control"]
         perturb = self.dataset[self.dataset.obs["condition"] == "stimulated"]
         return control, perturb

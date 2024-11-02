@@ -1,9 +1,7 @@
-from weakref import ref
-import pandas as pd
 from pandas import DataFrame
 from pathlib import Path
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 @dataclass(frozen=True)
 class FileModelUtils:
@@ -12,15 +10,23 @@ class FileModelUtils:
     experiment_name: str
     perturbation: str
     root_path: Path
-    dosage: float = 0
-    cell_type_key: str = "celltype"
+    dosages: List[float] = field(default_factory=lambda: [0])
+    cell_type_key: str = "celltype",
+    dose_key: str = "Dose"
+    
+    def is_multi_dose(self) -> bool:
+        return len(self.dosages) > 1
     
     def get_batch_path(self, batch: int, prefix: Optional[Path] = None) -> Path:
         return self.get_perturbation_path(prefix=prefix) / f"batch{batch}"
     
     def get_perturbation_path(self, prefix: Optional[Path] = None) -> Path:
         prefix = prefix or self.root_path
-        return prefix / self.model_name / self.experiment_name / self.dataset_name / self.perturbation / f'dosage{self.dosage}'
+        if self.is_multi_dose():
+            dosage = "dosages"
+        else:
+            dosage = f'dosage{str(self.dosages[0])}'
+        return prefix / self.model_name / self.experiment_name / self.dataset_name / self.perturbation / dosage
     
     def get_batch_metrics_path(self, batch: int) -> Path:
         return self.get_batch_path(batch=batch) / "metrics.csv"
