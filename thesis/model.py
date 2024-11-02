@@ -703,7 +703,7 @@ class VidrPipeline(ModelPipeline):
                 else 30.0
             ),  # todo: 30 needs to be the max of a given dataset with doses
             cell_type_to_predict=target_cell_type,
-            regression=False,
+            regression=True,
             continuous=not self.is_single_dose(),
             doses=None if self.is_single_dose() else self.get_dosages(),  # except 0.0
         )
