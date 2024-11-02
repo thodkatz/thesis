@@ -1,8 +1,0 @@
-\begin{Verbatim}[commandchars=\\\{\}]
-    \PYG{k}{for} \PYG{n}{epoch} \PYG{o+ow}{in} \PYG{n}{tqdm}\PYG{p}{(}\PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{model}\PYG{o}{.}\PYG{n}{config}\PYG{p}{[}\PYG{n}{str\PYGZus{}train\PYGZus{}epochs}\PYG{p}{])):}
-      \PYG{n}{epoch} \PYG{o}{+=} \PYG{l+m+mi}{1}
-      \PYG{n}{model}\PYG{o}{.}\PYG{n}{cur\PYGZus{}epoch} \PYG{o}{=} \PYG{n}{epoch}
-      \PYG{n}{model}\PYG{o}{.}\PYG{n}{train}\PYG{p}{()}
-      \PYG{k}{for} \PYG{n}{schedule} \PYG{o+ow}{in} \PYG{n}{schedules}\PYG{p}{:}
-          \PYG{n}{run\PYGZus{}through\PYGZus{}dataloader}\PYG{p}{(}\PYG{n}{model}\PYG{p}{,} \PYG{n}{dataloader\PYGZus{}train}\PYG{p}{,} \PYG{n}{schedule}\PYG{p}{,} \PYG{n}{train\PYGZus{}model}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
-\end{Verbatim}

@@ -1,8 +1,0 @@
-\begin{Verbatim}[commandchars=\\\{\}]
-  \PYG{k}{for} \PYG{n}{test\PYGZus{}batch} \PYG{o+ow}{in} \PYG{n}{test\PYGZus{}batches}\PYG{p}{:}
-    \PYG{n}{adatas\PYGZus{}train}\PYG{p}{,} \PYG{n}{adatas\PYGZus{}test} \PYG{o}{=} \PYG{n}{split\PYGZus{}data}\PYG{p}{(}\PYG{n}{test\PYGZus{}batch}\PYG{p}{)}
-    \PYG{n}{model} \PYG{o}{=} \PYG{n}{UnitedNet}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{root\PYGZus{}save\PYGZus{}path}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{/}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{test\PYGZus{}batch}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{device}\PYG{o}{=}\PYG{n}{device}\PYG{p}{,} \PYG{n}{technique}\PYG{o}{=}\PYG{n}{atacseq\PYGZus{}config}\PYG{p}{)}
-    \PYG{n}{model}\PYG{o}{.}\PYG{n}{train}\PYG{p}{(}\PYG{n}{adatas\PYGZus{}train}\PYG{p}{,} \PYG{n}{verbose}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
-    \PYG{n}{model}\PYG{o}{.}\PYG{n}{finetune}\PYG{p}{(}\PYG{n}{adatas\PYGZus{}train}\PYG{p}{,} \PYG{n}{verbose}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
-    \PYG{n}{model}\PYG{o}{.}\PYG{n}{transfer}\PYG{p}{(}\PYG{n}{adatas\PYGZus{}train}\PYG{p}{,} \PYG{n}{adatas\PYGZus{}transfer} \PYG{o}{=} \PYG{n}{adatas\PYGZus{}test}\PYG{p}{,} \PYG{n}{verbose}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
-\end{Verbatim}
