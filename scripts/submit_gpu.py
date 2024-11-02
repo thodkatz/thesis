@@ -41,7 +41,7 @@ def write_slurm_template(script, out_path, env_name,
 
 
 def submit_slurm(script, input_, n_threads=4, n_gpus=1,
-                 gpu_type='2080Ti', mem_limit='8050',
+                 gpu_type='2080Ti', mem_limit='16384',
                  time_limit=TWO_DAYS, qos='normal',
                  env_name=None, env_vars=None):
     """ Submit python script that needs gpus with given inputs on a slurm node.

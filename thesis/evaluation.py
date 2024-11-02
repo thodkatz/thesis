@@ -285,4 +285,4 @@ def evaluation_out_of_sample(
     print("Writing metrics to", output_path / "metrics.csv")
 
 
-    return pd_data, eval_adata
+    return df, eval_adata

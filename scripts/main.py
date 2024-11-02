@@ -4,7 +4,7 @@ from thesis.model import (
     ScGenPipeline,
     ScPreGanPipeline,
     ScPreGanReproduciblePipeline,
-    VidrSinglePipeline,
+    VidrPipeline,
 )
 from thesis.datasets import (
     DatasetSinglePerturbationMultipleDosePipeline,
@@ -64,7 +64,7 @@ if __name__ == "__main__":
         "scpregan": ScPreGanPipeline,
         "scpregan-reproducible": ScPreGanReproduciblePipeline,
         "scbutterfly-no-reusing": ButterflyPipelineNoReusing,
-        "vidr": VidrSinglePipeline,
+        "vidr": VidrPipeline,
     }
 
     preprocessing2class = {

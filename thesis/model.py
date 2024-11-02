@@ -558,7 +558,7 @@ class ScGenPipeline(ModelPipeline):
         return control_test_adata, [perturb_test_adata], [pred]
 
 
-class VidrSinglePipeline(ModelPipeline):
+class VidrPipeline(ModelPipeline):
     def __init__(
         self,
         experiment_name: str,
@@ -689,7 +689,7 @@ class VidrSinglePipeline(ModelPipeline):
 
         pred, delta, reg = model.predict(
             ctrl_key=0.0,
-            treat_key=self._dataset_perturbation_pipeline.dosage if self.is_single_dose() else 30.0,
+            treat_key=self._dataset_perturbation_pipeline.dosage if self.is_single_dose() else 30.0, # todo: 30 needs to be the max of a given dataset with doses
             cell_type_to_predict=target_cell_type,
             regression=True,
             continuous=not self.is_single_dose(),
