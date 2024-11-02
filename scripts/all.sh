@@ -9,7 +9,7 @@ pbmc() {
     for batch in {0..6}; do
         for model in vidr; do
             echo "Model: $model, Number: $batch"
-            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset pbmc --perturbation ifn-b --dosage 0.0
+            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset pbmc --perturbation ifn-b --dosage 0.0 --experiment scgen
         done
     done
 }
@@ -29,7 +29,7 @@ nault() {
         for batch in {0..10}; do
             for model in vidr; do
                 echo "Model: $model, Dosage: $dosage, Batch: $batch"
-                $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset nault --dosage $dosage --perturbation tcdd
+                $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset nault --dosage $dosage --perturbation tcdd --experiment scgen
             done
         done
     done
@@ -39,14 +39,14 @@ nault_multi() {
     for batch in {0..10}; do
         for model in vidr; do
             echo "Model: $model, Batch: $batch"
-            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset nault --perturbation tcdd --multi --experiment multi
+            $HELPER $REPO/scripts/main.py --batch $batch --model $model --dataset nault --perturbation tcdd --multi --experiment multi_scgen
         done
     done
 }
 
-pbmc
+#pbmc
 
-#nault_multi
+nault_multi
 
 #nault
 

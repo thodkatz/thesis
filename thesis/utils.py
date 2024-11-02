@@ -31,8 +31,20 @@ class FileModelUtils:
     def get_batch_metrics_path(self, batch: int) -> Path:
         return self.get_batch_path(batch=batch) / "metrics.csv"
     
+    def get_dose_path_multi(self, batch: int, dosage: float) -> Path:
+        assert self.is_multi_dose()
+        return self.get_batch_path(batch=batch) / f"dose{dosage}"
+    
+    def get_dose_path_multi_metrics(self, batch: int, dosage: float) -> Path:
+        return self.get_dose_path_multi(batch=batch, dosage=dosage) / "metrics.csv"
+    
     def is_finished_evaluation(self, batch: int, refresh: bool  = False) -> bool:
         exists = self.get_batch_metrics_path(batch=batch).exists()
+        print("Metrics path exist", exists, "refresh", refresh)
+        return exists and not refresh
+    
+    def is_finished_evaluation_multi(self, batch: int, dosage: float, refresh: bool = False) -> bool:
+        exists = self.get_dose_path_multi_metrics(batch=batch, dosage=dosage).exists()
         print("Metrics path exist", exists, "refresh", refresh)
         return exists and not refresh
     

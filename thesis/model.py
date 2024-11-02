@@ -113,7 +113,20 @@ class ModelPipeline(ABC):
             zip(ground_truth_adata, predicted_adata)
         ):
             dose = self._model_config.dosages[idx]
-            dose_file_path = file_path / f"dose{dose}" if not self.is_single_dose() else file_path
+            dose_file_path = (
+                self._model_config.get_dose_path_multi(batch, dose)
+                if not self.is_single_dose()
+                else file_path
+            )
+            
+            if (
+                not self.is_single_dose()
+                and self._model_config.is_finished_evaluation_multi(
+                    batch=batch, dosage=dose, refresh=refresh_evaluation
+                )
+            ):
+                return
+            
             self.evaluation(
                 control=input_adata,
                 ground_truth=ground_truth,
@@ -178,7 +191,8 @@ class ButterflyPipeline(ModelPipeline):
 
         # why pylance can't understand this?
         self._dataset_perturbation_pipeline = cast(
-            DatasetSinglePerturbationSingleDosePipeline, self._dataset_perturbation_pipeline
+            DatasetSinglePerturbationSingleDosePipeline,
+            self._dataset_perturbation_pipeline,
         )
 
     def split_func(self):
@@ -327,7 +341,8 @@ class ScPreGanPipeline(ModelPipeline):
         )
 
         self._dataset_perturbation_pipeline = cast(
-            DatasetSinglePerturbationSingleDosePipeline, self._dataset_perturbation_pipeline
+            DatasetSinglePerturbationSingleDosePipeline,
+            self._dataset_perturbation_pipeline,
         )
 
     def _run(
@@ -489,7 +504,8 @@ class ScGenPipeline(ModelPipeline):
         )
 
         self._dataset_perturbation_pipeline = cast(
-            DatasetSinglePerturbationSingleDosePipeline, self._dataset_perturbation_pipeline
+            DatasetSinglePerturbationSingleDosePipeline,
+            self._dataset_perturbation_pipeline,
         )
 
     def _run(
@@ -571,9 +587,9 @@ class VidrPipeline(ModelPipeline):
             dataset_perturbation_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
         )
-        
+
         print("Single dose", self.is_single_dose())
-        
+
     def get_train(self, target_cell_type: str):
         cell_type_key = self._model_config.cell_type_key
         if self.is_single_dose():
@@ -581,7 +597,7 @@ class VidrPipeline(ModelPipeline):
             return dataset[
                 ~(
                     (dataset.obs[cell_type_key] == target_cell_type)
-                    & (dataset.obs['condition'] == 'stimulated')
+                    & (dataset.obs["condition"] == "stimulated")
                 )
             ]
         else:
@@ -589,52 +605,44 @@ class VidrPipeline(ModelPipeline):
             dataset = self._dataset_perturbation_pipeline.dataset_pipeline.dataset
             control_dose = 0.0
             return dataset[
-            ~(
-                (dataset.obs[cell_type_key] == target_cell_type)
-                & (dataset.obs[dose_key] > control_dose)
-            )
-        ]
-            
+                ~(
+                    (dataset.obs[cell_type_key] == target_cell_type)
+                    & (dataset.obs[dose_key] > control_dose)
+                )
+            ]
+
     def get_stim_test(self, target_cell_type: str):
         cell_type_key = self._model_config.cell_type_key
         if self.is_single_dose():
             perturb = self._dataset_perturbation_pipeline.perturb
-            return perturb[
-                (
-                    (perturb.obs[cell_type_key] == target_cell_type)
-                )
-            ]
+            return perturb[((perturb.obs[cell_type_key] == target_cell_type))]
         else:
             dose_key = self._model_config.dose_key
             dataset = self._dataset_perturbation_pipeline.dataset_pipeline.dataset
             control_dose = 0.0
             return dataset[
-            (
-                (dataset.obs[cell_type_key] == target_cell_type)
-                & (dataset.obs[dose_key] > control_dose)
-            )
-        ]
-            
+                (
+                    (dataset.obs[cell_type_key] == target_cell_type)
+                    & (dataset.obs[dose_key] > control_dose)
+                )
+            ]
+
     def get_control(self, target_cell_type: str):
         dataset = self._dataset_perturbation_pipeline.dataset_pipeline.dataset
         cell_type_key = self._model_config.cell_type_key
         if self.is_single_dose():
             control = self._dataset_perturbation_pipeline.control
-            return control[
-                (
-                    (control.obs[cell_type_key] == target_cell_type)
-                )
-            ]
+            return control[((control.obs[cell_type_key] == target_cell_type))]
         else:
             dose_key = self._model_config.dose_key
             control_dose = 0.0
             return dataset[
-            (
-                (dataset.obs[cell_type_key] == target_cell_type)
-                & (dataset.obs[dose_key] == control_dose)
-            )
-        ]
-            
+                (
+                    (dataset.obs[cell_type_key] == target_cell_type)
+                    & (dataset.obs[dose_key] == control_dose)
+                )
+            ]
+
     def get_dosages(self):
         assert not self.is_single_dose()
         dataset = self._dataset_perturbation_pipeline.dataset_pipeline.dataset
@@ -682,27 +690,33 @@ class VidrPipeline(ModelPipeline):
 
         self._model_config.log_training_batch_is_finished(batch=batch)
 
-        if self._model_config.is_finished_evaluation(
+        if self.is_single_dose() and self._model_config.is_finished_evaluation(
             batch=batch, refresh=refresh_evaluation
         ):
             return None
 
         pred, delta, reg = model.predict(
             ctrl_key=0.0,
-            treat_key=self._dataset_perturbation_pipeline.dosage if self.is_single_dose() else 30.0, # todo: 30 needs to be the max of a given dataset with doses
+            treat_key=(
+                self._dataset_perturbation_pipeline.dosage
+                if self.is_single_dose()
+                else 30.0
+            ),  # todo: 30 needs to be the max of a given dataset with doses
             cell_type_to_predict=target_cell_type,
-            regression=True,
+            regression=False,
             continuous=not self.is_single_dose(),
             doses=None if self.is_single_dose() else self.get_dosages(),  # except 0.0
         )
-        
+
         perturb_test_adata_per_dose = []
         predictions = []
         if not self.is_single_dose():
             pred = cast(dict, pred)
             doses = sorted(pred.keys())
             for dose in doses:
-                stim_per_dose = perturb_test_adata[perturb_test_adata.obs[dose_key] == dose]
+                stim_per_dose = perturb_test_adata[
+                    perturb_test_adata.obs[dose_key] == dose
+                ]
                 predictions.append(pred[dose])
                 perturb_test_adata_per_dose.append(stim_per_dose)
         else:
