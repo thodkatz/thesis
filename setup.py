@@ -8,23 +8,35 @@ setup(
     version="1.0.0",
     description="My repo for my thesis",
     author="Theodoros Katzalis",
-    packages=find_packages(where="thesis"),
+    packages=find_packages(
+        exclude=[
+            "runs",
+            "saved_results",
+            "data",
+            "experiments",
+            "analysis",
+            "lib",
+            "scripts",
+            "slurm_scripts",
+        ]
+    ),
     install_requires=[
         "scanpy",
         "numpy",
         "adata",
         "pertpy",
         "tensorboard",
-        "scvi-tools<=0.20.0" # scgen
+        "scvi-tools<=0.20.0",  # scgen
+        "jax[cuda12]" # for pertpy
     ],
     extras_require={
         "dev": [
             "matplotlib",
-            'plotly'
-            "seaborn",
+            "plotly" "seaborn",
             "pandas",
             "jupyter",
-            "black"
+            "black",
+            "pytest",
         ]
     },
 )
