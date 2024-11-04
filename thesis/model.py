@@ -656,7 +656,7 @@ class VidrSinglePipeline(VidrPipeline[SingleConditionDatasetPipeline]):
             ctrl_key=0.0,
             treat_key=self.dataset_pipeline.dosages,
             cell_type_to_predict=target_cell_type,
-            regression=True,
+            regression=False,
             continuous=False,
             doses=None,
         )

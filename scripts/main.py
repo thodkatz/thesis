@@ -116,5 +116,5 @@ if __name__ == "__main__":
         append_metrics=True,
         save_plots=False,
         refresh_training=False,
-        refresh_evaluation=True,
+        refresh_evaluation=False,
     )

@@ -18,6 +18,7 @@ setup(
             "lib",
             "scripts",
             "slurm_scripts",
+            "report",
         ]
     ),
     install_requires=[
@@ -32,7 +33,8 @@ setup(
     extras_require={
         "dev": [
             "matplotlib",
-            "plotly" "seaborn",
+            "plotly",
+            "seaborn",
             "pandas",
             "jupyter",
             "black",

@@ -10,6 +10,7 @@ from thesis.preprocessing import (
     PreprocessingPipeline,
 )
 from anndata import AnnData
+import anndata as ad
 
 
 class DatasetPipeline(ABC):
@@ -141,7 +142,13 @@ class SingleConditionDatasetPipeline(ConditionDatasetPipeline):
         super().__init__(dataset_pipeline)
         self.control = control
         self.perturb = perturb
-        self.dataset = self.control.concatenate(self.perturb)
+        self.dataset = ad.concat(
+            [self.control, self.perturb],
+            join="outer",
+            label="condition",
+            keys=["control", "stimulated"],
+            index_unique=None,
+        )
         self.perturbation = perturbation
         self.dosages = dosages
 
@@ -210,7 +217,7 @@ class NaultMultiplePipeline(MultipleConditionDatasetPipeline):
     def __init__(
         self,
         dataset_pipeline: NaultPipelines,
-        perturbation: str = 'tcdd',
+        perturbation: str = "tcdd",
         dosages: Optional[List[float]] = None,
     ) -> None:
 
@@ -260,7 +267,13 @@ class PbmcSinglePipeline(SingleConditionDatasetPipeline):
         dose_key = dataset_pipeline.dosage_key
         self.control.obs[dose_key] = 0.0
         self.perturb.obs[dose_key] = -1.0
-        self.dataset = self.control.concatenate(self.perturb)
+        self.dataset = ad.concat(
+            [self.control, self.perturb],
+            join="outer",
+            label="batch",
+            keys=["control", "stimulated"],
+            index_unique=None,
+        )
 
 
 class Sciplex3SinglePipeline(SingleConditionDatasetPipeline):
