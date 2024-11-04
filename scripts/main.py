@@ -55,7 +55,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--dataset",
-        choices=["pbmc", "nault", "sciplex3", "nault-multi", "nault-liver"],
+        choices=["pbmc", "nault", "sciplex3", "nault-multi", "nault-liver", "nault-liver-multi"],
         help="Chooose dataset",
     )
     args = parser.parse_args()

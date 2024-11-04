@@ -158,11 +158,13 @@ def evaluation_out_of_sample(
     for distance_metric in distance_metrics:
         print(f"Computing distance {distance_metric}")
         distance = pertpy.tl.Distance(distance_metric, obsm_key="X_pca")
-        distance_scores[distance_metric] = [distance.compare_distance(
-            pert=ground_truth.obsm["X_pca"],
-            ctrl=control.obsm["X_pca"],
-            pred=predicted.obsm["X_pca"],
-        )]
+        distance_scores[distance_metric] = [
+            distance.compare_distance(
+                pert=ground_truth.obsm["X_pca"],
+                ctrl=control.obsm["X_pca"],
+                pred=predicted.obsm["X_pca"],
+            )
+        ]
 
     """ DEGs """
     sc.tl.rank_genes_groups(
@@ -205,6 +207,9 @@ def evaluation_out_of_sample(
         "pred_key": "pred",
     }
 
+    df_deg_all = get_pearson2(
+        eval_adata, key_dic=key_dict, n_degs=n_genes, sample_ratio=0.8, times=100
+    )
     df_deg_20 = get_pearson2(
         eval_adata, key_dic=key_dict, n_degs=20, sample_ratio=0.8, times=100
     )
@@ -213,6 +218,7 @@ def evaluation_out_of_sample(
     )
     df_deg_20.to_csv(output_path / "r2_degs_20.csv", index=False)
     df_deg_100.to_csv(output_path / "r2_degs_100.csv", index=False)
+    df_deg_all.to_csv(output_path / "r2_degs_all.csv", index=False)
 
     if save_plots:
         # todo add latent space
@@ -264,23 +270,22 @@ def evaluation_out_of_sample(
     ground_truth_evaluation.save(f"{output_path}/ground_truth")
     predicted_evaluation.save(f"{output_path}/predicted")
 
-
     pd_data = pd.DataFrame()
-    pd_data['DEGs'] = [common_nums]
-    pd_data['r2mean'] = [r2mean]
-    pd_data['r2mean_top20'] = [r2mean_top20]
-    pd_data['r2mean_top100'] = [r2mean_top100]
-    pd_data['r2mean_top20_boostrap_mean'] = [df_deg_20["r2_degs_mean"].mean()]
-    pd_data['r2mean_top100_boostrap_mean'] = [df_deg_100["r2_degs_mean"].mean()]
-    pd_data['cell_type_test'] = [target_type]
-    pd_data['average_mean_expressed_diff'] = [np.nanmean(diff.mean_expressed)]
-    pd_data['average_fractions_diff'] = [np.nanmean(diff.fractions)]
-    pd_data['average_mean_degs20_diff'] = [np.nanmean(diff.get_mean_degs(20))]
-    pd_data['average_mean_degs100_diff'] = [np.nanmean(diff.get_mean_degs(100))]
+    pd_data["DEGs"] = [common_nums]
+    pd_data["r2mean"] = [r2mean]
+    pd_data["r2mean_top20"] = [r2mean_top20]
+    pd_data["r2mean_top100"] = [r2mean_top100]
+    pd_data["r2mean_all_boostrap_mean"] = [df_deg_all["r2_degs_mean"].mean()]
+    pd_data["r2mean_top20_boostrap_mean"] = [df_deg_20["r2_degs_mean"].mean()]
+    pd_data["r2mean_top100_boostrap_mean"] = [df_deg_100["r2_degs_mean"].mean()]
+    pd_data["cell_type_test"] = [target_type]
+    pd_data["average_mean_expressed_diff"] = [np.nanmean(diff.mean_expressed)]
+    pd_data["average_fractions_diff"] = [np.nanmean(diff.fractions)]
+    pd_data["average_mean_degs20_diff"] = [np.nanmean(diff.get_mean_degs(20))]
+    pd_data["average_mean_degs100_diff"] = [np.nanmean(diff.get_mean_degs(100))]
     df = pd.concat([pd_data, distance_scores], axis=1)
-        
+
     df.to_csv(output_path / "metrics.csv", index=False)
     print("Writing metrics to", output_path / "metrics.csv")
-
 
     return df, eval_adata

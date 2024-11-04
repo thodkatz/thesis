@@ -74,14 +74,17 @@ nault_multi_liver() {
     done
 }
 
-pbmc
 
-nault_multi
-
-nault
-
-nault_liver
+#nault_liver
 
 nault_multi_liver
+
+#pbmc
+
+#nault_multi
+
+#nault
+
+
 
 #sciplex3
