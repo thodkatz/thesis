@@ -39,6 +39,7 @@ setup(
             "jupyter",
             "black",
             "pytest",
+            "ridgeplot"
         ]
     },
 )
