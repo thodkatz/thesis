@@ -13,3 +13,6 @@
 [submodule "lib/scgen"]
 	path = lib/scgen
 	url = https://github.com/thodkatz/scgen.git
+[submodule "lib/codex"]
+	path = lib/codex
+	url = https://github.com/thodkatz/CODEX.git
