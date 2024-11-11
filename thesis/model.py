@@ -43,9 +43,7 @@ DatasetPipelines = Union[
     MultipleConditionDatasetPipeline,
 ]
 
-T = TypeVar(
-    "T", SingleConditionDatasetPipeline, MultipleConditionDatasetPipeline
-)
+T = TypeVar("T", SingleConditionDatasetPipeline, MultipleConditionDatasetPipeline)
 
 
 class ModelPipeline(ABC, Generic[T]):
@@ -55,7 +53,7 @@ class ModelPipeline(ABC, Generic[T]):
         experiment_name: str,
     ) -> None:
         self.dataset_pipeline = dataset_pipeline
-        
+
         self.model_config = FileModelUtils(
             model_name=str(self),
             dataset_name=str(object=dataset_pipeline),
@@ -71,7 +69,6 @@ class ModelPipeline(ABC, Generic[T]):
         )
         print("Model config", self.model_config)
         print("Torch seed", torch.seed(), torch.random.initial_seed())
-
 
     def is_single(self):
         return self.dataset_pipeline.is_single()
@@ -257,6 +254,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
             RNA_data=control,
             ATAC_data=perturb,
             tensorboard_path=tensorboard_path,
+            num_workers=self._num_workers,
         )
 
         if self.model_config.is_finished_batch_training(
@@ -278,7 +276,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
             R2R_pretrain_epoch=self._epoch_pretrain1,
             A2A_pretrain_epoch=self._epoch_pretrain2,
             lock_encoder_and_decoder=False,
-            translator_epoch=self._num_workers,
+            translator_epoch=self._epoch_intergrative,
             patience=50,
             batch_size=64,
             r_loss=nn.MSELoss(size_average=True),
@@ -562,6 +560,7 @@ class VidrPipeline(ModelPipeline[T]):
         experiment_name: str,
         dataset_pipeline: T,
         debug: bool = False,
+        is_scgen_variant: bool = False,
     ):
         self._epochs = 1 if debug else 100
 
@@ -569,6 +568,8 @@ class VidrPipeline(ModelPipeline[T]):
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
         )
+
+        self._is_scgen_variant = is_scgen_variant
 
     @abstractmethod
     def predict(self, model, target_cell_type: str) -> Tuple:
@@ -644,11 +645,13 @@ class VidrSinglePipeline(VidrPipeline[SingleConditionDatasetPipeline]):
         experiment_name: str,
         dataset_pipeline: SingleConditionDatasetPipeline,
         debug: bool = False,
+        is_scgen_variant: bool = False,
     ):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
             debug=debug,
+            is_scgen_variant=is_scgen_variant,
         )
 
     def predict(self, model, target_cell_type: str):
@@ -656,7 +659,7 @@ class VidrSinglePipeline(VidrPipeline[SingleConditionDatasetPipeline]):
             ctrl_key=0.0,
             treat_key=self.dataset_pipeline.dosages,
             cell_type_to_predict=target_cell_type,
-            regression=False,
+            regression=not self._is_scgen_variant,
             continuous=False,
             doses=None,
         )
@@ -669,29 +672,25 @@ class VidrMultiplePipeline(VidrPipeline[MultipleConditionDatasetPipeline]):
         experiment_name: str,
         dataset_pipeline: MultipleConditionDatasetPipeline,
         debug: bool = False,
+        is_scgen_variant: bool = True,
     ):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
             debug=debug,
+            is_scgen_variant=is_scgen_variant,
         )
 
     def get_max_dosage(self):
         return max(self.dataset_pipeline.dosages)
-
-    def get_dosages(self):
-        dataset = self.dataset_pipeline.dataset
-        dosages = sorted(dataset.obs[self.model_config.dose_key].unique().tolist())
-        assert dosages[1:] == self.model_config.dosages
-        return dosages
 
     def predict(self, model, target_cell_type: str):
         pred, delta, reg = model.predict(
             ctrl_key=0.0,
             treat_key=self.get_max_dosage(),
             cell_type_to_predict=target_cell_type,
-            regression=True,
+            regression=not self._is_scgen_variant,
             continuous=True,
-            doses=self.get_dosages(),  # except 0.0
+            doses=self.dataset_pipeline.dosages,  # except 0.0
         )
         return pred, delta, reg

@@ -34,6 +34,9 @@ class DatasetPipeline(ABC):
 
     def __str__(self) -> str:
         return self.__class__.__name__
+    
+    def get_dosages(self):
+        return sorted(self.dataset.obs[self.dosage_key].unique().tolist())
 
 
 class PbmcPipeline(DatasetPipeline):
@@ -66,6 +69,8 @@ class NaultPipeline(DatasetPipeline):
             preprocessing_pipeline=preprocessing_pipeline,
             dosage_key="Dose",
         )
+        
+
 
 
 class NaultLiverTissuePipeline(NaultPipeline):
@@ -177,7 +182,7 @@ class MultipleConditionDatasetPipeline(ConditionDatasetPipeline):
         super().__init__(dataset_pipeline)
         dose_key = dataset_pipeline.dosage_key
         if dosages is None:
-            dosages = sorted(dataset_pipeline.dataset.obs[dose_key].unique().tolist())
+            dosages = dataset_pipeline.get_dosages()
             dosages.remove(0)
         else:
             dosages = dosages
