@@ -115,6 +115,6 @@ if __name__ == "__main__":
         batch=args.batch,
         append_metrics=True,
         save_plots=False,
-        refresh_training=True,
-        refresh_evaluation=True,
+        refresh_training=False,
+        refresh_evaluation=False,
     )

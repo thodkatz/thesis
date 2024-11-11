@@ -34,7 +34,7 @@ class DatasetPipeline(ABC):
 
     def __str__(self) -> str:
         return self.__class__.__name__
-    
+
     def get_dosages(self):
         return sorted(self.dataset.obs[self.dosage_key].unique().tolist())
 
@@ -69,8 +69,6 @@ class NaultPipeline(DatasetPipeline):
             preprocessing_pipeline=preprocessing_pipeline,
             dosage_key="Dose",
         )
-        
-
 
 
 class NaultLiverTissuePipeline(NaultPipeline):
@@ -112,6 +110,7 @@ class Sciplex3Pipeline(DatasetPipeline):
 class ConditionDatasetPipeline(ABC):
     def __init__(self, dataset_pipeline: DatasetPipeline) -> None:
         self._dataset_pipeline_name = str(dataset_pipeline)
+        self.dataset_pipeline = dataset_pipeline
         self.dataset = dataset_pipeline.dataset
         self.cell_type_key = dataset_pipeline.cell_type_key
         self.dosage_key = dataset_pipeline.dosage_key
@@ -180,7 +179,6 @@ class MultipleConditionDatasetPipeline(ConditionDatasetPipeline):
         dosages: Optional[List[float]] = None,
     ) -> None:
         super().__init__(dataset_pipeline)
-        dose_key = dataset_pipeline.dosage_key
         if dosages is None:
             dosages = dataset_pipeline.get_dosages()
             dosages.remove(0)
@@ -227,26 +225,26 @@ class NaultMultiplePipeline(MultipleConditionDatasetPipeline):
     ) -> None:
 
         super().__init__(dataset_pipeline, perturbation=perturbation, dosages=dosages)
-        self._control_dose = 0.0
+        self.control_dose = 0.0
 
     def get_train(self, target_cell_type: str) -> AnnData:
         return self.dataset[
             ~(
                 (self.dataset.obs[self.cell_type_key] == target_cell_type)
-                & (self.dataset.obs["Dose"] > self._control_dose)
+                & (self.dataset.obs["Dose"] > self.control_dose)
             )
         ]
 
     def get_ctrl_test(self, target_cell_type: str) -> AnnData:
         return self.dataset[
             (self.dataset.obs[self.cell_type_key] == target_cell_type)
-            & (self.dataset.obs["Dose"] == self._control_dose)
+            & (self.dataset.obs["Dose"] == self.control_dose)
         ]
 
     def get_stim_test(self, target_cell_type: str) -> AnnData:
         return self.dataset[
             (self.dataset.obs[self.cell_type_key] == target_cell_type)
-            & (self.dataset.obs["Dose"] > self._control_dose)
+            & (self.dataset.obs["Dose"] > self.control_dose)
         ]
 
 

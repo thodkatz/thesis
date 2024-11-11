@@ -672,7 +672,7 @@ class VidrMultiplePipeline(VidrPipeline[MultipleConditionDatasetPipeline]):
         experiment_name: str,
         dataset_pipeline: MultipleConditionDatasetPipeline,
         debug: bool = False,
-        is_scgen_variant: bool = True,
+        is_scgen_variant: bool = False,
     ):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
