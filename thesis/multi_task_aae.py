@@ -1,26 +1,25 @@
 from __future__ import annotations
 import os
 from pathlib import Path
+import random
 from anndata import AnnData
-import pandas as pd
+import numpy as np
 from torch import nn
 from torch import Tensor
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import List, Optional, Tuple
 import torch
 from torch.utils.data import DataLoader, Dataset
 from enum import Enum
 
 from tqdm import tqdm
 
-from thesis import ROOT, SAVED_RESULTS_PATH
 from thesis.datasets import (
     NaultMultiplePipeline,
-    NaultPipeline,
 )
 from torch.utils.tensorboard import SummaryWriter
 from scipy import sparse
 
-from thesis.evaluation import evaluation_out_of_sample
+from thesis.utils import SEED, seed_worker
 
 
 Gamma = Tensor
@@ -28,7 +27,18 @@ Beta = Tensor
 Dosage = float
 
 
-class TypeNorm(Enum):
+class WeightInit(Enum):
+    XAVIER = 0
+    KAIMING = 1
+
+
+class LayerActivation(Enum):
+    RELU = 0
+    LEAKY_RELU = 1
+    SIGMOID = 2
+
+
+class WeightNorm(Enum):
     BATCH = 0
     LAYER = 1
 
@@ -45,7 +55,7 @@ class FilmGenerator(nn.Module):
 
         layers_dims = [input_dim] + hidden_layer_dims
         last_hidden_dim = layers_dims[-1]
-        
+
         if len(hidden_layer_dims) > 0:
             self._hidden_network = NetworkBlock(
                 input_dim=input_dim,
@@ -57,15 +67,12 @@ class FilmGenerator(nn.Module):
             self._hidden_network = nn.Identity()
 
         self.gamma = NetworkBlock(
-            input_dim=last_hidden_dim,
-            hidden_layer_dims=[],
-            output_dim=output_dim)
-        
+            input_dim=last_hidden_dim, hidden_layer_dims=[], output_dim=output_dim
+        )
+
         self.beta = NetworkBlock(
-            input_dim=last_hidden_dim,
-            hidden_layer_dims=[],
-            output_dim=output_dim)
-        
+            input_dim=last_hidden_dim, hidden_layer_dims=[], output_dim=output_dim
+        )
 
     def forward(self, condition: Tensor) -> Tuple[Gamma, Beta]:
         condition = self._hidden_network(condition)
@@ -79,15 +86,19 @@ class FilmLayer(nn.Module):
         return gamma * x + beta
 
 
+class Discriminator(nn.Module):
+    pass
+
+
 class NetworkBlock(nn.Module):
     def __init__(
         self,
         input_dim: int,
         hidden_layer_dims: List[int],
         output_dim: int,
-        hidden_activation=nn.ReLU(),
-        output_activation=nn.ReLU(),
-        norm_type: TypeNorm = TypeNorm.BATCH,
+        hidden_activation: LayerActivation = LayerActivation.RELU,
+        output_activation: LayerActivation = LayerActivation.RELU,
+        norm_type: WeightNorm = WeightNorm.BATCH,
         dropout_rate: float = 0.1,
         mask_rate: Optional[float] = None,
     ):
@@ -106,12 +117,12 @@ class NetworkBlock(nn.Module):
 
         for idx in range(len(hidden_layer_dims)):
             layer = nn.Linear(layers_dim[idx], layers_dim[idx + 1])
-            nn.init.xavier_uniform_(layer.weight)
+            self.weight_init(layer)
 
-            if self.norm_type == TypeNorm.BATCH:
+            if self.norm_type == WeightNorm.BATCH:
                 self.hidden_layers.append(layer)
                 self.norm_layers.append(nn.BatchNorm1d(layers_dim[idx + 1]))
-            elif self.norm_type == TypeNorm.LAYER:
+            elif self.norm_type == WeightNorm.LAYER:
                 self.hidden_layers.append(layer)
                 self.norm_layers.append(nn.LayerNorm(layers_dim[idx + 1]))
                 raise NotImplementedError
@@ -119,10 +130,10 @@ class NetworkBlock(nn.Module):
             self.dropout_layers.append(nn.Dropout(dropout_rate))
 
         self.output_layer = nn.Linear(layers_dim[-2], layers_dim[-1])
-        nn.init.xavier_uniform_(self.output_layer.weight)
+        self.weight_init(self.output_layer)
 
-        self.hidden_activation = hidden_activation
-        self.output_activation = output_activation
+        self.hidden_activation = self.get_activation(hidden_activation)
+        self.output_activation = self.get_activation(output_activation)
 
         assert (
             len(self.dropout_layers)
@@ -131,9 +142,31 @@ class NetworkBlock(nn.Module):
             == len(hidden_layer_dims)
         )
 
+    @staticmethod
+    def get_activation(activation: LayerActivation):
+        if activation == LayerActivation.RELU:
+            return nn.ReLU()
+        elif activation == LayerActivation.LEAKY_RELU:
+            return nn.LeakyReLU()
+        elif activation == LayerActivation.SIGMOID:
+            return nn.Sigmoid()
+        else:
+            raise NotImplementedError
+
+    @staticmethod
+    def weight_init(layer: nn.Linear, weight_init: WeightInit = WeightInit.XAVIER):
+        if weight_init == WeightInit.XAVIER:
+            nn.init.xavier_uniform_(layer.weight)
+        elif weight_init == WeightInit.KAIMING:
+            nn.init.kaiming_uniform_(layer.weight)
+        else:
+            raise NotImplementedError
+
     def forward(self, x: Tensor) -> Tensor:
         x = self.mask_layer(x)
-        for layer, norm, dropout in zip(self.hidden_layers, self.norm_layers, self.dropout_layers):
+        for layer, norm, dropout in zip(
+            self.hidden_layers, self.norm_layers, self.dropout_layers
+        ):
             x = layer(x)
             x = norm(x)
             x = self.hidden_activation(x)
@@ -166,8 +199,8 @@ class NetworkBlockFilm(NetworkBlock):
         film_layer_factory: FilmLayerFactory,
         hidden_layers: List[int],
         output_dim: int,
-        hidden_activation=nn.ReLU(),
-        output_activation=nn.ReLU(),
+        hidden_activation: LayerActivation = LayerActivation.RELU,
+        output_activation: LayerActivation = LayerActivation.RELU,
     ):
         super().__init__(
             input_dim=input_dim,
@@ -398,31 +431,41 @@ class MultiTaskAdversarialAutoencoderUtils:
         self,
         dataset: NaultDataset,
         model: MultiTaskAae,
-        tensorboard_path: Path,
-        lr: float = 0.0001,
-        batch_size: int = 512,
-        epochs: int = 200,
     ):
-        self.model = model
-        self.batch_size = batch_size
-        self.epochs = epochs
-        self.dataset = dataset
-        self.dataloader = DataLoader(
-            dataset=dataset, batch_size=batch_size, shuffle=True, num_workers=0
-        )
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
 
+        self.model = model
+        self.dataset = dataset
         self.device = "cuda"
         self.model.to(self.device)
 
+    def train(
+        self,
+        save_path: Path,
+        tensorboard_path: Path,
+        epochs: int = 200,
+        batch_size: int = 512,
+        lr: float = 0.0001,
+    ):
         os.makedirs(tensorboard_path, exist_ok=True)
-        self.writer = SummaryWriter(tensorboard_path)
+        writer = SummaryWriter(tensorboard_path)
 
-    def train(self, save_path: Path):
+        generator = torch.Generator()
+        generator.manual_seed(SEED)
+
+        dataloader = DataLoader(
+            dataset=self.dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=0,
+            worker_init_fn=seed_worker,
+            generator=generator,
+        )
+
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         mse = nn.MSELoss()
 
-        for epoch in tqdm(range(self.epochs), desc="Training Epochs"):
-            for gene_expressions, dosages in self.dataloader:
+        for epoch in tqdm(range(epochs), desc="Training Epochs"):
+            for gene_expressions, dosages in dataloader:
                 self.model.train()
 
                 gene_expressions = gene_expressions.to(self.device)
@@ -432,18 +475,18 @@ class MultiTaskAdversarialAutoencoderUtils:
                 reconstruction_loss = mse(outputs, gene_expressions)
                 # print("Reconstruction loss:", reconstruction_loss.item())
 
-                self.optimizer.zero_grad()
+                optimizer.zero_grad()
                 reconstruction_loss.backward()
-                self.optimizer.step()
+                optimizer.step()
 
-                self.writer.add_scalar(
+                writer.add_scalar(
                     "reconstruction_loss", reconstruction_loss.item(), epoch
                 )
             tqdm.write(
-                f"Epoch [{epoch + 1}/{self.epochs}], Loss: {reconstruction_loss.item()}"
+                f"Epoch [{epoch + 1}/{epochs}], Loss: {reconstruction_loss.item()}"
             )
 
-            self.model.save(save_path)
+        self.model.save(save_path)
 
     def predict(self):
         control_test_adata = self.dataset.get_ctrl_test()

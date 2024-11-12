@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from pathlib import Path
-from tokenize import Single
 from typing import Generic, List, Optional, Tuple, Union, cast
 from typing_extensions import TypeVar
 from scPreGAN.model.util import load_anndata
@@ -10,7 +8,6 @@ import torch.nn as nn
 import scPreGAN as scpregan
 from scPreGAN.reproducibility.scPreGAN_OOD_prediction import train_and_predict
 
-import scanpy as sc
 from anndata import AnnData
 from torch import Tensor
 import pandas as pd
@@ -18,7 +15,7 @@ from vidr import vidr
 
 from thesis.evaluation import evaluation_out_of_sample
 
-from thesis.utils import FileModelUtils, append_csv
+from thesis.utils import SEED, FileModelUtils, append_csv, setup_seed
 from thesis.datasets import (
     MultipleConditionDatasetPipeline,
     SingleConditionDatasetPipeline,
@@ -68,7 +65,8 @@ class ModelPipeline(ABC, Generic[T]):
             root_path=SAVED_RESULTS_PATH,
         )
         print("Model config", self.model_config)
-        print("Torch seed", torch.seed(), torch.random.initial_seed())
+        
+        setup_seed()
 
     def is_single(self):
         return self.dataset_pipeline.is_single()
@@ -101,6 +99,9 @@ class ModelPipeline(ABC, Generic[T]):
         else:
             input_adata, ground_truth_adata, predicted_adata = predict
         file_path = self.model_config.get_batch_path(batch=batch)
+        
+        print("Torch seed", torch.random.initial_seed())
+        assert torch.random.initial_seed() == SEED, "make sure models are using the same seed"
 
         assert (
             len(ground_truth_adata)
@@ -288,7 +289,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
             validation_id_r=validation_id_control,
             validation_id_a=validation_id_perturb,
             output_path=file_path,
-            seed=19193,
+            seed=SEED,
             kl_mean=True,
             R_pretrain_kl_warmup=50,
             A_pretrain_kl_warmup=50,
