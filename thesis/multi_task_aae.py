@@ -9,7 +9,8 @@ from torch import Tensor
 from typing import List, Optional, Tuple
 import torch
 from torch.utils.data import DataLoader, Dataset
-from enum import Enum
+from torch.nn.utils import spectral_norm
+from enum import Enum, auto
 
 from tqdm import tqdm
 
@@ -28,19 +29,21 @@ Dosage = float
 
 
 class WeightInit(Enum):
-    XAVIER = 0
-    KAIMING = 1
+    XAVIER = auto()
+    KAIMING = auto()
 
 
 class LayerActivation(Enum):
-    RELU = 0
-    LEAKY_RELU = 1
-    SIGMOID = 2
+    RELU = auto()
+    LEAKY_RELU = auto()
+    SIGMOID = auto()
+    SOFTMAX = auto()
 
 
 class WeightNorm(Enum):
-    BATCH = 0
-    LAYER = 1
+    BATCH = auto()
+    LAYER = auto()
+    SPECTRA = auto()
 
 
 class FilmGenerator(nn.Module):
@@ -86,10 +89,6 @@ class FilmLayer(nn.Module):
         return gamma * x + beta
 
 
-class Discriminator(nn.Module):
-    pass
-
-
 class NetworkBlock(nn.Module):
     def __init__(
         self,
@@ -97,12 +96,16 @@ class NetworkBlock(nn.Module):
         hidden_layer_dims: List[int],
         output_dim: int,
         hidden_activation: LayerActivation = LayerActivation.RELU,
-        output_activation: LayerActivation = LayerActivation.RELU,
+        output_activation: Optional[LayerActivation] = LayerActivation.RELU,
         norm_type: WeightNorm = WeightNorm.BATCH,
         dropout_rate: float = 0.1,
         mask_rate: Optional[float] = None,
     ):
         super().__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.hidden_layer_dims = hidden_layer_dims
+
         self.norm_type = norm_type
 
         if mask_rate is not None:
@@ -125,6 +128,10 @@ class NetworkBlock(nn.Module):
             elif self.norm_type == WeightNorm.LAYER:
                 self.hidden_layers.append(layer)
                 self.norm_layers.append(nn.LayerNorm(layers_dim[idx + 1]))
+            elif self.norm_type == WeightNorm.SPECTRA:
+                self.hidden_layers.append(spectral_norm(layer))
+                self.norm_layers.append(nn.Identity())
+            else:
                 raise NotImplementedError
 
             self.dropout_layers.append(nn.Dropout(dropout_rate))
@@ -133,7 +140,11 @@ class NetworkBlock(nn.Module):
         self.weight_init(self.output_layer)
 
         self.hidden_activation = self.get_activation(hidden_activation)
-        self.output_activation = self.get_activation(output_activation)
+
+        if output_activation is not None:
+            self.output_activation = self.get_activation(output_activation)
+        else:
+            self.output_activation = None
 
         assert (
             len(self.dropout_layers)
@@ -150,6 +161,8 @@ class NetworkBlock(nn.Module):
             return nn.LeakyReLU()
         elif activation == LayerActivation.SIGMOID:
             return nn.Sigmoid()
+        elif activation == LayerActivation.SOFTMAX:
+            return nn.Softmax(dim=-1)
         else:
             raise NotImplementedError
 
@@ -164,6 +177,7 @@ class NetworkBlock(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.mask_layer(x)
+
         for layer, norm, dropout in zip(
             self.hidden_layers, self.norm_layers, self.dropout_layers
         ):
@@ -171,7 +185,13 @@ class NetworkBlock(nn.Module):
             x = norm(x)
             x = self.hidden_activation(x)
             x = dropout(x)
-        return self.output_activation(self.output_layer(x))
+        return self._forward_output_layer(x)
+
+    def _forward_output_layer(self, x: Tensor) -> Tensor:
+        if self.output_activation is None:
+            return self.output_layer(x)
+        else:
+            return self.output_activation(self.output_layer(x))
 
     @classmethod
     def create_symmetric_encoder_decoder(
@@ -191,6 +211,22 @@ class NetworkBlock(nn.Module):
         )
         return encoder, decoder
 
+    @classmethod
+    def create_discriminator(
+        cls,
+        input_dim: int,
+        hidden_layers: List[int],
+        output_dim: int,
+        norm_type: WeightNorm = WeightNorm.SPECTRA,
+    ):
+        return NetworkBlock(
+            input_dim=input_dim,
+            hidden_layer_dims=hidden_layers,
+            output_dim=output_dim,
+            norm_type=norm_type,
+            output_activation=None,  # we use BCEWithLogitsLoss that integrates sigmoid
+        )
+
 
 class NetworkBlockFilm(NetworkBlock):
     def __init__(
@@ -200,7 +236,7 @@ class NetworkBlockFilm(NetworkBlock):
         hidden_layers: List[int],
         output_dim: int,
         hidden_activation: LayerActivation = LayerActivation.RELU,
-        output_activation: LayerActivation = LayerActivation.RELU,
+        output_activation: Optional[LayerActivation] = LayerActivation.RELU,
     ):
         super().__init__(
             input_dim=input_dim,
@@ -222,7 +258,7 @@ class NetworkBlockFilm(NetworkBlock):
             film_layer = FilmLayer()
             x = film_layer(x, gamma, beta)
             x = self.hidden_activation(x)
-        return self.output_activation(self.output_layer(x))
+        return self._forward_output_layer(x)
 
     @classmethod
     def create_encoder_decoder_with_film(
@@ -276,15 +312,22 @@ class MultiTaskAae(nn.Module):
     def __init__(
         self,
         num_features: int,
-        hidden_layers: List[int],
+        hidden_layers_autoencoder: List[int],
+        hidden_layers_discriminator: List[int],
         film_layer_factory: FilmLayerFactory,
     ):
         super().__init__()
 
         self.encoder, self.decoder = NetworkBlockFilm.create_encoder_decoder_with_film(
             input_dim=num_features,
-            hidden_layers=hidden_layers,
+            hidden_layers=hidden_layers_autoencoder,
             film_layer_factory=film_layer_factory,
+        )
+
+        self.discriminator = NetworkBlock.create_discriminator(
+            input_dim=self.get_latent_dim(),
+            hidden_layers=hidden_layers_discriminator,
+            output_dim=1,  # control, not-control (perturbed)
         )
 
     def forward(self, x: Tensor, dosages: Tensor) -> Tensor:
@@ -296,17 +339,22 @@ class MultiTaskAae(nn.Module):
         with torch.no_grad():
             return self.encoder(x).detach().cpu().numpy()
 
+    def get_latent_dim(self):
+        return self.encoder.output_dim
+
     @classmethod
     def load(
         cls,
         num_features: int,
-        hidden_layers: List[int],
+        hidden_layers_autoencoder: List[int],
+        hidden_layers_discriminator: List[int],
         film_layer_factory: FilmLayerFactory,
         load_path: Path,
     ):
         model = MultiTaskAae(
             num_features=num_features,
-            hidden_layers=hidden_layers,
+            hidden_layers_autoencoder=hidden_layers_autoencoder,
+            hidden_layers_discriminator=hidden_layers_discriminator,
             film_layer_factory=film_layer_factory,
         )
         model.load_state_dict(torch.load(load_path))
@@ -358,6 +406,11 @@ class NaultDataset(Dataset):
             dosage: idx for idx, dosage in enumerate(self._dosages_unique)
         }
         dosages = train_adata.obs[self._dataset_condition_pipeline.dosage_key].values
+
+        self.is_control = torch.tensor(
+            [(self.get_soft_labels_control(dosage)) for dosage in dosages]
+        )
+
         self.dosages = self.get_one_hot_encoded_dosages(dosages)
 
         assert len(self.gene_expressions) == len(self.dosages)
@@ -367,6 +420,12 @@ class NaultDataset(Dataset):
         dosages_to_train = self.get_dosages_to_train()
         dosages_to_train.remove(self._control_dose)
         assert dosages_to_test == dosages_to_train
+
+    def get_soft_labels_control(self, dosage: float):
+        if dosage == self._control_dose:
+            return np.random.uniform(low=0.7, high=1)
+        else:
+            return np.random.uniform(low=0, high=0.3)
 
     def get_gene_expressions(self, adata: AnnData) -> Tensor:
         if sparse.issparse(adata.X):
@@ -420,7 +479,7 @@ class NaultDataset(Dataset):
         return sorted(self.get_train().obs[dose_key].unique().tolist())
 
     def __getitem__(self, index):
-        return self.gene_expressions[index], self.dosages[index]
+        return self.gene_expressions[index], self.dosages[index], self.is_control[index]
 
     def __len__(self):
         return len(self.gene_expressions)
@@ -445,9 +504,9 @@ class MultiTaskAdversarialAutoencoderUtils:
         epochs: int = 200,
         batch_size: int = 512,
         lr: float = 0.0001,
+        is_alternating: bool = True,
     ):
         os.makedirs(tensorboard_path, exist_ok=True)
-        writer = SummaryWriter(tensorboard_path)
 
         generator = torch.Generator()
         generator.manual_seed(SEED)
@@ -461,32 +520,159 @@ class MultiTaskAdversarialAutoencoderUtils:
             generator=generator,
         )
 
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
-        mse = nn.MSELoss()
+        if is_alternating:
+            self._train_alternating(
+                dataloader=dataloader,
+                tensorboard_path=tensorboard_path,
+                epochs=epochs,
+                lr=lr,
+            )
+        else:
+            self._train_end_to_end(
+                dataloader=dataloader,
+                tensorboard_path=tensorboard_path,
+                epochs=epochs,
+                lr=lr,
+            )
 
+        self.model.save(save_path)
+
+    def _train_alternating(
+        self, dataloader, tensorboard_path: Path, epochs: int = 200, lr: float = 0.0001
+    ):
+        writer = SummaryWriter(tensorboard_path)
+
+        optimizer_encoder = torch.optim.Adam(self.model.encoder.parameters(), lr=lr)
+        optimizer_decoder = torch.optim.Adam(self.model.decoder.parameters(), lr=lr)
+        optimizer_discriminator = torch.optim.Adam(
+            self.model.discriminator.parameters(), lr=lr
+        )
+
+        mse = nn.MSELoss()
+        bce = nn.BCEWithLogitsLoss()
+
+        self.model.train()
+        
         for epoch in tqdm(range(epochs), desc="Training Epochs"):
-            for gene_expressions, dosages in dataloader:
-                self.model.train()
+            for gene_expressions, dosages, is_control in dataloader:
 
                 gene_expressions = gene_expressions.to(self.device)
                 dosages = dosages.to(self.device)
-                outputs = self.model(gene_expressions, dosages)
+                is_control = is_control.to(self.device)
+                
+                """
+                Reconstruction loss
+                """
+                
+                latent = self.model.encoder(gene_expressions)
+                prediction_perturbed_expression = self.model.decoder(latent, dosages)
 
-                reconstruction_loss = mse(outputs, gene_expressions)
-                # print("Reconstruction loss:", reconstruction_loss.item())
-
-                optimizer.zero_grad()
-                reconstruction_loss.backward()
-                optimizer.step()
+                reconstruction_loss = mse(
+                    prediction_perturbed_expression, gene_expressions
+                )
 
                 writer.add_scalar(
                     "reconstruction_loss", reconstruction_loss.item(), epoch
                 )
+
+                optimizer_encoder.zero_grad()
+                optimizer_decoder.zero_grad()
+                reconstruction_loss.backward()
+                optimizer_encoder.step()
+                optimizer_decoder.step()                
+                
+                """
+                Discriminator loss
+                """
+
+                disc_input = self.model.encoder(gene_expressions).detach()
+                
+                prediction_control_classification = self.model.discriminator(disc_input)
+                is_control = torch.reshape(is_control, (is_control.shape[0], 1))
+                discriminator_loss = bce(prediction_control_classification, is_control)
+
+                optimizer_discriminator.zero_grad()
+                discriminator_loss.backward()
+                optimizer_discriminator.step()
+
+                writer.add_scalar(
+                    "discriminator_loss", discriminator_loss.item(), epoch
+                )
+                
+                """
+                Adversarial loss
+                """
+                
+                generator_output = self.model.encoder(gene_expressions)
+                discriminator_output = self.model.discriminator(generator_output)
+                target = torch.ones_like(is_control, device=self.device) - is_control
+                adv_loss = bce(discriminator_output, target)
+                
+                optimizer_encoder.zero_grad()
+                adv_loss.backward()
+                optimizer_encoder.step()
+                
+                writer.add_scalar(
+                    "adv_loss", adv_loss.item(), epoch)
+                
+
             tqdm.write(
-                f"Epoch [{epoch + 1}/{epochs}], Loss: {reconstruction_loss.item()}"
+                f"Epoch [{epoch + 1}/{epochs}], rc loss: {reconstruction_loss.item()}, dc loss: {discriminator_loss.item()}, adv loss: {adv_loss.item()}"
             )
 
-        self.model.save(save_path)
+    def _train_end_to_end(
+        self,
+        dataloader,
+        tensorboard_path: Path,
+        epochs: int = 200,
+        lr: float = 0.0001,
+    ):
+        lambda_discriminator = nn.Parameter(torch.tensor(0.5, requires_grad=True))
+        writer = SummaryWriter(tensorboard_path)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        optimizer_lambda = torch.optim.Adam([lambda_discriminator], lr=lr)
+        mse = nn.MSELoss()
+        bce = nn.BCEWithLogitsLoss()
+        
+        self.model.train()
+        
+        for epoch in tqdm(range(epochs), desc="Training Epochs"):
+            for gene_expressions, dosages, is_control in dataloader:
+
+                gene_expressions = gene_expressions.to(self.device)
+                dosages = dosages.to(self.device)
+                is_control = is_control.to(self.device)
+
+                latent = self.model.encoder(gene_expressions)
+                prediction_control_classification = self.model.discriminator(latent)
+                prediction_perturbed_expression = self.model.decoder(latent, dosages)
+
+                is_control = torch.reshape(is_control, (is_control.shape[0], 1))
+                discriminator_loss = bce(prediction_control_classification, is_control)
+                reconstruction_loss = mse(
+                    prediction_perturbed_expression, gene_expressions
+                )
+
+                lambda_value = torch.clamp(lambda_discriminator, 0.1, 2.0)
+                total_loss = reconstruction_loss + lambda_value * discriminator_loss
+
+                writer.add_scalar(
+                    "discriminator_loss", discriminator_loss.item(), epoch
+                )
+                writer.add_scalar(
+                    "reconstruction_loss", reconstruction_loss.item(), epoch
+                )
+                writer.add_scalar("total_loss", total_loss.item(), epoch)
+
+                optimizer.zero_grad()
+                optimizer_lambda.zero_grad()
+                total_loss.backward()
+                optimizer.step()
+                optimizer_lambda.step()
+
+            tqdm.write(
+                f"Epoch [{epoch + 1}/{epochs}], rc loss: {reconstruction_loss.item()}, dc loss: {discriminator_loss.item()}, total loss: {total_loss.item()}, lambda: {lambda_value.item()}"
+            )
 
     def predict(self):
         control_test_adata = self.dataset.get_ctrl_test()
