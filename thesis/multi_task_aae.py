@@ -559,27 +559,57 @@ class MultiTaskAdversarialAutoencoderUtils:
                 gene_expressions = gene_expressions.to(self.device)
                 dosages = dosages.to(self.device)
                 is_control = is_control.to(self.device)
-                
+                is_control = torch.reshape(is_control, (is_control.shape[0], 1))
+
                 """
                 Reconstruction loss
                 """
                 
                 latent = self.model.encoder(gene_expressions)
-                prediction_perturbed_expression = self.model.decoder(latent, dosages)
+                decoder_output = self.model.decoder(latent, dosages)
 
                 reconstruction_loss = mse(
-                    prediction_perturbed_expression, gene_expressions
+                    decoder_output, gene_expressions
                 )
 
                 writer.add_scalar(
                     "reconstruction_loss", reconstruction_loss.item(), epoch
                 )
-
+                
+                """
+                Adversarial loss
+                """
+                
+                generator_output = latent
+                discriminator_output = self.model.discriminator(generator_output)
+                target = torch.ones_like(is_control, device=self.device) - is_control
+                adv_loss = bce(discriminator_output, target)
+                
+                writer.add_scalar(
+                    "adv_loss", adv_loss.item(), epoch)
+                
+                adjusted_reconstruction_loss = 0.9 * reconstruction_loss    
+                adjusted_adv_loss = 0.1 * adv_loss
+                
+                total_loss = adjusted_reconstruction_loss + adjusted_adv_loss
+                
+                writer.add_scalar(
+                    "total_loss", total_loss.item(), epoch
+                )
+                
+                writer.add_scalar(
+                    "adjusted_reconstruction_loss", adjusted_reconstruction_loss.item(), epoch
+                )
+                
+                writer.add_scalar(
+                    "adjusted_adv_loss", adjusted_adv_loss.item(), epoch
+                )
+                
                 optimizer_encoder.zero_grad()
                 optimizer_decoder.zero_grad()
-                reconstruction_loss.backward()
+                total_loss.backward()
                 optimizer_encoder.step()
-                optimizer_decoder.step()                
+                optimizer_decoder.step()
                 
                 """
                 Discriminator loss
@@ -588,7 +618,6 @@ class MultiTaskAdversarialAutoencoderUtils:
                 disc_input = self.model.encoder(gene_expressions).detach()
                 
                 prediction_control_classification = self.model.discriminator(disc_input)
-                is_control = torch.reshape(is_control, (is_control.shape[0], 1))
                 discriminator_loss = bce(prediction_control_classification, is_control)
 
                 optimizer_discriminator.zero_grad()
@@ -599,22 +628,7 @@ class MultiTaskAdversarialAutoencoderUtils:
                     "discriminator_loss", discriminator_loss.item(), epoch
                 )
                 
-                """
-                Adversarial loss
-                """
-                
-                generator_output = self.model.encoder(gene_expressions)
-                discriminator_output = self.model.discriminator(generator_output)
-                target = torch.ones_like(is_control, device=self.device) - is_control
-                adv_loss = bce(discriminator_output, target)
-                
-                optimizer_encoder.zero_grad()
-                adv_loss.backward()
-                optimizer_encoder.step()
-                
-                writer.add_scalar(
-                    "adv_loss", adv_loss.item(), epoch)
-                
+
 
             tqdm.write(
                 f"Epoch [{epoch + 1}/{epochs}], rc loss: {reconstruction_loss.item()}, dc loss: {discriminator_loss.item()}, adv loss: {adv_loss.item()}"

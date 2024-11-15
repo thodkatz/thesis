@@ -37,7 +37,7 @@ dataset = NaultDataset(
     target_cell_type="Hepatocytes - portal",
 )
 
-experiment_name = "adversarial"
+experiment_name = "combine_reconstruction_generator_loss_3"
 
 setup_seed()
 
