@@ -37,7 +37,7 @@ dataset = NaultDataset(
     target_cell_type="Hepatocytes - portal",
 )
 
-experiment_name = "combine_reconstruction_generator_loss_3"
+experiment_name = "loss_g_subtract_loss_d"
 
 setup_seed()
 
@@ -61,6 +61,7 @@ if saved_path.exists() and not overwrite:
         film_layer_factory=film_factory,
         load_path=saved_path,
     )
+    model = model.to("cuda")
 else:
     model = MultiTaskAae(
         num_features=dataset.get_num_features(),
@@ -68,6 +69,8 @@ else:
         hidden_layers_discriminator=hidden_layers_discriminator,
         film_layer_factory=film_factory,
     )
+    
+# %%
 
 model_utils = MultiTaskAdversarialAutoencoderUtils(dataset=dataset, model=model)
 
@@ -93,6 +96,7 @@ for idx, dosage in enumerate(dataset.get_dosages_to_test()):
         output_path=evaluation_path,
         save_plots=False,
         cell_type_key=dataset_pipeline.cell_type_key,
+        skip_distances=True
     )
     df["dose"] = dosage
     dfs.append(df)
@@ -176,26 +180,23 @@ def plot_2d_metrics_per_dosage(
 # %%
 #plot_2d_metrics_per_dosage(title="", metrics=DISTANCE_METRICS)
 
+
+
 # %%
-# control_adata = dataset.get_ctrl_test()
-# control_tensor = dataset.get_gene_expressions(control_adata).to("cuda")
-# latent = AnnData(X=model.get_latent_representation(control_tensor), obs=control_adata.obs.copy())
+train_adata = dataset.get_train()
+train_tensor = dataset.get_gene_expressions(train_adata).to("cuda")
+latent = AnnData(X=model.get_latent_representation(train_tensor), obs=train_adata.obs.copy())
 
-# sc.pp.neighbors(latent)
-# sc.tl.umap(latent)
-# sc.pl.umap(latent, color=['celltype'])
+latent.obs['Dose'] = latent.obs['Dose'].astype('category')
 
-# # %%
-# train_adata = dataset.get_train()
-# train_tensor = dataset.get_gene_expressions(train_adata).to("cuda")
-# latent = AnnData(X=model.get_latent_representation(train_tensor), obs=train_adata.obs.copy())
+sc.pp.neighbors(latent)
+sc.tl.umap(latent)
 
-# latent.obs['Dose'] = latent.obs['Dose'].astype('category')
+sc.pl.umap(latent, color=['Dose'])
+plt.savefig(f"{FIGURES_PATH}/multi_task_aae_umap_dose_{experiment_name}.pdf", dpi=150, bbox_inches="tight")
 
-# sc.pp.neighbors(latent)
-# sc.tl.umap(latent)
-
-# sc.pl.umap(latent, color=['Dose'])
-# sc.pl.umap(latent, color=['celltype'])
+sc.pl.umap(latent, color=['celltype'])
+plt.savefig(f"{FIGURES_PATH}/multi_task_aae_umap_celltype_{experiment_name}.pdf", dpi=150, bbox_inches="tight")
 
 
+# %%

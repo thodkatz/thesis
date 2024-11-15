@@ -582,27 +582,23 @@ class MultiTaskAdversarialAutoencoderUtils:
                 
                 generator_output = latent
                 discriminator_output = self.model.discriminator(generator_output)
-                target = torch.ones_like(is_control, device=self.device) - is_control
-                adv_loss = bce(discriminator_output, target)
+                adv_loss = bce(discriminator_output, is_control)
                 
                 writer.add_scalar(
                     "adv_loss", adv_loss.item(), epoch)
                 
-                adjusted_reconstruction_loss = 0.9 * reconstruction_loss    
-                adjusted_adv_loss = 0.1 * adv_loss
-                
-                total_loss = adjusted_reconstruction_loss + adjusted_adv_loss
+                def is_discriminator_good_enough(d_loss):
+                    return d_loss < 1
+                    
+                if is_discriminator_good_enough(adv_loss):
+                    coeff = 1
+                    total_loss = reconstruction_loss - coeff * adv_loss
+                else:
+                    total_loss = reconstruction_loss
+                    
                 
                 writer.add_scalar(
                     "total_loss", total_loss.item(), epoch
-                )
-                
-                writer.add_scalar(
-                    "adjusted_reconstruction_loss", adjusted_reconstruction_loss.item(), epoch
-                )
-                
-                writer.add_scalar(
-                    "adjusted_adv_loss", adjusted_adv_loss.item(), epoch
                 )
                 
                 optimizer_encoder.zero_grad()
@@ -628,7 +624,6 @@ class MultiTaskAdversarialAutoencoderUtils:
                     "discriminator_loss", discriminator_loss.item(), epoch
                 )
                 
-
 
             tqdm.write(
                 f"Epoch [{epoch + 1}/{epochs}], rc loss: {reconstruction_loss.item()}, dc loss: {discriminator_loss.item()}, adv loss: {adv_loss.item()}"

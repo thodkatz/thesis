@@ -112,6 +112,7 @@ def evaluation_out_of_sample(
     output_path: Path,
     cell_type_key: str = "cell_type",
     save_plots: bool = True,
+    skip_distances: bool = False
 ) -> Tuple[pd.DataFrame, AnnData]:
     os.makedirs(output_path, exist_ok=True)
 
@@ -153,18 +154,19 @@ def evaluation_out_of_sample(
     control = eval_adata[eval_adata.obs["condition"] == "control"]
     ground_truth = eval_adata[eval_adata.obs["condition"] == "stimulated"]
 
-    distance_metrics = ["edistance", "wasserstein", "euclidean", "mean_pairwise", "mmd"]
     distance_scores = pd.DataFrame()
-    for distance_metric in distance_metrics:
-        print(f"Computing distance {distance_metric}")
-        distance = pertpy.tl.Distance(distance_metric, obsm_key="X_pca")
-        distance_scores[distance_metric] = [
-            distance.compare_distance(
-                pert=ground_truth.obsm["X_pca"],
-                ctrl=control.obsm["X_pca"],
-                pred=predicted.obsm["X_pca"],
-            )
-        ]
+    if not skip_distances:
+        distance_metrics = ["edistance", "wasserstein", "euclidean", "mean_pairwise", "mmd"]
+        for distance_metric in distance_metrics:
+            print(f"Computing distance {distance_metric}")
+            distance = pertpy.tl.Distance(distance_metric, obsm_key="X_pca")
+            distance_scores[distance_metric] = [
+                distance.compare_distance(
+                    pert=ground_truth.obsm["X_pca"],
+                    ctrl=control.obsm["X_pca"],
+                    pred=predicted.obsm["X_pca"],
+                )
+            ]
 
     """ DEGs """
     sc.tl.rank_genes_groups(
