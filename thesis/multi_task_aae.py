@@ -92,12 +92,13 @@ class FilmGenerator(nn.Module):
             f")"
         )
 
+
 class FilmLayer(nn.Module):
     def forward(self, x: Tensor, gamma: Tensor, beta: Tensor) -> Tensor:
         return gamma * x + beta
-    
+
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}()"    
+        return f"{self.__class__.__name__}()"
 
 
 class NetworkBlock(nn.Module):
@@ -240,9 +241,7 @@ class NetworkBlock(nn.Module):
         )
 
     def __str__(self) -> str:
-        hidden_layers = ", ".join(
-            [str(layer) for layer in self.hidden_layers]
-        )
+        hidden_layers = ", ".join([str(layer) for layer in self.hidden_layers])
         return (
             f"{self.__class__.__name__}(\n"
             f"  input_dim={self.input_dim},\n"
@@ -254,6 +253,7 @@ class NetworkBlock(nn.Module):
             f"  output_activation={self.output_activation}\n"
             f")"
         )
+
 
 class NetworkBlockFilm(NetworkBlock):
     def __init__(
@@ -317,6 +317,8 @@ class NetworkBlockFilm(NetworkBlock):
             f"  film_layer_factory={self.film_layer_factory}\n"
             f")"
         )
+
+
 class FilmLayerFactory:
     def __init__(
         self,
@@ -344,6 +346,7 @@ class FilmLayerFactory:
             f"  device={self.device}\n"
             f")"
         )
+
 
 class MultiTaskAae(nn.Module):
     """
@@ -405,11 +408,10 @@ class MultiTaskAae(nn.Module):
     def save(self, path: Path):
         os.makedirs(path.parent, exist_ok=True)
         torch.save(self.state_dict(), path)
-        
+
         config_path = path.parent / "config.txt"
         with open(config_path, "w") as f:
             f.write(str(self))
-            
 
     def __str__(self):
         return (
@@ -419,6 +421,7 @@ class MultiTaskAae(nn.Module):
             f"  discriminator={self.discriminator}\n"
             f")"
         )
+
 
 class Aae(nn.Module):
     def __init__(
@@ -441,7 +444,7 @@ class Aae(nn.Module):
     def get_latent_representation(self, x: Tensor) -> Tensor:
         with torch.no_grad():
             return self.encoder(x)
-        
+
     def __str__(self):
         return (
             f"{self.__class__.__name__}(\n"
@@ -450,9 +453,12 @@ class Aae(nn.Module):
             f")"
         )
 
+
 class NaultDataset(Dataset):
     def __init__(
-        self, dataset_condition_pipeline: Union[NaultMultiplePipeline, NaultSinglePipeline], target_cell_type: str
+        self,
+        dataset_condition_pipeline: Union[NaultMultiplePipeline, NaultSinglePipeline],
+        target_cell_type: str,
     ):
         self._dataset_condition_pipeline = dataset_condition_pipeline
         self.control_dose = self._dataset_condition_pipeline.control_dose
@@ -591,12 +597,7 @@ class MultiTaskAdversarialAutoencoderUtils:
                 lr=lr,
             )
         else:
-            self._train_end_to_end(
-                dataloader=dataloader,
-                tensorboard_path=tensorboard_path,
-                epochs=epochs,
-                lr=lr,
-            )
+            raise NotImplementedError
 
         self.model.save(save_path)
 
@@ -615,8 +616,11 @@ class MultiTaskAdversarialAutoencoderUtils:
         bce = nn.BCEWithLogitsLoss()
 
         self.model.train()
-
         for epoch in tqdm(range(epochs), desc="Training Epochs"):
+            reconstruction_loss_batches = []
+            adversarial_loss_batches = []
+            total_loss_batches = []
+            discriminator_loss_batches = []
             for gene_expressions, dosages, is_control in dataloader:
 
                 gene_expressions = gene_expressions.to(self.device)
@@ -633,10 +637,6 @@ class MultiTaskAdversarialAutoencoderUtils:
 
                 reconstruction_loss = mse(decoder_output, gene_expressions)
 
-                writer.add_scalar(
-                    "reconstruction_loss", reconstruction_loss.item(), epoch
-                )
-
                 """
                 Adversarial loss
                 """
@@ -644,8 +644,6 @@ class MultiTaskAdversarialAutoencoderUtils:
                 generator_output = latent
                 discriminator_output = self.model.discriminator(generator_output)
                 adv_loss = bce(discriminator_output, is_control)
-
-                writer.add_scalar("adv_loss", adv_loss.item(), epoch)
 
                 def is_discriminator_good_enough(d_loss):
                     return d_loss < 1
@@ -655,8 +653,6 @@ class MultiTaskAdversarialAutoencoderUtils:
                     total_loss = reconstruction_loss - coeff * adv_loss
                 else:
                     total_loss = reconstruction_loss
-
-                writer.add_scalar("total_loss", total_loss.item(), epoch)
 
                 optimizer_encoder.zero_grad()
                 optimizer_decoder.zero_grad()
@@ -677,66 +673,23 @@ class MultiTaskAdversarialAutoencoderUtils:
                 discriminator_loss.backward()
                 optimizer_discriminator.step()
 
-                writer.add_scalar(
-                    "discriminator_loss", discriminator_loss.item(), epoch
-                )
+                reconstruction_loss_batches.append(reconstruction_loss.item())
+                adversarial_loss_batches.append(adv_loss.item())
+                total_loss_batches.append(total_loss.item())
+                discriminator_loss_batches.append(discriminator_loss.item())
+
+            reconstruction_loss = torch.mean(torch.stack(reconstruction_loss_batches))
+            adv_loss = torch.mean(torch.stack(adversarial_loss_batches))
+            total_loss = torch.mean(torch.stack(total_loss_batches))
+            discriminator_loss = torch.mean(torch.stack(discriminator_loss_batches))
+
+            writer.add_scalar("reconstruction_loss", reconstruction_loss.item(), epoch)
+            writer.add_scalar("adv_loss", adv_loss.item(), epoch)
+            writer.add_scalar("total_loss", total_loss.item(), epoch)
+            writer.add_scalar("discriminator_loss", discriminator_loss.item(), epoch)
 
             tqdm.write(
                 f"Epoch [{epoch + 1}/{epochs}], rc loss: {reconstruction_loss.item()}, dc loss: {discriminator_loss.item()}, adv loss: {adv_loss.item()}"
-            )
-
-    def _train_end_to_end(
-        self,
-        dataloader,
-        tensorboard_path: Path,
-        epochs: int = 200,
-        lr: float = 0.0001,
-    ):
-        lambda_discriminator = nn.Parameter(torch.tensor(0.5, requires_grad=True))
-        writer = SummaryWriter(tensorboard_path)
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
-        optimizer_lambda = torch.optim.Adam([lambda_discriminator], lr=lr)
-        mse = nn.MSELoss()
-        bce = nn.BCEWithLogitsLoss()
-
-        self.model.train()
-
-        for epoch in tqdm(range(epochs), desc="Training Epochs"):
-            for gene_expressions, dosages, is_control in dataloader:
-
-                gene_expressions = gene_expressions.to(self.device)
-                dosages = dosages.to(self.device)
-                is_control = is_control.to(self.device)
-
-                latent = self.model.encoder(gene_expressions)
-                prediction_control_classification = self.model.discriminator(latent)
-                prediction_perturbed_expression = self.model.decoder(latent, dosages)
-
-                is_control = torch.reshape(is_control, (is_control.shape[0], 1))
-                discriminator_loss = bce(prediction_control_classification, is_control)
-                reconstruction_loss = mse(
-                    prediction_perturbed_expression, gene_expressions
-                )
-
-                lambda_value = torch.clamp(lambda_discriminator, 0.1, 2.0)
-                total_loss = reconstruction_loss + lambda_value * discriminator_loss
-
-                writer.add_scalar(
-                    "discriminator_loss", discriminator_loss.item(), epoch
-                )
-                writer.add_scalar(
-                    "reconstruction_loss", reconstruction_loss.item(), epoch
-                )
-                writer.add_scalar("total_loss", total_loss.item(), epoch)
-
-                optimizer.zero_grad()
-                optimizer_lambda.zero_grad()
-                total_loss.backward()
-                optimizer.step()
-                optimizer_lambda.step()
-
-            tqdm.write(
-                f"Epoch [{epoch + 1}/{epochs}], rc loss: {reconstruction_loss.item()}, dc loss: {discriminator_loss.item()}, total loss: {total_loss.item()}, lambda: {lambda_value.item()}"
             )
 
     def predict(self):
