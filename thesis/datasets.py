@@ -198,7 +198,7 @@ class NaultSinglePipeline(SingleConditionDatasetPipeline):
         dosages: float,
         perturbation: str = "tcdd",
     ) -> None:
-        self._control_dose = 0.0
+        self.control_dose = 0.0
         dose_key = dataset_pipeline.dosage_key
 
         dataset = dataset_pipeline.dataset

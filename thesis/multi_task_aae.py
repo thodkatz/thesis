@@ -1,12 +1,11 @@
 from __future__ import annotations
 import os
 from pathlib import Path
-import random
 from anndata import AnnData
 import numpy as np
 from torch import nn
 from torch import Tensor
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.nn.utils import spectral_norm
@@ -16,6 +15,7 @@ from tqdm import tqdm
 
 from thesis.datasets import (
     NaultMultiplePipeline,
+    NaultSinglePipeline,
 )
 from torch.utils.tensorboard import SummaryWriter
 from scipy import sparse
@@ -83,10 +83,21 @@ class FilmGenerator(nn.Module):
         beta = self.beta(condition)
         return gamma, beta
 
+    def __str__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(\n"
+            f"  hidden_network={self._hidden_network},\n"
+            f"  gamma={self.gamma},\n"
+            f"  beta={self.beta}\n"
+            f")"
+        )
 
 class FilmLayer(nn.Module):
     def forward(self, x: Tensor, gamma: Tensor, beta: Tensor) -> Tensor:
         return gamma * x + beta
+    
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}()"    
 
 
 class NetworkBlock(nn.Module):
@@ -107,6 +118,7 @@ class NetworkBlock(nn.Module):
         self.hidden_layer_dims = hidden_layer_dims
 
         self.norm_type = norm_type
+        self.weight_init_type = WeightInit.XAVIER
 
         if mask_rate is not None:
             self.mask_layer = nn.Dropout(mask_rate)
@@ -120,7 +132,7 @@ class NetworkBlock(nn.Module):
 
         for idx in range(len(hidden_layer_dims)):
             layer = nn.Linear(layers_dim[idx], layers_dim[idx + 1])
-            self.weight_init(layer)
+            self.weight_init(layer, self.weight_init_type)
 
             if self.norm_type == WeightNorm.BATCH:
                 self.hidden_layers.append(layer)
@@ -137,7 +149,7 @@ class NetworkBlock(nn.Module):
             self.dropout_layers.append(nn.Dropout(dropout_rate))
 
         self.output_layer = nn.Linear(layers_dim[-2], layers_dim[-1])
-        self.weight_init(self.output_layer)
+        self.weight_init(self.output_layer, self.weight_init_type)
 
         self.hidden_activation = self.get_activation(hidden_activation)
 
@@ -167,7 +179,7 @@ class NetworkBlock(nn.Module):
             raise NotImplementedError
 
     @staticmethod
-    def weight_init(layer: nn.Linear, weight_init: WeightInit = WeightInit.XAVIER):
+    def weight_init(layer: nn.Linear, weight_init: WeightInit):
         if weight_init == WeightInit.XAVIER:
             nn.init.xavier_uniform_(layer.weight)
         elif weight_init == WeightInit.KAIMING:
@@ -227,6 +239,21 @@ class NetworkBlock(nn.Module):
             output_activation=None,  # we use BCEWithLogitsLoss that integrates sigmoid
         )
 
+    def __str__(self) -> str:
+        hidden_layers = ", ".join(
+            [str(layer) for layer in self.hidden_layers]
+        )
+        return (
+            f"{self.__class__.__name__}(\n"
+            f"  input_dim={self.input_dim},\n"
+            f"  hidden_layers=[{hidden_layers}],\n"
+            f"  output_layer={self.output_layer},\n"
+            f"  weight_init={self.weight_init_type},\n"
+            f"  norm_type={self.norm_type},\n"
+            f"  hidden_activation={self.hidden_activation},\n"
+            f"  output_activation={self.output_activation}\n"
+            f")"
+        )
 
 class NetworkBlockFilm(NetworkBlock):
     def __init__(
@@ -282,7 +309,14 @@ class NetworkBlockFilm(NetworkBlock):
         )
         return encoder, decoder
 
-
+    def __str__(self):
+        network_block = super().__str__()
+        return (
+            f"{self.__class__.__name__}(\n"
+            f"  {network_block},\n"
+            f"  film_layer_factory={self.film_layer_factory}\n"
+            f")"
+        )
 class FilmLayerFactory:
     def __init__(
         self,
@@ -302,6 +336,14 @@ class FilmLayerFactory:
         ).to(self.device)
         return film_generator
 
+    def __str__(self):
+        return (
+            f"{self.__class__.__name__}(\n"
+            f"  input_dim={self.input_dim},\n"
+            f"  hidden_layers={self.hidden_layers},\n"
+            f"  device={self.device}\n"
+            f")"
+        )
 
 class MultiTaskAae(nn.Module):
     """
@@ -363,7 +405,20 @@ class MultiTaskAae(nn.Module):
     def save(self, path: Path):
         os.makedirs(path.parent, exist_ok=True)
         torch.save(self.state_dict(), path)
+        
+        config_path = path.parent / "config.txt"
+        with open(config_path, "w") as f:
+            f.write(str(self))
+            
 
+    def __str__(self):
+        return (
+            f"{self.__class__.__name__}(\n"
+            f"  encoder={self.encoder},\n"
+            f"  decoder={self.decoder},\n"
+            f"  discriminator={self.discriminator}\n"
+            f")"
+        )
 
 class Aae(nn.Module):
     def __init__(
@@ -386,15 +441,22 @@ class Aae(nn.Module):
     def get_latent_representation(self, x: Tensor) -> Tensor:
         with torch.no_grad():
             return self.encoder(x)
-
+        
+    def __str__(self):
+        return (
+            f"{self.__class__.__name__}(\n"
+            f"  encoder={self.encoder},\n"
+            f"  decoder={self.decoder}\n"
+            f")"
+        )
 
 class NaultDataset(Dataset):
     def __init__(
-        self, dataset_condition_pipeline: NaultMultiplePipeline, target_cell_type: str
+        self, dataset_condition_pipeline: Union[NaultMultiplePipeline, NaultSinglePipeline], target_cell_type: str
     ):
         self._dataset_condition_pipeline = dataset_condition_pipeline
-        self._control_dose = self._dataset_condition_pipeline.control_dose
-        self._target_cell_type = target_cell_type
+        self.control_dose = self._dataset_condition_pipeline.control_dose
+        self.target_cell_type = target_cell_type
         train_adata = dataset_condition_pipeline.get_train(
             target_cell_type=target_cell_type
         )
@@ -418,11 +480,11 @@ class NaultDataset(Dataset):
         # sanity check
         dosages_to_test = self.get_dosages_to_test()
         dosages_to_train = self.get_dosages_to_train()
-        dosages_to_train.remove(self._control_dose)
+        dosages_to_train.remove(self.control_dose)
         assert dosages_to_test == dosages_to_train
 
     def get_soft_labels_control(self, dosage: float):
-        if dosage == self._control_dose:
+        if dosage == self.control_dose:
             return np.random.uniform(low=0.7, high=1)
         else:
             return np.random.uniform(low=0, high=0.3)
@@ -455,7 +517,7 @@ class NaultDataset(Dataset):
 
     def get_stim_test(self, dose: Optional[float] = None):
         stim_test = self._dataset_condition_pipeline.get_stim_test(
-            target_cell_type=self._target_cell_type
+            target_cell_type=self.target_cell_type
         )
         if dose is not None:
             return stim_test[
@@ -466,12 +528,12 @@ class NaultDataset(Dataset):
 
     def get_ctrl_test(self):
         return self._dataset_condition_pipeline.get_ctrl_test(
-            target_cell_type=self._target_cell_type
+            target_cell_type=self.target_cell_type
         )
 
     def get_train(self):
         return self._dataset_condition_pipeline.get_train(
-            target_cell_type=self._target_cell_type
+            target_cell_type=self.target_cell_type
         )
 
     def get_dosages_to_train(self):
@@ -506,6 +568,7 @@ class MultiTaskAdversarialAutoencoderUtils:
         lr: float = 0.0001,
         is_alternating: bool = True,
     ):
+        print("Torch seed", torch.initial_seed())
         os.makedirs(tensorboard_path, exist_ok=True)
 
         generator = torch.Generator()
@@ -552,7 +615,7 @@ class MultiTaskAdversarialAutoencoderUtils:
         bce = nn.BCEWithLogitsLoss()
 
         self.model.train()
-        
+
         for epoch in tqdm(range(epochs), desc="Training Epochs"):
             for gene_expressions, dosages, is_control in dataloader:
 
@@ -564,55 +627,49 @@ class MultiTaskAdversarialAutoencoderUtils:
                 """
                 Reconstruction loss
                 """
-                
+
                 latent = self.model.encoder(gene_expressions)
                 decoder_output = self.model.decoder(latent, dosages)
 
-                reconstruction_loss = mse(
-                    decoder_output, gene_expressions
-                )
+                reconstruction_loss = mse(decoder_output, gene_expressions)
 
                 writer.add_scalar(
                     "reconstruction_loss", reconstruction_loss.item(), epoch
                 )
-                
+
                 """
                 Adversarial loss
                 """
-                
+
                 generator_output = latent
                 discriminator_output = self.model.discriminator(generator_output)
                 adv_loss = bce(discriminator_output, is_control)
-                
-                writer.add_scalar(
-                    "adv_loss", adv_loss.item(), epoch)
-                
+
+                writer.add_scalar("adv_loss", adv_loss.item(), epoch)
+
                 def is_discriminator_good_enough(d_loss):
                     return d_loss < 1
-                    
+
                 if is_discriminator_good_enough(adv_loss):
                     coeff = 1
                     total_loss = reconstruction_loss - coeff * adv_loss
                 else:
                     total_loss = reconstruction_loss
-                    
-                
-                writer.add_scalar(
-                    "total_loss", total_loss.item(), epoch
-                )
-                
+
+                writer.add_scalar("total_loss", total_loss.item(), epoch)
+
                 optimizer_encoder.zero_grad()
                 optimizer_decoder.zero_grad()
                 total_loss.backward()
                 optimizer_encoder.step()
                 optimizer_decoder.step()
-                
+
                 """
                 Discriminator loss
                 """
 
                 disc_input = self.model.encoder(gene_expressions).detach()
-                
+
                 prediction_control_classification = self.model.discriminator(disc_input)
                 discriminator_loss = bce(prediction_control_classification, is_control)
 
@@ -623,7 +680,6 @@ class MultiTaskAdversarialAutoencoderUtils:
                 writer.add_scalar(
                     "discriminator_loss", discriminator_loss.item(), epoch
                 )
-                
 
             tqdm.write(
                 f"Epoch [{epoch + 1}/{epochs}], rc loss: {reconstruction_loss.item()}, dc loss: {discriminator_loss.item()}, adv loss: {adv_loss.item()}"
@@ -642,9 +698,9 @@ class MultiTaskAdversarialAutoencoderUtils:
         optimizer_lambda = torch.optim.Adam([lambda_discriminator], lr=lr)
         mse = nn.MSELoss()
         bce = nn.BCEWithLogitsLoss()
-        
+
         self.model.train()
-        
+
         for epoch in tqdm(range(epochs), desc="Training Epochs"):
             for gene_expressions, dosages, is_control in dataloader:
 

@@ -1,16 +1,15 @@
 # %%
 from thesis import ROOT, SAVED_RESULTS_PATH
-from thesis.datasets import NaultMultiplePipeline, NaultPipeline
+from thesis.datasets import NaultMultiplePipeline, NaultPipeline, NaultSinglePipeline
 from thesis.evaluation import evaluation_out_of_sample
 from thesis.multi_task_aae import FilmLayerFactory, MultiTaskAae, MultiTaskAdversarialAutoencoderUtils, NaultDataset
 from anndata import AnnData
 import scanpy as sc
 import pandas as pd
-import numpy as np
 import os
-from typing import List, Optional
-from pandas import DataFrame
 import matplotlib.pyplot as plt
+from thesis.utils import setup_seed
+from thesis.utils import append_csv
 
 overwrite = True
 
@@ -23,23 +22,28 @@ FIGURES_PATH = SAVED_RESULTS_PATH / "multi_task_aae_eval" / "figures"
 
 os.makedirs(FIGURES_PATH, exist_ok=True)
 
-# %%
-dataset_pipeline = NaultMultiplePipeline(dataset_pipeline=NaultPipeline())
-# dataset_pipeline = PbmcSinglePipeline(
-#     dataset_pipeline=PbmcPipeline())
+setup_seed()
 
+is_single = True
+# %%
+
+if not is_single:
+    dataset_pipeline = NaultMultiplePipeline(dataset_pipeline=NaultPipeline())
+else:
+    dataset_pipeline = NaultSinglePipeline(
+        dataset_pipeline=NaultPipeline(),
+        dosages=30.0)
 
 # %%
-from thesis.utils import setup_seed
+
 
 dataset = NaultDataset(
     dataset_condition_pipeline=dataset_pipeline,
     target_cell_type="Hepatocytes - portal",
 )
 
-experiment_name = "loss_g_subtract_loss_d"
+experiment_name = "dosage_30"
 
-setup_seed()
 
 film_factory = FilmLayerFactory(
     input_dim=dataset.get_condition_len(),
@@ -70,6 +74,7 @@ else:
         film_layer_factory=film_factory,
     )
     
+    
 # %%
 
 model_utils = MultiTaskAdversarialAutoencoderUtils(dataset=dataset, model=model)
@@ -82,6 +87,8 @@ else:
         save_path=saved_path, tensorboard_path=tensorboard_path, epochs=100
     )
 
+
+# %%
 predictions = model_utils.predict()
 
 dfs = []
@@ -103,100 +110,42 @@ for idx, dosage in enumerate(dataset.get_dosages_to_test()):
 
     print("Finished evaluation for dosage", dosage)
 
-# %%
-from thesis.utils import append_csv
 
-load = False
-if load:
-    all_df = pd.read_csv(ROOT / "analysis" / "multi_task_aae.csv")
-else:
-    all_df = pd.concat(dfs, axis=0)
-    all_df['experiment'] = experiment_name
-    append_csv(all_df, ROOT / "analysis" / "multi_task_aae.csv")
+all_df = pd.concat(dfs, axis=0)
+all_df['experiment'] = experiment_name
+append_csv(all_df, ROOT / "analysis" / "multi_task_aae.csv")
 
-# %%
-def _plot_2d_metrics(
-    dataset: DataFrame,
-    title: str,
-    x_labels: List[str],
-    metrics: List[str] = BASELINE_METRICS,
-    file_name_to_save: Optional[str] = None,
-):
-    x = np.arange(len(x_labels))
-    
-    nrows = int(np.ceil(len(metrics) / 2))
-
-    fig, axes = plt.subplots(nrows, 2, figsize=(14, 10))
-    axes = axes.flatten()
-
-    for i, metric in enumerate(metrics):
-        ax = axes[i]
-
-        ax.bar(
-            x,
-            dataset[metric],
-            label='MultiTaskAae',
-            alpha=0.7,
-        )
-
-        ax.set_xticks(x)
-        ax.set_xticklabels(x_labels, rotation=45, ha="right")
-        ax.set_ylabel(metric)
-        # ax.set_title(f"Comparison of {metric}")
-        
-    if len(metrics) % 2 != 0:
-        fig.delaxes(axes[-1])
-
-    handles, labels = ax.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 1.05), ncol=4)
-    fig.suptitle(title)
-
-    plt.tight_layout(rect=[0, 0, 1, 0.96])  # Leave space at the top for the legend
-    if file_name_to_save:
-        plt.savefig(
-            FIGURES_PATH / f"{file_name_to_save}.pdf", dpi=300, bbox_inches="tight"
-        )
-    plt.show()
-
-
-def plot_2d_metrics_per_dosage(
-    title: str,
-    file_name_to_save: Optional[str] = None,
-    metrics=BASELINE_METRICS
-):
-    dosages = dataset.get_dosages_to_test()
-    assert len(dosages) > 1
-    _plot_2d_metrics(
-        dataset=all_df,
-        title=title,
-        x_labels=dosages,
-        file_name_to_save=file_name_to_save,
-        metrics=metrics
-    )
-
-# %%
-#plot_2d_metrics_per_dosage(title="")
-
-# %%
-#plot_2d_metrics_per_dosage(title="", metrics=DISTANCE_METRICS)
-
+overview_df = pd.DataFrame()
+overview_df['experiment'] = [experiment_name]
+overview_df['cell_type_test'] = dataset.target_cell_type
+overview_df['DEGs'] = all_df['DEGs'].mean()
+overview_df['r2mean_all_boostrap_mean'] = all_df['r2mean_all_boostrap_mean'].mean()
+overview_df['r2mean_top20_boostrap_mean'] = all_df['r2mean_top20_boostrap_mean'].mean()
+overview_df['r2mean_top100_boostrap_mean'] = all_df['r2mean_top100_boostrap_mean'].mean()
+append_csv(overview_df, ROOT / "analysis" / "multi_task_aae_overview.csv")
 
 
 # %%
-train_adata = dataset.get_train()
-train_tensor = dataset.get_gene_expressions(train_adata).to("cuda")
-latent = AnnData(X=model.get_latent_representation(train_tensor), obs=train_adata.obs.copy())
+def umaps(adata, title: str = ''):
+    tensor = dataset.get_gene_expressions(adata).to("cuda")
+    latent = AnnData(X=model.get_latent_representation(tensor), obs=adata.obs.copy())
 
-latent.obs['Dose'] = latent.obs['Dose'].astype('category')
+    latent.obs['Dose'] = latent.obs['Dose'].astype('category')
 
-sc.pp.neighbors(latent)
-sc.tl.umap(latent)
+    sc.pp.neighbors(latent)
+    sc.tl.umap(latent)
 
-sc.pl.umap(latent, color=['Dose'])
-plt.savefig(f"{FIGURES_PATH}/multi_task_aae_umap_dose_{experiment_name}.pdf", dpi=150, bbox_inches="tight")
+    sc.pl.umap(latent, color=['Dose'])
+    plt.savefig(f"{FIGURES_PATH}/multi_task_aae_umap_dose_{experiment_name}_{title}.pdf", dpi=150, bbox_inches="tight")
 
-sc.pl.umap(latent, color=['celltype'])
-plt.savefig(f"{FIGURES_PATH}/multi_task_aae_umap_celltype_{experiment_name}.pdf", dpi=150, bbox_inches="tight")
+    sc.pl.umap(latent, color=['celltype'])
+    plt.savefig(f"{FIGURES_PATH}/multi_task_aae_umap_celltype_{experiment_name}_{title}.pdf", dpi=150, bbox_inches="tight")
 
 
 # %%
+#umaps(dataset.get_train(), title='train')
+
+# %%
+
+#umaps(dataset.get_stim_test(), title='stim')
+

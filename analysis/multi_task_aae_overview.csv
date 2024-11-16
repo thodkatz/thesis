@@ -1,0 +1,2 @@
+experiment,cell_type_test,DEGs,r2mean_all_boostrap_mean,r2mean_top20_boostrap_mean,r2mean_top100_boostrap_mean
+dosage_30,Hepatocytes - portal,5.0,0.6801117630754105,0.8479356950334831,0.6232577950646737
