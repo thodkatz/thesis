@@ -28,8 +28,17 @@ DISTANCE_METRICS = ["edistance", "wasserstein", "euclidean", "mean_pairwise", "m
 
 METRICS = BASELINE_METRICS + DISTANCE_METRICS
 
-FIGURES_PATH = SAVED_RESULTS_PATH / "multi_task_aae_eval" / "figures"
+experiment_name = "multi_dosage_discr_good_enough_0_coeff_001"
 
+MULTI_TASK_AAE_PATH  = SAVED_RESULTS_PATH / "multi_task_aae" / experiment_name
+
+TENSORBOARD_PATH = SAVED_RESULTS_PATH / "runs" / "multi_task_aae" / experiment_name
+
+model_path = MULTI_TASK_AAE_PATH / "model.pt"
+
+FIGURES_PATH = MULTI_TASK_AAE_PATH / "figures"
+
+os.makedirs(MULTI_TASK_AAE_PATH, exist_ok=True)
 os.makedirs(FIGURES_PATH, exist_ok=True)
 
 setup_seed()
@@ -51,27 +60,24 @@ dataset = NaultDataset(
     target_cell_type="Hepatocytes - portal",
 )
 
-experiment_name = "dosage_no_adversarial"
 
 film_factory = FilmLayerFactory(
     input_dim=dataset.get_condition_len(),
     hidden_layers=[],
 )
 
-tensorboard_path = SAVED_RESULTS_PATH / "runs" / "multi_task_aae" / experiment_name
-saved_path = SAVED_RESULTS_PATH / "multi_task_aae.pt"
 
 hidden_layers_autoencoder = [256, 128]
 hidden_layers_discriminator = [64, 64]
 
-if saved_path.exists() and not overwrite:
+if model_path.exists() and not overwrite:
     print("Loading model")
     model = MultiTaskAae.load(
         num_features=dataset.get_num_features(),
         hidden_layers_autoencoder=hidden_layers_autoencoder,
         hidden_layers_discriminator=hidden_layers_discriminator,
         film_layer_factory=film_factory,
-        load_path=saved_path,
+        load_path=MULTI_TASK_AAE_PATH,
     )
     model = model.to("cuda")
 else:
@@ -88,14 +94,16 @@ else:
 model_utils = MultiTaskAdversarialAutoencoderUtils(dataset=dataset, model=model)
 
 
-if saved_path.exists() and not overwrite:
+if model_path.exists() and not overwrite:
     pass
 else:
     model_utils.train(
-        save_path=saved_path,
-        tensorboard_path=tensorboard_path,
+        save_path=MULTI_TASK_AAE_PATH,
+        tensorboard_path=TENSORBOARD_PATH,
         epochs=100,
-        is_adversarial=False,
+        is_adversarial=True,
+        coeff_adversarial=0.01,
+        discr_good_enough_epoch_threshold=0
     )
 
 
@@ -105,7 +113,7 @@ predictions = model_utils.predict()
 dfs = []
 
 for idx, dosage in enumerate(dataset.get_dosages_to_test()):
-    evaluation_path = SAVED_RESULTS_PATH / "multi_task_aae_eval" / f"dosage{dosage}"
+    evaluation_path = MULTI_TASK_AAE_PATH / f"dosage{dosage}"
 
     df, _ = evaluation_out_of_sample(
         control=dataset.get_ctrl_test(),
@@ -164,8 +172,8 @@ def umaps(adata, title: str = ""):
 
 
 # %%
-# umaps(dataset.get_train(), title='train')
+umaps(dataset.get_train(), title='train')
 
 # %%
 
-# umaps(dataset.get_stim_test(), title='stim')
+umaps(dataset.get_stim_test(), title='stim')
