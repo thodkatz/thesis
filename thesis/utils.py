@@ -123,9 +123,15 @@ def seed_worker(worker_id):
     random.seed(worker_seed)
 
 
-def pretty_print(obj):
-    attributes = "\n".join(
-        f"  {key}: {value.__class__.__name__ if hasattr(value, '__class__') else value}"
-        for key, value in obj.__dict__.items()
-    )
+def pretty_print(obj, skip_private=True):
+    attributes = ''
+    for key, value in obj.__dict__.items():
+        if key.startswith("_") and skip_private:
+            continue
+        attributes += f"{key}: {value}\n"
+    if not hasattr(obj, "_modules"):
+        return f"{obj.__class__.__name__}(\n{attributes}\n)"
+    
+    for key, value in obj._modules.items():
+        attributes += f"{key}: {value}\n"
     return f"{obj.__class__.__name__}(\n{attributes}\n)"

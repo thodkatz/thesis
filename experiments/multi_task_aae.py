@@ -28,7 +28,7 @@ DISTANCE_METRICS = ["edistance", "wasserstein", "euclidean", "mean_pairwise", "m
 
 METRICS = BASELINE_METRICS + DISTANCE_METRICS
 
-experiment_name = "multi_dosage_adv_control_real_perturb_fake_fix_threshold_01_lr1e-4_second_attempt"
+experiment_name = "multi_dosage_adv_control_real_perturb_fake_fix_threshold_01_lr1e-4_warmup_ae_50_strict_soft_labels"
 
 MULTI_TASK_AAE_PATH  = SAVED_RESULTS_PATH / "multi_task_aae" / experiment_name
 
@@ -103,7 +103,8 @@ else:
         epochs=100,
         is_adversarial=True,
         coeff_adversarial=0.1,
-        discr_good_enough_epoch_threshold=0,
+        discr_good_enough_epoch_threshold=55,
+        warmup_autoencoder=50,
         lr=1e-4,
         batch_size=64,
     )

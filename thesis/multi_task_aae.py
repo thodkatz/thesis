@@ -238,6 +238,7 @@ class NetworkBlock(nn.Module):
     def __str__(self) -> str:
         return pretty_print(self)
 
+
 class NetworkBlockFilm(NetworkBlock):
     def __init__(
         self,
@@ -295,6 +296,7 @@ class NetworkBlockFilm(NetworkBlock):
     def __str__(self) -> str:
         return pretty_print(self)
 
+
 class FilmLayerFactory:
     def __init__(
         self,
@@ -316,6 +318,7 @@ class FilmLayerFactory:
 
     def __str__(self) -> str:
         return pretty_print(self)
+
 
 class MultiTaskAae(nn.Module):
     """
@@ -413,6 +416,7 @@ class Aae(nn.Module):
     def __str__(self) -> str:
         return pretty_print(self)
 
+
 class NaultDataset(Dataset):
     def __init__(
         self,
@@ -443,6 +447,11 @@ class NaultDataset(Dataset):
 
         assert len(self.gene_expressions) == len(self.dosages)
 
+        self._low_control_label = 0.9
+        self._high_control_label = 1.0
+        self._high_perturbed_label = 1 - self._low_control_label
+        self._low_perturbed_label = 0.0
+
         # sanity check
         dosages_to_test = self.get_dosages_to_test()
         dosages_to_train = self.get_dosages_to_train()
@@ -451,9 +460,13 @@ class NaultDataset(Dataset):
 
     def get_soft_labels_control(self, dosage: float):
         if dosage == self.control_dose:
-            return np.random.uniform(low=0.7, high=1)
+            return np.random.uniform(
+                low=self._low_control_label, high=self._high_control_label
+            )
         else:
-            return np.random.uniform(low=0, high=0.3)
+            return np.random.uniform(
+                low=self._low_perturbed_label, high=self._high_control_label
+            )
 
     def get_gene_expressions(self, adata: AnnData) -> Tensor:
         if sparse.issparse(adata.X):
@@ -526,6 +539,9 @@ class NaultDataset(Dataset):
     def __len__(self):
         return len(self.gene_expressions)
 
+    def __str__(self):
+        return f"Dataset(target: {self.target_cell_type}, high_control: {self._high_control_label}, low_control: {self._low_control_label}, high_perturbed: {self._high_perturbed_label}, low_perturbed: {self._low_perturbed_label}, high_perturbed: {self._high_perturbed_label}"
+
 
 class MultiTaskAdversarialAutoencoderTrainer:
     def __init__(
@@ -536,6 +552,7 @@ class MultiTaskAdversarialAutoencoderTrainer:
         device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discr_good_enough_epoch_threshold: int = 10,
+        warmup_autoencoder: int = 50,
         epochs: int = 100,
         lr: float = 0.001,
         batch_size: int = 64,
@@ -551,7 +568,6 @@ class MultiTaskAdversarialAutoencoderTrainer:
         self.is_adversarial = is_adversarial
         self.coeff_adversarial = coeff_adversarial
         self.coeff_reconstruction = 1.0 - self.coeff_adversarial
-        self.discr_good_enough_epoch_threshold = discr_good_enough_epoch_threshold
 
         print("Torch seed", torch.initial_seed())
         os.makedirs(tensorboard_path, exist_ok=True)
@@ -583,20 +599,29 @@ class MultiTaskAdversarialAutoencoderTrainer:
             self.model.discriminator.parameters(), lr=lr
         )
 
-        self.warmup_steps = 100
+        self.warmup_learning_rate_steps = 100
+        self.discr_good_enough_epoch_threshold = discr_good_enough_epoch_threshold
+        self.warmup_autoencoder = warmup_autoencoder
+        assert self.discr_good_enough_epoch_threshold >= self.warmup_autoencoder
+        assert self.discr_good_enough_epoch_threshold <= self.epochs
+        assert self.warmup_autoencoder <= self.epochs
 
-        def warmup(step):
-            if step < self.warmup_steps:
+        def warmup_learning_rate(step):
+            if step < self.warmup_learning_rate_steps:
                 # Linear warm-up
-                return step / self.warmup_steps
+                return step / self.warmup_learning_rate_steps
             else:
                 # cosine annealing?
                 return 1
 
-        self.scheduler_encoder = LambdaLR(self.optimizer_encoder, lr_lambda=warmup)
-        self.scheduler_decoder = LambdaLR(self.optimizer_decoder, lr_lambda=warmup)
+        self.scheduler_encoder = LambdaLR(
+            self.optimizer_encoder, lr_lambda=warmup_learning_rate
+        )
+        self.scheduler_decoder = LambdaLR(
+            self.optimizer_decoder, lr_lambda=warmup_learning_rate
+        )
         self.scheduler_discriminator = LambdaLR(
-            self.optimizer_discriminator, lr_lambda=warmup
+            self.optimizer_discriminator, lr_lambda=warmup_learning_rate
         )
 
         self.scheduler_encoder_plateu = ReduceLROnPlateau(
@@ -676,6 +701,10 @@ class MultiTaskAdversarialAutoencoderTrainer:
                 self.scheduler_encoder.step()
                 self.scheduler_decoder.step()
 
+                if epoch <= self.warmup_autoencoder:
+                    discriminator_loss_batches.append(np.NaN)
+                    continue
+
                 """
                 Discriminator loss
                 """
@@ -701,7 +730,7 @@ class MultiTaskAdversarialAutoencoderTrainer:
 
             adv_loss = np.mean(adversarial_loss_batches)
             total_loss = np.mean(total_loss_batches)
-            discriminator_loss = np.mean(discriminator_loss_batches)
+            discriminator_loss = np.nanmean(discriminator_loss_batches)
 
             # self.scheduler_encoder_plateu.step(total_loss)
             # self.scheduler_decoder_plateu.step(reconstruction_loss)
@@ -759,6 +788,7 @@ class MultiTaskAdversarialAutoencoderTrainer:
     def __str__(self) -> str:
         return pretty_print(self)
 
+
 class MultiTaskAdversarialAutoencoderUtils:
     def __init__(
         self,
@@ -781,6 +811,7 @@ class MultiTaskAdversarialAutoencoderUtils:
         is_adversarial: bool = True,
         coeff_adversarial: float = 0.1,
         discr_good_enough_epoch_threshold: int = 10,
+        warmup_autoencoder: int = 50,
     ):
         trainer = MultiTaskAdversarialAutoencoderTrainer(
             model=self.model,
@@ -793,6 +824,7 @@ class MultiTaskAdversarialAutoencoderUtils:
             tensorboard_path=tensorboard_path,
             coeff_adversarial=coeff_adversarial,
             discr_good_enough_epoch_threshold=discr_good_enough_epoch_threshold,
+            warmup_autoencoder=warmup_autoencoder,
         )
         trainer()
 
