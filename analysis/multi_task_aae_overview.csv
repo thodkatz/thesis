@@ -15,3 +15,11 @@ multi_dosage_discr_good_enough_0_coeff_01,Hepatocytes - portal,22.75,0.891968938
 multi_dosage_discr_good_enough_5_coeff_01,Hepatocytes - portal,17.0,0.8800867980065119,0.8966707747715029,0.839146080049255
 multi_dosage_discr_good_enough_0_coeff_005,Hepatocytes - portal,29.625,0.8900640200829358,0.8914804580139346,0.8597771338397648
 multi_dosage_discr_good_enough_0_coeff_001,Hepatocytes - portal,20.25,0.8943533975424366,0.9358169710738286,0.8896383623857549
+multi_dosage_adv_control_real_perturb_fake,Hepatocytes - portal,17.125,0.8748967147263593,0.8921135847343844,0.8498455489906633
+multi_dosage_adv_control_real_perturb_fake_fix_threshold,Hepatocytes - portal,24.0,0.8920825887088761,0.8915427284148697,0.8597019807340931
+multi_dosage_adv_control_real_perturb_fake_fix_threshold_005,Hepatocytes - portal,27.25,0.8582192008781717,0.8687383980356441,0.8198765382846339
+multi_dosage_adv_control_real_perturb_fake_fix_threshold_005_lr1e-4,Hepatocytes - portal,14.25,0.8323706729726759,0.8559165788867547,0.8071277598346247
+multi_dosage_adv_control_real_perturb_fake_fix_threshold_005_lr1e-3_plateu,Hepatocytes - portal,0.125,0.00037794140719030986,0.02317646017041057,0.01367901358218706
+multi_dosage_adv_control_real_perturb_fake_fix_threshold_005_lr1e-4_plateu,Hepatocytes - portal,0.125,0.00037794140719030986,0.02317646017041057,0.01367901358218706
+multi_dosage_adv_control_real_perturb_fake_fix_threshold_01_lr1e-4_plateu,Hepatocytes - portal,0.125,0.00037794140719030986,0.02317646017041057,0.01367901358218706
+multi_dosage_adv_control_real_perturb_fake_fix_threshold_01_lr1e-5_plateu,Hepatocytes - portal,0.125,0.00037794140719030986,0.02317646017041057,0.01367901358218706

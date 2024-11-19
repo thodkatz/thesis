@@ -113,11 +113,19 @@ def setup_seed():
 def seed_worker(worker_id):
     """
     For the Dataloaders
-    
+
     todo: use this for scButterfly dataloading
     todo: inverstiage if scvi handles the randomness of dataloaders
     """
-    #worker_seed = (torch.initial_seed() + worker_id) % 2**32
+    # worker_seed = (torch.initial_seed() + worker_id) % 2**32
     worker_seed = SEED + worker_id
     np.random.seed(worker_seed)
     random.seed(worker_seed)
+
+
+def pretty_print(obj):
+    attributes = "\n".join(
+        f"  {key}: {value.__class__.__name__ if hasattr(value, '__class__') else value}"
+        for key, value in obj.__dict__.items()
+    )
+    return f"{obj.__class__.__name__}(\n{attributes}\n)"
