@@ -1,4 +1,5 @@
 from __future__ import annotations
+from abc import ABC, abstractmethod
 import os
 from pathlib import Path
 from anndata import AnnData
@@ -383,10 +384,6 @@ class MultiTaskAae(nn.Module):
         model_path = path / "model.pt"
         torch.save(self.state_dict(), model_path)
 
-        config_path = path / "config.txt"
-        with open(config_path, "w") as f:
-            f.write(str(self))
-
     def __str__(self) -> str:
         return pretty_print(self)
 
@@ -431,6 +428,11 @@ class NaultDataset(Dataset):
         )
         print("Train data size:", len(train_adata))
 
+        self._low_control_label = 0.8
+        self._high_control_label = 1.0
+        self._high_perturbed_label = 1 - self._low_control_label
+        self._low_perturbed_label = 0.0
+
         self.gene_expressions = self.get_gene_expressions(train_adata)
 
         self._dosages_unique = dataset_condition_pipeline.dataset_pipeline.get_dosages()
@@ -446,11 +448,6 @@ class NaultDataset(Dataset):
         self.dosages = self.get_one_hot_encoded_dosages(dosages)
 
         assert len(self.gene_expressions) == len(self.dosages)
-
-        self._low_control_label = 0.9
-        self._high_control_label = 1.0
-        self._high_perturbed_label = 1 - self._low_control_label
-        self._low_perturbed_label = 0.0
 
         # sanity check
         dosages_to_test = self.get_dosages_to_test()
@@ -543,34 +540,31 @@ class NaultDataset(Dataset):
         return f"Dataset(target: {self.target_cell_type}, high_control: {self._high_control_label}, low_control: {self._low_control_label}, high_perturbed: {self._high_perturbed_label}, low_perturbed: {self._low_perturbed_label}, high_perturbed: {self._high_perturbed_label}"
 
 
-class MultiTaskAdversarialAutoencoderTrainer:
+class Trainer(ABC):
     def __init__(
         self,
         model: MultiTaskAae,
         dataset: NaultDataset,
-        tensorboard_path: Path,
+        tensorboard: Union[Path, SummaryWriter],
+        batch_size: int,
+        lr: float,
         device: str = "cuda",
-        coeff_adversarial: float = 0.1,
-        discr_good_enough_epoch_threshold: int = 10,
-        warmup_autoencoder: int = 50,
-        epochs: int = 100,
-        lr: float = 0.001,
-        batch_size: int = 64,
-        is_adversarial: bool = True,
     ):
         self.model = model
-        self.dataset = dataset
         self.device = device
-        self.model.to(self.device)
-        self.epochs = epochs
-        self.lr = 1e-4
-        self.batch_size = 64
-        self.is_adversarial = is_adversarial
-        self.coeff_adversarial = coeff_adversarial
-        self.coeff_reconstruction = 1.0 - self.coeff_adversarial
+        self.dataset = dataset
+        self.model = self.model.to(self.device)
+        self.tensorboard_path = tensorboard
+        self.batch_size = batch_size
+        self.lr = lr
 
         print("Torch seed", torch.initial_seed())
-        os.makedirs(tensorboard_path, exist_ok=True)
+
+        if isinstance(tensorboard, Path):
+            os.makedirs(tensorboard, exist_ok=True)
+            self.writer = SummaryWriter(tensorboard)
+        else:
+            self.writer = tensorboard
 
         generator = torch.Generator()
         generator.manual_seed(SEED)
@@ -584,27 +578,54 @@ class MultiTaskAdversarialAutoencoderTrainer:
             generator=generator,
         )
 
-        self.writer = SummaryWriter(tensorboard_path)
+    def save(self, path: Path):
+        self.model.save(path)
+        with open(path / "config.txt", "w") as f:
+            f.write(str(self))
+
+    @abstractmethod
+    def train(self):
+        pass
+
+    def __call__(self):
+        self.train()
+
+    def __str__(self) -> str:
+        return pretty_print(self)
+
+
+class MultiTaskAutoencoderTrainer(Trainer):
+    def __init__(
+        self,
+        model: MultiTaskAae,
+        dataset: NaultDataset,
+        tensorboard: Union[Path, SummaryWriter],
+        device: str = "cuda",
+        epochs: int = 100,
+        lr: float = 0.001,
+        batch_size: int = 64,
+    ):
+        super().__init__(
+            model=model,
+            dataset=dataset,
+            tensorboard=tensorboard,
+            device=device,
+            lr=lr,
+            batch_size=batch_size,
+        )
+
+        self.epochs = epochs
 
         self.mse = nn.MSELoss()
-        self.bce = nn.BCEWithLogitsLoss()
 
         self.optimizer_encoder = torch.optim.Adam(
-            self.model.encoder.parameters(), lr=lr
+            self.model.encoder.parameters(), lr=self.lr
         )
         self.optimizer_decoder = torch.optim.Adam(
-            self.model.decoder.parameters(), lr=lr
-        )
-        self.optimizer_discriminator = torch.optim.Adam(
-            self.model.discriminator.parameters(), lr=lr
+            self.model.decoder.parameters(), lr=self.lr
         )
 
         self.warmup_learning_rate_steps = 100
-        self.discr_good_enough_epoch_threshold = discr_good_enough_epoch_threshold
-        self.warmup_autoencoder = warmup_autoencoder
-        assert self.discr_good_enough_epoch_threshold >= self.warmup_autoencoder
-        assert self.discr_good_enough_epoch_threshold <= self.epochs
-        assert self.warmup_autoencoder <= self.epochs
 
         def warmup_learning_rate(step):
             if step < self.warmup_learning_rate_steps:
@@ -620,22 +641,183 @@ class MultiTaskAdversarialAutoencoderTrainer:
         self.scheduler_decoder = LambdaLR(
             self.optimizer_decoder, lr_lambda=warmup_learning_rate
         )
-        self.scheduler_discriminator = LambdaLR(
+
+    def train(self):
+        for epoch in tqdm(range(self.epochs), desc="Training Epochs"):
+            reconstruction_loss_batches = []
+            for gene_expressions, dosages, is_control in self.dataloader:
+                gene_expressions = gene_expressions.to(self.device)
+                dosages = dosages.to(self.device)
+                is_control = is_control.to(self.device)
+                is_control = torch.reshape(is_control, (is_control.shape[0], 1))
+
+                latent = self.model.encoder(gene_expressions)
+                decoder_output = self.model.decoder(latent, dosages)
+
+                reconstruction_loss = self.mse(decoder_output, gene_expressions)
+                reconstruction_loss_batches.append(reconstruction_loss.item())
+
+                self.optimizer_encoder.zero_grad()
+                self.optimizer_decoder.zero_grad()
+                reconstruction_loss.backward()
+                self.optimizer_encoder.step()
+                self.optimizer_decoder.step()
+                self.scheduler_decoder.step()
+                self.scheduler_encoder.step()
+
+            reconstruction_loss = np.mean(reconstruction_loss_batches)
+            self.writer.add_scalar("reconstruction_loss", reconstruction_loss, epoch)
+
+            tqdm_text = (
+                f"Epoch [{epoch + 1}/{self.epochs}], rc loss: {reconstruction_loss}"
+            )
+            tqdm.write(tqdm_text)
+
+
+class MultiTaskAdversarialAutoencoderTrainer(Trainer):
+    def __init__(
+        self,
+        model: MultiTaskAae,
+        dataset: NaultDataset,
+        tensorboard_path: Path,
+        device: str = "cuda",
+        coeff_adversarial: float = 0.1,
+        discriminator_pretrain_epochs: int = 50,
+        autoencoder_pretrain_epochs: int = 50,
+        adversarial_epochs: int = 50,
+        lr: float = 1e-4,
+        batch_size: int = 64,
+    ):
+        super().__init__(
+            model=model,
+            dataset=dataset,
+            tensorboard=tensorboard_path,
+            device=device,
+            lr=lr,
+            batch_size=batch_size,
+        )
+
+        self.coeff_adversarial = coeff_adversarial
+        self.coeff_reconstruction = 1.0 - self.coeff_adversarial
+
+        self.adversarial_epochs = adversarial_epochs
+        self.discriminator_epochs = discriminator_pretrain_epochs
+        self.autoencoder_epochs = autoencoder_pretrain_epochs
+
+        self.mse = nn.MSELoss()
+        self.bce = nn.BCEWithLogitsLoss()
+
+        self.optimizer_encoder = torch.optim.Adam(
+            self.model.encoder.parameters(), lr=lr
+        )
+        self.optimizer_decoder = torch.optim.Adam(
+            self.model.decoder.parameters(), lr=lr
+        )
+        self.optimizer_discriminator = torch.optim.Adam(
+            self.model.discriminator.parameters(), lr=lr
+        )
+
+        self.autoencoder_trainer = MultiTaskAutoencoderTrainer(
+            model=self.model,
+            dataset=self.dataset,
+            tensorboard=self.writer,
+            device=self.device,
+            epochs=self.autoencoder_epochs,
+            lr=self.lr,
+            batch_size=self.batch_size,
+        )
+
+        self.warmup_learning_rate_steps = 100
+
+        def warmup_learning_rate(step):
+            if step < self.warmup_learning_rate_steps:
+                # Linear warm-up
+                return step / self.warmup_learning_rate_steps
+            else:
+                # cosine annealing?
+                return 1
+
+        self.scheduler_encoder_adversarial = LambdaLR(
+            self.optimizer_encoder, lr_lambda=warmup_learning_rate
+        )
+        self.scheduler_decoder_adversarial = LambdaLR(
+            self.optimizer_decoder, lr_lambda=warmup_learning_rate
+        )
+        self.scheduler_discriminator_pretrain = LambdaLR(
+            self.optimizer_discriminator, lr_lambda=warmup_learning_rate
+        )
+        self.scheduler_discriminator_adversarial = LambdaLR(
             self.optimizer_discriminator, lr_lambda=warmup_learning_rate
         )
 
-        self.scheduler_encoder_plateu = ReduceLROnPlateau(
-            self.optimizer_encoder, mode="min", factor=0.1, patience=5
-        )
-        self.scheduler_decoder_plateu = ReduceLROnPlateau(
-            self.optimizer_decoder, mode="min", factor=0.1, patience=5
-        )
-        self.scheduler_discriminator_plateu = ReduceLROnPlateau(
-            self.optimizer_discriminator, mode="min", factor=0.1, patience=5
-        )
+        # self.scheduler_encoder_plateu = ReduceLROnPlateau(
+        #     self.optimizer_encoder, mode="min", factor=0.1, patience=5
+        # )
+        # self.scheduler_decoder_plateu = ReduceLROnPlateau(
+        #     self.optimizer_decoder, mode="min", factor=0.1, patience=5
+        # )
+        # self.scheduler_discriminator_plateu = ReduceLROnPlateau(
+        #     self.optimizer_discriminator, mode="min", factor=0.1, patience=5
+        # )
 
-    def train_adversarial(self):
-        for epoch in tqdm(range(self.epochs), desc="Training Epochs"):
+    def _forward_discriminator(
+        self, gene_expression: Tensor, is_control_soft_labels: Tensor
+    ):
+        latent = self.model.encoder(gene_expression).detach()
+        discriminator_output = self.model.discriminator(latent)
+
+        discriminator_loss = self.bce(discriminator_output, is_control_soft_labels)
+
+        self.optimizer_discriminator.zero_grad()
+        discriminator_loss.backward()
+        self.optimizer_discriminator.step()
+
+        return discriminator_loss.item()
+
+    def train(self):
+        """
+        Pretrain autoencoder
+        """
+        self.autoencoder_trainer.train()
+
+        """
+        Pretrain discriminator
+        """
+        for epoch in tqdm(
+            range(self.discriminator_epochs), desc="Pretraining Discriminator"
+        ):
+            discriminator_loss_batches = []
+            for (
+                gene_expressions,
+                dosages_one_hot_encoded,
+                is_control_soft_labels,
+            ) in self.dataloader:
+                gene_expressions = gene_expressions.to(self.device)
+                dosages_one_hot_encoded = dosages_one_hot_encoded.to(self.device)
+                is_control_soft_labels = is_control_soft_labels.to(self.device)
+                is_control_soft_labels = torch.reshape(
+                    is_control_soft_labels, (is_control_soft_labels.shape[0], 1)
+                )
+
+                discriminator_loss = self._forward_discriminator(
+                    gene_expressions, is_control_soft_labels
+                )
+                discriminator_loss_batches.append(discriminator_loss)
+                self.scheduler_discriminator_pretrain.step()
+
+            discriminator_loss = np.mean(discriminator_loss_batches)
+            tqdm_text = f"Epoch: {epoch}, Discriminator loss: {discriminator_loss:.4f}"
+            tqdm.write(tqdm_text)
+            self.writer.add_scalar(
+                "pretrain/discriminator_loss", discriminator_loss, epoch
+            )
+
+        """
+        Adversarial joint training of autoencoder with discriminator
+        """
+        for epoch in tqdm(
+            range(self.adversarial_epochs), desc="Training Adversarial Epochs"
+        ):
             reconstruction_loss_batches = []
             adversarial_loss_batches = []
             total_loss_batches = []
@@ -676,18 +858,10 @@ class MultiTaskAdversarialAutoencoderTrainer:
                 discriminator_output = self.model.discriminator(perturb_latent)
                 adv_loss = self.bce(discriminator_output, fake_perturb_labels)
 
-                def is_discriminator_good_enough(
-                    epoch, max_epochs=self.discr_good_enough_epoch_threshold
-                ):
-                    return epoch >= max_epochs
-
-                if is_discriminator_good_enough(epoch):
-                    total_loss = (
-                        self.coeff_reconstruction * reconstruction_loss
-                        + self.coeff_adversarial * adv_loss
-                    )
-                else:
-                    total_loss = reconstruction_loss
+                total_loss = (
+                    self.coeff_reconstruction * reconstruction_loss
+                    + self.coeff_adversarial * adv_loss
+                )
 
                 adversarial_loss_batches.append(adv_loss.item())
                 total_loss_batches.append(total_loss.item())
@@ -698,35 +872,24 @@ class MultiTaskAdversarialAutoencoderTrainer:
                 self.optimizer_encoder.step()
                 self.optimizer_decoder.step()
 
-                self.scheduler_encoder.step()
-                self.scheduler_decoder.step()
-
-                if epoch <= self.warmup_autoencoder:
-                    discriminator_loss_batches.append(np.NaN)
-                    continue
+                self.scheduler_encoder_adversarial.step()
+                self.scheduler_decoder_adversarial.step()
 
                 """
                 Discriminator loss
                 """
-
-                generator_output = self.model.encoder(gene_expressions).detach()
-                discriminator_output = self.model.discriminator(generator_output)
-                discriminator_loss = self.bce(
-                    discriminator_output, is_control_soft_labels
+                discriminator_loss = self._forward_discriminator(
+                    gene_expressions, is_control_soft_labels
                 )
-                discriminator_loss_batches.append(discriminator_loss.item())
+                discriminator_loss_batches.append(discriminator_loss)
 
-                self.optimizer_discriminator.zero_grad()
-                discriminator_loss.backward()
-                self.optimizer_discriminator.step()
-
-                self.scheduler_discriminator.step()
+                self.scheduler_discriminator_adversarial.step()
 
             reconstruction_loss = np.mean(reconstruction_loss_batches)
-            self.writer.add_scalar("reconstruction_loss", reconstruction_loss, epoch)
-            tqdm_text = (
-                f"Epoch [{epoch + 1}/{self.epochs}], rc loss: {reconstruction_loss}"
+            self.writer.add_scalar(
+                "adv/reconstruction_loss", reconstruction_loss, epoch
             )
+            tqdm_text = f"Epoch [{epoch + 1}/{self.adversarial_epochs}], rc loss: {reconstruction_loss}"
 
             adv_loss = np.mean(adversarial_loss_batches)
             total_loss = np.mean(total_loss_batches)
@@ -736,57 +899,12 @@ class MultiTaskAdversarialAutoencoderTrainer:
             # self.scheduler_decoder_plateu.step(reconstruction_loss)
             # self.scheduler_discriminator_plateu.step(discriminator_loss)
 
-            self.writer.add_scalar("adv_loss", adv_loss, epoch)
-            self.writer.add_scalar("total_loss", total_loss, epoch)
-            self.writer.add_scalar("discriminator_loss", discriminator_loss, epoch)
+            self.writer.add_scalar("adv/adv_loss", adv_loss, epoch)
+            self.writer.add_scalar("adv/total_loss", total_loss, epoch)
+            self.writer.add_scalar("adv/discriminator_loss", discriminator_loss, epoch)
             tqdm_text += f", adv loss: {adv_loss}, total loss: {total_loss}, discriminator loss: {discriminator_loss}"
 
             tqdm.write(tqdm_text)
-
-    def train_autoencoder(self):
-        for epoch in tqdm(range(self.epochs), desc="Training Epochs"):
-            reconstruction_loss_batches = []
-            for gene_expressions, dosages, is_control in self.dataloader:
-                gene_expressions = gene_expressions.to(self.device)
-                dosages = dosages.to(self.device)
-                is_control = is_control.to(self.device)
-                is_control = torch.reshape(is_control, (is_control.shape[0], 1))
-
-                latent = self.model.encoder(gene_expressions)
-                decoder_output = self.model.decoder(latent, dosages)
-
-                reconstruction_loss = self.mse(decoder_output, gene_expressions)
-                reconstruction_loss_batches.append(reconstruction_loss.item())
-
-                self.optimizer_encoder.zero_grad()
-                self.optimizer_decoder.zero_grad()
-                reconstruction_loss.backward()
-                self.optimizer_encoder.step()
-                self.optimizer_decoder.step()
-                self.scheduler_decoder.step()
-                self.scheduler_encoder.step()
-
-            reconstruction_loss = np.mean(reconstruction_loss_batches)
-            self.writer.add_scalar("reconstruction_loss", reconstruction_loss, epoch)
-
-            tqdm_text = (
-                f"Epoch [{epoch + 1}/{self.epochs}], rc loss: {reconstruction_loss}"
-            )
-            tqdm.write(tqdm_text)
-
-    def save(self, save_path: Path):
-        trainer_path = save_path / "trainer_config.txt"
-        with trainer_path.open("w") as f:
-            f.write(str(self))
-
-    def __call__(self):
-        if self.is_adversarial:
-            self.train_adversarial()
-        else:
-            self.train_autoencoder()
-
-    def __str__(self) -> str:
-        return pretty_print(self)
 
 
 class MultiTaskAdversarialAutoencoderUtils:
@@ -804,32 +922,12 @@ class MultiTaskAdversarialAutoencoderUtils:
     def train(
         self,
         save_path: Path,
-        tensorboard_path: Path,
-        epochs: int = 100,
-        batch_size: int = 64,
-        lr: float = 0.001,
-        is_adversarial: bool = True,
-        coeff_adversarial: float = 0.1,
-        discr_good_enough_epoch_threshold: int = 10,
-        warmup_autoencoder: int = 50,
+        trainer: Union[
+            MultiTaskAdversarialAutoencoderTrainer, MultiTaskAutoencoderTrainer
+        ],
     ):
-        trainer = MultiTaskAdversarialAutoencoderTrainer(
-            model=self.model,
-            dataset=self.dataset,
-            device=self.device,
-            epochs=epochs,
-            batch_size=batch_size,
-            lr=lr,
-            is_adversarial=is_adversarial,
-            tensorboard_path=tensorboard_path,
-            coeff_adversarial=coeff_adversarial,
-            discr_good_enough_epoch_threshold=discr_good_enough_epoch_threshold,
-            warmup_autoencoder=warmup_autoencoder,
-        )
         trainer()
-
         trainer.save(save_path)
-        self.model.save(save_path)
 
     def predict(self):
         control_test_adata = self.dataset.get_ctrl_test()

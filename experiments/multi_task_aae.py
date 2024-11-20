@@ -5,6 +5,7 @@ from thesis.evaluation import evaluation_out_of_sample
 from thesis.multi_task_aae import (
     FilmLayerFactory,
     MultiTaskAae,
+    MultiTaskAdversarialAutoencoderTrainer,
     MultiTaskAdversarialAutoencoderUtils,
     NaultDataset,
 )
@@ -28,9 +29,9 @@ DISTANCE_METRICS = ["edistance", "wasserstein", "euclidean", "mean_pairwise", "m
 
 METRICS = BASELINE_METRICS + DISTANCE_METRICS
 
-experiment_name = "multi_dosage_adv_control_real_perturb_fake_fix_threshold_01_lr1e-4_warmup_ae_50_strict_soft_labels"
+experiment_name = "multi_dosage_split_training_50_10_50"
 
-MULTI_TASK_AAE_PATH  = SAVED_RESULTS_PATH / "multi_task_aae" / experiment_name
+MULTI_TASK_AAE_PATH = SAVED_RESULTS_PATH / "multi_task_aae" / experiment_name
 
 TENSORBOARD_PATH = SAVED_RESULTS_PATH / "runs" / "multi_task_aae" / experiment_name
 
@@ -97,17 +98,20 @@ model_utils = MultiTaskAdversarialAutoencoderUtils(dataset=dataset, model=model)
 if model_path.exists() and not overwrite:
     pass
 else:
-    model_utils.train(
-        save_path=MULTI_TASK_AAE_PATH,
+    trainer = MultiTaskAdversarialAutoencoderTrainer(
+        model=model,
+        dataset=dataset,
         tensorboard_path=TENSORBOARD_PATH,
-        epochs=100,
-        is_adversarial=True,
+        device="cuda",
         coeff_adversarial=0.1,
-        discr_good_enough_epoch_threshold=55,
-        warmup_autoencoder=50,
+        autoencoder_pretrain_epochs=50,
+        discriminator_pretrain_epochs=10,
+        adversarial_epochs=50,
         lr=1e-4,
         batch_size=64,
     )
+
+    model_utils.train(trainer=trainer, save_path=MULTI_TASK_AAE_PATH)
 
 
 # %%
@@ -175,8 +179,8 @@ def umaps(adata, title: str = ""):
 
 
 # %%
-umaps(dataset.get_train(), title='train')
+umaps(dataset.get_train(), title="train")
 
 # %%
 
-umaps(dataset.get_stim_test(), title='stim')
+umaps(dataset.get_stim_test(), title="stim")
