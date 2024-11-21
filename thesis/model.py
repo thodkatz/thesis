@@ -364,7 +364,7 @@ class ScPreGanPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         tensorboard_path = self.model_config.get_batch_log_path(batch=batch)
 
         model = scpregan.Model(
-            n_features=n_features, n_classes=n_classes, use_cuda=True
+            n_features=n_features, n_classes=n_classes, use_cuda=True, manual_seed=SEED
         )
 
         load_model = self.model_config.is_finished_batch_training(
@@ -424,7 +424,7 @@ class ScPreGanReproduciblePipeline(ScPreGanPipeline):
             "cell_type_key": "cell_type",
             "prediction_type": target_cell_type,
             "out_sample_prediction": True,
-            "manual_seed": 3060,
+            "manual_seed": SEED,
             "data_name": "pbmc",
             "model_name": "pbmc_OOD",
             "outf": output_path_reproducible,
@@ -588,7 +588,7 @@ class VidrPipeline(ModelPipeline[T]):
         cell_types = dataset.obs[cell_type_key].unique().tolist()
         target_cell_type = cell_types[batch]
 
-        train_adata = self.dataset_pipeline.get_train(target_cell_type)
+        train_adata, _ = self.dataset_pipeline.split_dataset_to_train_validation(target_cell_type, validation_split=1.0)
         perturb_test_adata = self.dataset_pipeline.get_stim_test(target_cell_type)
         control_test_adata = self.dataset_pipeline.get_ctrl_test(target_cell_type)
 

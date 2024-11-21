@@ -1,7 +1,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
+
+import pandas as pd
 
 from thesis import DATA_PATH
 import scanpy as sc
@@ -12,18 +14,25 @@ from thesis.preprocessing import (
 from anndata import AnnData
 import anndata as ad
 
+Train = AnnData
+Validation = AnnData
+
 
 class DatasetPipeline(ABC):
     def __init__(
         self,
-        data_path: Path,
         cell_type_key: str,
         dosage_key: str,
+        data_path: Union[Path, AnnData],
         preprocessing_pipeline: Optional[PreprocessingPipeline],
     ):
-        dataset = sc.read_h5ad(data_path)
+        if isinstance(data_path, Path):
+            dataset = sc.read_h5ad(data_path)
+        else:
+            dataset = data_path
         self.cell_type_key = cell_type_key
         self.dosage_key = dosage_key
+        self.control_dose = 0.0
 
         if preprocessing_pipeline is None:
             self.dataset = dataset
@@ -35,8 +44,17 @@ class DatasetPipeline(ABC):
     def __str__(self) -> str:
         return self.__class__.__name__
 
-    def get_dosages(self):
-        return sorted(self.dataset.obs[self.dosage_key].unique().tolist())
+    def get_dosages_unique(self, adata: Optional[AnnData] = None):
+        if adata is None:
+            return sorted(self.dataset.obs[self.dosage_key].unique().tolist())
+        else:
+            return sorted(adata.obs[self.dosage_key].unique().tolist())
+
+    def get_cell_types(self):
+        return sorted(self.dataset.obs[self.cell_type_key].unique().tolist())
+    
+    def get_num_genes(self):
+        return self.dataset.shape[1]
 
 
 class PbmcPipeline(DatasetPipeline):
@@ -107,16 +125,44 @@ class Sciplex3Pipeline(DatasetPipeline):
         )
 
 
-class ConditionDatasetPipeline(ABC):
+class SplitDatasetPipeline(ABC):
     def __init__(self, dataset_pipeline: DatasetPipeline) -> None:
         self._dataset_pipeline_name = str(dataset_pipeline)
         self.dataset_pipeline = dataset_pipeline
         self.dataset = dataset_pipeline.dataset
         self.cell_type_key = dataset_pipeline.cell_type_key
         self.dosage_key = dataset_pipeline.dosage_key
+        self.control_dose = dataset_pipeline.control_dose
+
+    def split_dataset_to_train_validation(
+        self, target_cell_type: str, validation_split: float = 0.8
+    ) -> Tuple[AnnData, AnnData]:
+        """
+        Splits the dataset into training and validation subsets based on cell types and dosages.
+
+        Args:
+            target_cell_type (str): Target cell type to split.
+            validation_split (float): Proportion of data to use for training (default: 0.8).
+
+        Returns:
+            Tuple[AnnData, AnnData]: Training and validation AnnData objects.
+        """
+        adata = self._get_dataset_to_split(target_cell_type=target_cell_type)
+        train_ilocs = []
+        valid_ilocs = []
+        for cell_type in self.get_cell_types():
+            dataset_cell_type = adata[adata.obs[self.cell_type_key] == cell_type]
+            for dose in self.get_dosages_unique(dataset_cell_type):
+                dataset_dose = dataset_cell_type[
+                    dataset_cell_type.obs[self.dosage_key] == dose
+                ]
+                split_idx = int(len(dataset_dose) * validation_split)
+                train_ilocs.extend(dataset_dose.obs.index[:split_idx])
+                valid_ilocs.extend(dataset_dose.obs.index[split_idx:])
+        return adata[train_ilocs], adata[valid_ilocs]
 
     @abstractmethod
-    def get_train(self, target_cell_type: str) -> AnnData:
+    def _get_dataset_to_split(self, target_cell_type: str) -> AnnData:
         pass
 
     @abstractmethod
@@ -130,11 +176,21 @@ class ConditionDatasetPipeline(ABC):
     def is_single(self):
         return isinstance(self, SingleConditionDatasetPipeline)
 
+    def get_dosages_unique(self, adata: Optional[AnnData] = None):
+        return self.dataset_pipeline.get_dosages_unique(adata=adata)
+
+    def get_cell_types(self):
+        return self.dataset_pipeline.get_cell_types()
+    
+    
+    def get_num_genes(self):
+        return self.dataset_pipeline.get_num_genes()
+
     def __str__(self) -> str:
         return f"{self.__class__.__name__}_{self._dataset_pipeline_name}"
 
 
-class SingleConditionDatasetPipeline(ConditionDatasetPipeline):
+class SingleConditionDatasetPipeline(SplitDatasetPipeline):
     def __init__(
         self,
         dataset_pipeline: DatasetPipeline,
@@ -156,7 +212,7 @@ class SingleConditionDatasetPipeline(ConditionDatasetPipeline):
         self.perturbation = perturbation
         self.dosages = dosages
 
-    def get_train(self, target_cell_type: str) -> AnnData:
+    def _get_dataset_to_split(self, target_cell_type: str) -> AnnData:
         return self.dataset[
             ~(
                 (self.dataset.obs[self.cell_type_key] == target_cell_type)
@@ -171,7 +227,7 @@ class SingleConditionDatasetPipeline(ConditionDatasetPipeline):
         return self.perturb[(self.perturb.obs[self.cell_type_key] == target_cell_type)]
 
 
-class MultipleConditionDatasetPipeline(ConditionDatasetPipeline):
+class MultipleConditionDatasetPipeline(SplitDatasetPipeline):
     def __init__(
         self,
         dataset_pipeline: DatasetPipeline,
@@ -180,12 +236,32 @@ class MultipleConditionDatasetPipeline(ConditionDatasetPipeline):
     ) -> None:
         super().__init__(dataset_pipeline)
         if dosages is None:
-            dosages = dataset_pipeline.get_dosages()
+            dosages = dataset_pipeline.get_dosages_unique()
             dosages.remove(0)
         else:
             dosages = dosages
         self.dosages = dosages
         self.perturbation = perturbation
+
+    def _get_dataset_to_split(self, target_cell_type: str) -> AnnData:
+        return self.dataset[
+            ~(
+                (self.dataset.obs[self.cell_type_key] == target_cell_type)
+                & (self.dataset.obs[self.dosage_key] > self.control_dose)
+            )
+        ]
+
+    def get_ctrl_test(self, target_cell_type: str) -> AnnData:
+        return self.dataset[
+            (self.dataset.obs[self.cell_type_key] == target_cell_type)
+            & (self.dataset.obs[self.dosage_key] == self.control_dose)
+        ]
+
+    def get_stim_test(self, target_cell_type: str) -> AnnData:
+        return self.dataset[
+            (self.dataset.obs[self.cell_type_key] == target_cell_type)
+            & (self.dataset.obs[self.dosage_key] > self.control_dose)
+        ]
 
 
 NaultPipelines = Union[NaultPipeline, NaultLiverTissuePipeline]
@@ -198,7 +274,6 @@ class NaultSinglePipeline(SingleConditionDatasetPipeline):
         dosages: float,
         perturbation: str = "tcdd",
     ) -> None:
-        self.control_dose = 0.0
         dose_key = dataset_pipeline.dosage_key
 
         dataset = dataset_pipeline.dataset
@@ -225,27 +300,6 @@ class NaultMultiplePipeline(MultipleConditionDatasetPipeline):
     ) -> None:
 
         super().__init__(dataset_pipeline, perturbation=perturbation, dosages=dosages)
-        self.control_dose = 0.0
-
-    def get_train(self, target_cell_type: str) -> AnnData:
-        return self.dataset[
-            ~(
-                (self.dataset.obs[self.cell_type_key] == target_cell_type)
-                & (self.dataset.obs["Dose"] > self.control_dose)
-            )
-        ]
-
-    def get_ctrl_test(self, target_cell_type: str) -> AnnData:
-        return self.dataset[
-            (self.dataset.obs[self.cell_type_key] == target_cell_type)
-            & (self.dataset.obs["Dose"] == self.control_dose)
-        ]
-
-    def get_stim_test(self, target_cell_type: str) -> AnnData:
-        return self.dataset[
-            (self.dataset.obs[self.cell_type_key] == target_cell_type)
-            & (self.dataset.obs["Dose"] > self.control_dose)
-        ]
 
 
 class PbmcSinglePipeline(SingleConditionDatasetPipeline):

@@ -16,8 +16,8 @@ from enum import Enum, auto
 from tqdm import tqdm
 
 from thesis.datasets import (
-    NaultMultiplePipeline,
-    NaultSinglePipeline,
+    DatasetPipeline,
+    SplitDatasetPipeline,
 )
 from torch.utils.tensorboard import SummaryWriter
 from scipy import sparse
@@ -414,46 +414,35 @@ class Aae(nn.Module):
         return pretty_print(self)
 
 
-class NaultDataset(Dataset):
+class DosagesDataset(Dataset):
     def __init__(
         self,
-        dataset_condition_pipeline: Union[NaultMultiplePipeline, NaultSinglePipeline],
-        target_cell_type: str,
+        dataset_pipeline: DatasetPipeline,
+        adata: AnnData,
     ):
-        self._dataset_condition_pipeline = dataset_condition_pipeline
-        self.control_dose = self._dataset_condition_pipeline.control_dose
-        self.target_cell_type = target_cell_type
-        train_adata = dataset_condition_pipeline.get_train(
-            target_cell_type=target_cell_type
-        )
-        print("Train data size:", len(train_adata))
+        self._dataset_pipeline = dataset_pipeline
+        self.control_dose = self._dataset_pipeline.control_dose
 
-        self._low_control_label = 0.8
+        self._low_control_label = 0.9
         self._high_control_label = 1.0
         self._high_perturbed_label = 1 - self._low_control_label
         self._low_perturbed_label = 0.0
 
-        self.gene_expressions = self.get_gene_expressions(train_adata)
+        self.gene_expressions = self.get_gene_expressions(adata)
 
-        self._dosages_unique = dataset_condition_pipeline.dataset_pipeline.get_dosages()
+        self._dosages_unique = self._dataset_pipeline.get_dosages_unique()
         self._dosage_to_idx = {
             dosage: idx for idx, dosage in enumerate(self._dosages_unique)
         }
-        dosages = train_adata.obs[self._dataset_condition_pipeline.dosage_key].values
+        dosages_numeric = adata.obs[self._dataset_pipeline.dosage_key].values
 
         self.is_control_soft_labels = torch.tensor(
-            [(self.get_soft_labels_control(dosage)) for dosage in dosages]
+            [(self.get_soft_labels_control(dosage)) for dosage in dosages_numeric]
         )
 
-        self.dosages = self.get_one_hot_encoded_dosages(dosages)
+        self.dosages_one_hot_encoded = self.get_one_hot_encoded_dosages(dosages_numeric)
 
-        assert len(self.gene_expressions) == len(self.dosages)
-
-        # sanity check
-        dosages_to_test = self.get_dosages_to_test()
-        dosages_to_train = self.get_dosages_to_train()
-        dosages_to_train.remove(self.control_dose)
-        assert dosages_to_test == dosages_to_train
+        assert len(self.gene_expressions) == len(self.dosages_one_hot_encoded)
 
     def get_soft_labels_control(self, dosage: float):
         if dosage == self.control_dose:
@@ -465,7 +454,8 @@ class NaultDataset(Dataset):
                 low=self._low_perturbed_label, high=self._high_control_label
             )
 
-    def get_gene_expressions(self, adata: AnnData) -> Tensor:
+    @staticmethod
+    def get_gene_expressions(adata: AnnData) -> Tensor:
         if sparse.issparse(adata.X):
             gene_expressions = adata.X.toarray()
         else:
@@ -487,34 +477,8 @@ class NaultDataset(Dataset):
     def get_condition_len(self) -> int:
         return len(self._dosages_unique)
 
-    def get_dosages_to_test(self):
-        dose_key = self._dataset_condition_pipeline.dosage_key
-        return sorted(self.get_stim_test().obs[dose_key].unique().tolist())
-
-    def get_stim_test(self, dose: Optional[float] = None):
-        stim_test = self._dataset_condition_pipeline.get_stim_test(
-            target_cell_type=self.target_cell_type
-        )
-        if dose is not None:
-            return stim_test[
-                stim_test.obs[self._dataset_condition_pipeline.dosage_key] == dose
-            ]
-        else:
-            return stim_test
-
-    def get_ctrl_test(self):
-        return self._dataset_condition_pipeline.get_ctrl_test(
-            target_cell_type=self.target_cell_type
-        )
-
-    def get_train(self):
-        return self._dataset_condition_pipeline.get_train(
-            target_cell_type=self.target_cell_type
-        )
-
-    def get_dosages_to_train(self):
-        dose_key = self._dataset_condition_pipeline.dosage_key
-        return sorted(self.get_train().obs[dose_key].unique().tolist())
+    def get_dosages(self, adata: AnnData):
+        self._dataset_pipeline.get_dosages_unique(adata=adata)
 
     def get_ctrl_bool_idx(self, dosages_one_hot_encoded: Tensor):
         assert len(dosages_one_hot_encoded.shape) == 2
@@ -529,7 +493,7 @@ class NaultDataset(Dataset):
     def __getitem__(self, index):
         return (
             self.gene_expressions[index],
-            self.dosages[index],
+            self.dosages_one_hot_encoded[index],
             self.is_control_soft_labels[index],
         )
 
@@ -537,46 +501,80 @@ class NaultDataset(Dataset):
         return len(self.gene_expressions)
 
     def __str__(self):
-        return f"Dataset(target: {self.target_cell_type}, high_control: {self._high_control_label}, low_control: {self._low_control_label}, high_perturbed: {self._high_perturbed_label}, low_perturbed: {self._low_perturbed_label}, high_perturbed: {self._high_perturbed_label}"
+        return f"Dataset(target: high_control: {self._high_control_label}, low_control: {self._low_control_label}, high_perturbed: {self._high_perturbed_label}, low_perturbed: {self._low_perturbed_label}, high_perturbed: {self._high_perturbed_label}"
 
 
 class Trainer(ABC):
     def __init__(
         self,
         model: MultiTaskAae,
-        dataset: NaultDataset,
-        tensorboard: Union[Path, SummaryWriter],
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
+        train_tensorboard: Union[Path, SummaryWriter],
+        val_tensorboard: Union[Path, SummaryWriter],
         batch_size: int,
         lr: float,
         device: str = "cuda",
     ):
         self.model = model
         self.device = device
-        self.dataset = dataset
+        self.target_cell_type = target_cell_type
         self.model = self.model.to(self.device)
-        self.tensorboard_path = tensorboard
         self.batch_size = batch_size
         self.lr = lr
 
         print("Torch seed", torch.initial_seed())
 
-        if isinstance(tensorboard, Path):
-            os.makedirs(tensorboard, exist_ok=True)
-            self.writer = SummaryWriter(tensorboard)
-        else:
-            self.writer = tensorboard
+        def get_writer(tensorboard: Union[Path, SummaryWriter]):
+            if isinstance(tensorboard, Path):
+                os.makedirs(tensorboard, exist_ok=True)
+                return SummaryWriter(tensorboard)
+            else:
+                return tensorboard
+
+        self.writer_train = get_writer(train_tensorboard)
+        self.writer_val = get_writer(val_tensorboard)
 
         generator = torch.Generator()
         generator.manual_seed(SEED)
 
-        self.dataloader = DataLoader(
-            dataset=self.dataset,
+        train_adata, validation_adata = (
+            split_dataset_pipeline.split_dataset_to_train_validation(
+                target_cell_type=target_cell_type
+            )
+        )
+        self.train_dataset = DosagesDataset(
+            dataset_pipeline=split_dataset_pipeline.dataset_pipeline, adata=train_adata
+        )
+
+        self.train_dataloader = DataLoader(
+            dataset=self.train_dataset,
             batch_size=batch_size,
             shuffle=True,
             num_workers=0,
             worker_init_fn=seed_worker,
             generator=generator,
         )
+
+        generator = torch.Generator()
+        generator.manual_seed(SEED + 1)
+
+        self.validation_dataset = DosagesDataset(
+            dataset_pipeline=split_dataset_pipeline.dataset_pipeline,
+            adata=validation_adata,
+        )
+
+        self.validation_dataloader = DataLoader(
+            dataset=self.validation_dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=0,
+            worker_init_fn=seed_worker,
+            generator=generator,
+        )
+
+        print("train dataset len", len(self.train_dataset))
+        print("validation dataset len", len(self.validation_dataset))
 
     def save(self, path: Path):
         self.model.save(path)
@@ -598,20 +596,25 @@ class MultiTaskAutoencoderTrainer(Trainer):
     def __init__(
         self,
         model: MultiTaskAae,
-        dataset: NaultDataset,
-        tensorboard: Union[Path, SummaryWriter],
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
+        train_tensorboard: Union[Path, SummaryWriter],
+        val_tensorboard: Union[Path, SummaryWriter],
         device: str = "cuda",
         epochs: int = 100,
         lr: float = 0.001,
         batch_size: int = 64,
     ):
+
         super().__init__(
             model=model,
-            dataset=dataset,
-            tensorboard=tensorboard,
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
             device=device,
             lr=lr,
             batch_size=batch_size,
+            split_dataset_pipeline=split_dataset_pipeline,
+            target_cell_type=target_cell_type,
         )
 
         self.epochs = epochs
@@ -642,10 +645,19 @@ class MultiTaskAutoencoderTrainer(Trainer):
             self.optimizer_decoder, lr_lambda=warmup_learning_rate
         )
 
-    def train(self):
-        for epoch in tqdm(range(self.epochs), desc="Training Epochs"):
+    def _step_autoencoder(self, loss: Tensor):
+        self.optimizer_encoder.zero_grad()
+        self.optimizer_decoder.zero_grad()
+        loss.backward()
+        self.optimizer_encoder.step()
+        self.optimizer_decoder.step()
+        self.scheduler_decoder.step()
+        self.scheduler_encoder.step()
+
+    def _run_per_epoch(self, epoch: int):
+        def _run(dataloader: DataLoader, is_train: bool = True):
             reconstruction_loss_batches = []
-            for gene_expressions, dosages, is_control in self.dataloader:
+            for gene_expressions, dosages, is_control in dataloader:
                 gene_expressions = gene_expressions.to(self.device)
                 dosages = dosages.to(self.device)
                 is_control = is_control.to(self.device)
@@ -654,31 +666,39 @@ class MultiTaskAutoencoderTrainer(Trainer):
                 latent = self.model.encoder(gene_expressions)
                 decoder_output = self.model.decoder(latent, dosages)
 
-                reconstruction_loss = self.mse(decoder_output, gene_expressions)
-                reconstruction_loss_batches.append(reconstruction_loss.item())
-
-                self.optimizer_encoder.zero_grad()
-                self.optimizer_decoder.zero_grad()
-                reconstruction_loss.backward()
-                self.optimizer_encoder.step()
-                self.optimizer_decoder.step()
-                self.scheduler_decoder.step()
-                self.scheduler_encoder.step()
+                rc_loss = self.mse(decoder_output, gene_expressions)
+                if is_train:
+                    self._step_autoencoder(rc_loss)
+                reconstruction_loss_batches.append(rc_loss.item())
 
             reconstruction_loss = np.mean(reconstruction_loss_batches)
-            self.writer.add_scalar("reconstruction_loss", reconstruction_loss, epoch)
-
-            tqdm_text = (
-                f"Epoch [{epoch + 1}/{self.epochs}], rc loss: {reconstruction_loss}"
-            )
+            if is_train:
+                writer = self.writer_train
+                rc_loss_name = "rc loss"
+            else:
+                writer = self.writer_val
+                rc_loss_name = "rc val loss"
+            writer.add_scalar("reconstruction_loss", reconstruction_loss, epoch)
+            tqdm_text = f"Epoch [{epoch + 1}/{self.epochs}], {rc_loss_name}: {reconstruction_loss}"
             tqdm.write(tqdm_text)
+
+        self.model.train()
+        _run(self.train_dataloader, is_train=True)
+        self.model.eval()
+        with torch.no_grad():
+            _run(self.validation_dataloader, is_train=False)
+
+    def train(self):
+        for epoch in tqdm(range(self.epochs), desc="Epochs"):
+            self._run_per_epoch(epoch)
 
 
 class MultiTaskAdversarialAutoencoderTrainer(Trainer):
     def __init__(
         self,
         model: MultiTaskAae,
-        dataset: NaultDataset,
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
         tensorboard_path: Path,
         device: str = "cuda",
         coeff_adversarial: float = 0.1,
@@ -688,13 +708,17 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
         lr: float = 1e-4,
         batch_size: int = 64,
     ):
+        train_tensorboard = tensorboard_path / "train"
+        val_tensorboard = tensorboard_path / "val"
         super().__init__(
             model=model,
-            dataset=dataset,
-            tensorboard=tensorboard_path,
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
             device=device,
             lr=lr,
             batch_size=batch_size,
+            split_dataset_pipeline=split_dataset_pipeline,
+            target_cell_type=target_cell_type,
         )
 
         self.coeff_adversarial = coeff_adversarial
@@ -719,12 +743,14 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
 
         self.autoencoder_trainer = MultiTaskAutoencoderTrainer(
             model=self.model,
-            dataset=self.dataset,
-            tensorboard=self.writer,
+            train_tensorboard=self.writer_train,
+            val_tensorboard=self.writer_val,
             device=self.device,
             epochs=self.autoencoder_epochs,
             lr=self.lr,
             batch_size=self.batch_size,
+            split_dataset_pipeline=split_dataset_pipeline,
+            target_cell_type=self.target_cell_type,
         )
 
         self.warmup_learning_rate_steps = 100
@@ -760,19 +786,186 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
         #     self.optimizer_discriminator, mode="min", factor=0.1, patience=5
         # )
 
-    def _forward_discriminator(
+    def _get_discriminator_loss(
         self, gene_expression: Tensor, is_control_soft_labels: Tensor
     ):
         latent = self.model.encoder(gene_expression).detach()
         discriminator_output = self.model.discriminator(latent)
 
         discriminator_loss = self.bce(discriminator_output, is_control_soft_labels)
+        return discriminator_loss
 
+    def _get_reconstruction_loss(
+        self, gene_expression: Tensor, dosages_one_hot_encoded: Tensor
+    ):
+        latent = self.model.encoder(gene_expression)
+        decoder_output = self.model.decoder(latent, dosages_one_hot_encoded)
+        reconstruction_loss = self.mse(decoder_output, gene_expression)
+        return reconstruction_loss, latent
+
+    def _get_adversarial_loss(
+        self,
+        generator_output: Tensor,
+        dosages_one_hot_encoded: Tensor,
+        is_control_soft_labels: Tensor,
+    ):
+        perturb_idx = ~self.train_dataset.get_ctrl_bool_idx(dosages_one_hot_encoded)
+        real_perturb_labels = is_control_soft_labels[perturb_idx]
+        perturb_latent = generator_output[perturb_idx]
+        fake_perturb_labels = torch.ones_like(real_perturb_labels) - real_perturb_labels
+        discriminator_output = self.model.discriminator(perturb_latent)
+        adv_loss = self.bce(discriminator_output, fake_perturb_labels)
+        return adv_loss
+
+    def _get_total_loss(self, rc_loss: Tensor, adv_loss: Tensor):
+        total_loss = (
+            self.coeff_reconstruction * rc_loss + self.coeff_adversarial * adv_loss
+        )
+        return total_loss
+
+    def _run_pretrain_discriminator_per_epoch(self, epoch: int):
+        def run(dataloader: DataLoader, is_train: bool = True):
+            discriminator_loss_batches = []
+            for (
+                gene_expressions,
+                dosages_one_hot_encoded,
+                is_control_soft_labels,
+            ) in dataloader:
+                gene_expressions = gene_expressions.to(self.device)
+                dosages_one_hot_encoded = dosages_one_hot_encoded.to(self.device)
+                is_control_soft_labels = is_control_soft_labels.to(self.device)
+                is_control_soft_labels = torch.reshape(
+                    is_control_soft_labels, (is_control_soft_labels.shape[0], 1)
+                )
+
+                discriminator_loss = self._get_discriminator_loss(
+                    gene_expressions, is_control_soft_labels
+                )
+
+                if is_train:
+                    self._step_pretrain_discriminator(discriminator_loss)
+
+                discriminator_loss_batches.append(discriminator_loss.item())
+
+            discriminator_loss = np.mean(discriminator_loss_batches)
+            if is_train:
+                writer = self.writer_train
+                discriminator_loss_name = "discriminator loss"
+            else:
+                writer = self.writer_val
+                discriminator_loss_name = "validation discriminator loss"
+            writer.add_scalar("pretrain/discriminator_loss", discriminator_loss, epoch)
+            tqdm_text = (
+                f"Epoch: {epoch}, {discriminator_loss_name}: {discriminator_loss:.4f}"
+            )
+            tqdm.write(tqdm_text)
+
+        self.model.train()
+        run(self.train_dataloader, is_train=True)
+        self.model.eval()
+        with torch.no_grad():
+            run(self.validation_dataloader, is_train=False)
+
+    def _step_adv_autoencoder(self, loss: Tensor):
+        self.optimizer_encoder.zero_grad()
+        self.optimizer_decoder.zero_grad()
+        loss.backward()
+        self.optimizer_encoder.step()
+        self.optimizer_decoder.step()
+        self.scheduler_encoder_adversarial.step()
+        self.scheduler_decoder_adversarial.step()
+
+    def _step_adv_discriminator(self, loss: Tensor):
         self.optimizer_discriminator.zero_grad()
-        discriminator_loss.backward()
+        loss.backward()
         self.optimizer_discriminator.step()
+        self.scheduler_discriminator_adversarial.step()
 
-        return discriminator_loss.item()
+    def _step_pretrain_discriminator(self, loss: Tensor):
+        self.optimizer_discriminator.zero_grad()
+        loss.backward()
+        self.optimizer_discriminator.step()
+        self.scheduler_discriminator_pretrain.step()
+
+    def _run_adversarial_per_epoch(self, epoch: int):
+        def run(dataloader: DataLoader, is_train: bool = True):
+            reconstruction_loss_batches = []
+            adversarial_loss_batches = []
+            total_loss_batches = []
+            discriminator_loss_batches = []
+            for (
+                gene_expressions,
+                dosages_one_hot_encoded,
+                is_control_soft_labels,
+            ) in dataloader:
+                gene_expressions = gene_expressions.to(self.device)
+                dosages_one_hot_encoded = dosages_one_hot_encoded.to(self.device)
+                is_control_soft_labels = is_control_soft_labels.to(self.device)
+                is_control_soft_labels = torch.reshape(
+                    is_control_soft_labels, (is_control_soft_labels.shape[0], 1)
+                )
+
+                reconstruction_loss, latent = self._get_reconstruction_loss(
+                    gene_expressions, dosages_one_hot_encoded
+                )
+                adv_loss = self._get_adversarial_loss(
+                    latent, dosages_one_hot_encoded, is_control_soft_labels
+                )
+                total_loss = self._get_total_loss(reconstruction_loss, adv_loss)
+
+                if is_train:
+                    self._step_adv_autoencoder(total_loss)
+
+                reconstruction_loss_batches.append(reconstruction_loss.item())
+                adversarial_loss_batches.append(adv_loss.item())
+                total_loss_batches.append(total_loss.item())
+
+                discriminator_loss = self._get_discriminator_loss(
+                    gene_expressions, is_control_soft_labels
+                )
+
+                if is_train:
+                    self._step_adv_discriminator(discriminator_loss)
+
+                discriminator_loss_batches.append(discriminator_loss.item())
+
+            reconstruction_loss = np.mean(reconstruction_loss_batches)
+            adv_loss = np.mean(adversarial_loss_batches)
+            total_loss = np.mean(total_loss_batches)
+            discriminator_loss = np.mean(discriminator_loss_batches)
+
+            # self.scheduler_encoder_plateu.step(total_loss)
+            # self.scheduler_decoder_plateu.step(reconstruction_loss)
+            # self.scheduler_discriminator_plateu.step(discriminator_loss)
+
+            if is_train:
+                writer = self.writer_train
+                rc_loss_name = "rc loss"
+                adv_loss_name = "adv loss"
+                total_loss_name = "total loss"
+                discriminator_loss_name = "discriminator loss"
+            else:
+                writer = self.writer_val
+                rc_loss_name = "rc val loss"
+                adv_loss_name = "adv val loss"
+                total_loss_name = "total val loss"
+                discriminator_loss_name = "discriminator val loss"
+
+            writer.add_scalar("adv/reconstruction_loss", reconstruction_loss, epoch)
+            writer.add_scalar("adv/adv_loss", adv_loss, epoch)
+            writer.add_scalar("adv/total_loss", total_loss, epoch)
+            writer.add_scalar("adv/discriminator_loss", discriminator_loss, epoch)
+
+            tqdm_text = f"Epoch [{epoch + 1}/{self.adversarial_epochs}], {rc_loss_name}: {reconstruction_loss}"
+            tqdm_text += f", {adv_loss_name}: {adv_loss}, {total_loss_name}: {total_loss}, {discriminator_loss_name}: {discriminator_loss}"
+
+            tqdm.write(tqdm_text)
+
+        self.model.train()
+        run(self.train_dataloader, is_train=True)
+        self.model.eval()
+        with torch.no_grad():
+            run(self.validation_dataloader, is_train=False)
 
     def train(self):
         """
@@ -786,31 +979,7 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
         for epoch in tqdm(
             range(self.discriminator_epochs), desc="Pretraining Discriminator"
         ):
-            discriminator_loss_batches = []
-            for (
-                gene_expressions,
-                dosages_one_hot_encoded,
-                is_control_soft_labels,
-            ) in self.dataloader:
-                gene_expressions = gene_expressions.to(self.device)
-                dosages_one_hot_encoded = dosages_one_hot_encoded.to(self.device)
-                is_control_soft_labels = is_control_soft_labels.to(self.device)
-                is_control_soft_labels = torch.reshape(
-                    is_control_soft_labels, (is_control_soft_labels.shape[0], 1)
-                )
-
-                discriminator_loss = self._forward_discriminator(
-                    gene_expressions, is_control_soft_labels
-                )
-                discriminator_loss_batches.append(discriminator_loss)
-                self.scheduler_discriminator_pretrain.step()
-
-            discriminator_loss = np.mean(discriminator_loss_batches)
-            tqdm_text = f"Epoch: {epoch}, Discriminator loss: {discriminator_loss:.4f}"
-            tqdm.write(tqdm_text)
-            self.writer.add_scalar(
-                "pretrain/discriminator_loss", discriminator_loss, epoch
-            )
+            self._run_pretrain_discriminator_per_epoch(epoch)
 
         """
         Adversarial joint training of autoencoder with discriminator
@@ -818,104 +987,20 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
         for epoch in tqdm(
             range(self.adversarial_epochs), desc="Training Adversarial Epochs"
         ):
-            reconstruction_loss_batches = []
-            adversarial_loss_batches = []
-            total_loss_batches = []
-            discriminator_loss_batches = []
-            for (
-                gene_expressions,
-                dosages_one_hot_encoded,
-                is_control_soft_labels,
-            ) in self.dataloader:
-                gene_expressions = gene_expressions.to(self.device)
-                dosages_one_hot_encoded = dosages_one_hot_encoded.to(self.device)
-                is_control_soft_labels = is_control_soft_labels.to(self.device)
-                is_control_soft_labels = torch.reshape(
-                    is_control_soft_labels, (is_control_soft_labels.shape[0], 1)
-                )
-
-                """
-                Reconstruction loss
-                """
-
-                latent = self.model.encoder(gene_expressions)
-                decoder_output = self.model.decoder(latent, dosages_one_hot_encoded)
-
-                reconstruction_loss = self.mse(decoder_output, gene_expressions)
-                reconstruction_loss_batches.append(reconstruction_loss.item())
-
-                """
-                Adversarial loss
-                """
-
-                generator_output = latent
-                perturb_idx = ~self.dataset.get_ctrl_bool_idx(dosages_one_hot_encoded)
-                real_perturb_labels = is_control_soft_labels[perturb_idx]
-                perturb_latent = generator_output[perturb_idx]
-                fake_perturb_labels = (
-                    torch.ones_like(real_perturb_labels) - real_perturb_labels
-                )
-                discriminator_output = self.model.discriminator(perturb_latent)
-                adv_loss = self.bce(discriminator_output, fake_perturb_labels)
-
-                total_loss = (
-                    self.coeff_reconstruction * reconstruction_loss
-                    + self.coeff_adversarial * adv_loss
-                )
-
-                adversarial_loss_batches.append(adv_loss.item())
-                total_loss_batches.append(total_loss.item())
-
-                self.optimizer_encoder.zero_grad()
-                self.optimizer_decoder.zero_grad()
-                total_loss.backward()
-                self.optimizer_encoder.step()
-                self.optimizer_decoder.step()
-
-                self.scheduler_encoder_adversarial.step()
-                self.scheduler_decoder_adversarial.step()
-
-                """
-                Discriminator loss
-                """
-                discriminator_loss = self._forward_discriminator(
-                    gene_expressions, is_control_soft_labels
-                )
-                discriminator_loss_batches.append(discriminator_loss)
-
-                self.scheduler_discriminator_adversarial.step()
-
-            reconstruction_loss = np.mean(reconstruction_loss_batches)
-            self.writer.add_scalar(
-                "adv/reconstruction_loss", reconstruction_loss, epoch
-            )
-            tqdm_text = f"Epoch [{epoch + 1}/{self.adversarial_epochs}], rc loss: {reconstruction_loss}"
-
-            adv_loss = np.mean(adversarial_loss_batches)
-            total_loss = np.mean(total_loss_batches)
-            discriminator_loss = np.nanmean(discriminator_loss_batches)
-
-            # self.scheduler_encoder_plateu.step(total_loss)
-            # self.scheduler_decoder_plateu.step(reconstruction_loss)
-            # self.scheduler_discriminator_plateu.step(discriminator_loss)
-
-            self.writer.add_scalar("adv/adv_loss", adv_loss, epoch)
-            self.writer.add_scalar("adv/total_loss", total_loss, epoch)
-            self.writer.add_scalar("adv/discriminator_loss", discriminator_loss, epoch)
-            tqdm_text += f", adv loss: {adv_loss}, total loss: {total_loss}, discriminator loss: {discriminator_loss}"
-
-            tqdm.write(tqdm_text)
+            self._run_adversarial_per_epoch(epoch)
 
 
 class MultiTaskAdversarialAutoencoderUtils:
     def __init__(
         self,
-        dataset: NaultDataset,
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
         model: MultiTaskAae,
     ):
 
         self.model = model
-        self.dataset = dataset
+        self.split_dataset_pipeline = split_dataset_pipeline
+        self.target_cell_type = target_cell_type
         self.device = "cuda"
         self.model.to(self.device)
 
@@ -930,15 +1015,28 @@ class MultiTaskAdversarialAutoencoderUtils:
         trainer.save(save_path)
 
     def predict(self):
-        control_test_adata = self.dataset.get_ctrl_test()
-        dosages_to_test = self.dataset.get_dosages_to_test()
+        control_test_adata = self.split_dataset_pipeline.get_ctrl_test(
+            target_cell_type=self.target_cell_type
+        )
+        stim_test_adata = self.split_dataset_pipeline.get_stim_test(
+            target_cell_type=self.target_cell_type
+        )
+        dosages_to_test = self.split_dataset_pipeline.get_dosages_unique(
+            stim_test_adata
+        )
         predictions = {}
-        gene_expressions = self.dataset.get_gene_expressions(control_test_adata)
+
+        gene_expressions = DosagesDataset.get_gene_expressions(control_test_adata)
+
+        stim_test_dataset = DosagesDataset(
+            dataset_pipeline=self.split_dataset_pipeline.dataset_pipeline,
+            adata=stim_test_adata,
+        )
 
         self.model.eval()
         with torch.no_grad():
             for dosage in dosages_to_test:
-                dosages_one_hot_encoded = self.dataset.get_one_hot_encoded_dosages(
+                dosages_one_hot_encoded = stim_test_dataset.get_one_hot_encoded_dosages(
                     [dosage] * len(control_test_adata)
                 )
                 gene_expressions = gene_expressions.to(self.device)

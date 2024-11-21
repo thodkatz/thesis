@@ -7,7 +7,7 @@ from thesis.multi_task_aae import (
     MultiTaskAae,
     MultiTaskAdversarialAutoencoderTrainer,
     MultiTaskAdversarialAutoencoderUtils,
-    NaultDataset,
+    DosagesDataset,
 )
 from anndata import AnnData
 import scanpy as sc
@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from thesis.utils import setup_seed
 from thesis.utils import append_csv
 
-overwrite = True
+overwrite = False
 
 BASELINE_METRICS = [
     "DEGs",
@@ -29,7 +29,8 @@ DISTANCE_METRICS = ["edistance", "wasserstein", "euclidean", "mean_pairwise", "m
 
 METRICS = BASELINE_METRICS + DISTANCE_METRICS
 
-experiment_name = "multi_dosage_split_training_50_10_50"
+experiment_name = "test_128_64_32_16_lr3e-6"
+print(experiment_name)
 
 MULTI_TASK_AAE_PATH = SAVED_RESULTS_PATH / "multi_task_aae" / experiment_name
 
@@ -56,25 +57,24 @@ else:
 
 # %%
 
-dataset = NaultDataset(
-    dataset_condition_pipeline=dataset_pipeline,
-    target_cell_type="Hepatocytes - portal",
-)
+target_cell_type = "Hepatocytes - portal"
 
+condition_len = len(dataset_pipeline.get_dosages_unique())
+num_features = dataset_pipeline.get_num_genes()
 
 film_factory = FilmLayerFactory(
-    input_dim=dataset.get_condition_len(),
-    hidden_layers=[],
+    input_dim=condition_len,
+    hidden_layers=[16, 16],
 )
 
 
-hidden_layers_autoencoder = [256, 128]
-hidden_layers_discriminator = [64, 64]
+hidden_layers_autoencoder = [128, 64, 32, 16]
+hidden_layers_discriminator = [32, 32]
 
 if model_path.exists() and not overwrite:
     print("Loading model")
     model = MultiTaskAae.load(
-        num_features=dataset.get_num_features(),
+        num_features=num_features,
         hidden_layers_autoencoder=hidden_layers_autoencoder,
         hidden_layers_discriminator=hidden_layers_discriminator,
         film_layer_factory=film_factory,
@@ -83,7 +83,7 @@ if model_path.exists() and not overwrite:
     model = model.to("cuda")
 else:
     model = MultiTaskAae(
-        num_features=dataset.get_num_features(),
+        num_features=num_features,
         hidden_layers_autoencoder=hidden_layers_autoencoder,
         hidden_layers_discriminator=hidden_layers_discriminator,
         film_layer_factory=film_factory,
@@ -92,7 +92,11 @@ else:
 
 # %%
 
-model_utils = MultiTaskAdversarialAutoencoderUtils(dataset=dataset, model=model)
+model_utils = MultiTaskAdversarialAutoencoderUtils(
+    split_dataset_pipeline=dataset_pipeline,
+    target_cell_type=target_cell_type,
+    model=model,
+)
 
 
 if model_path.exists() and not overwrite:
@@ -100,14 +104,15 @@ if model_path.exists() and not overwrite:
 else:
     trainer = MultiTaskAdversarialAutoencoderTrainer(
         model=model,
-        dataset=dataset,
         tensorboard_path=TENSORBOARD_PATH,
+        split_dataset_pipeline=dataset_pipeline,
+        target_cell_type=target_cell_type,
         device="cuda",
-        coeff_adversarial=0.1,
-        autoencoder_pretrain_epochs=50,
-        discriminator_pretrain_epochs=10,
-        adversarial_epochs=50,
-        lr=1e-4,
+        coeff_adversarial=0.05,
+        autoencoder_pretrain_epochs=100,
+        discriminator_pretrain_epochs=5,
+        adversarial_epochs=200,
+        lr=3e-6,
         batch_size=64,
     )
 
@@ -119,12 +124,17 @@ predictions = model_utils.predict()
 
 dfs = []
 
-for idx, dosage in enumerate(dataset.get_dosages_to_test()):
+stim_test = dataset_pipeline.get_stim_test(target_cell_type=target_cell_type)
+control_test = dataset_pipeline.get_ctrl_test(target_cell_type=target_cell_type)
+
+dosages_to_test = dataset_pipeline.get_dosages_unique(stim_test)
+
+for idx, dosage in enumerate(dosages_to_test):
     evaluation_path = MULTI_TASK_AAE_PATH / f"dosage{dosage}"
 
     df, _ = evaluation_out_of_sample(
-        control=dataset.get_ctrl_test(),
-        ground_truth=dataset.get_stim_test(dose=dosage),
+        control=control_test,
+        ground_truth=stim_test[stim_test.obs[dataset_pipeline.dosage_key] == dosage],
         predicted=predictions[idx],
         output_path=evaluation_path,
         save_plots=False,
@@ -143,7 +153,7 @@ append_csv(all_df, ROOT / "analysis" / "multi_task_aae.csv")
 
 overview_df = pd.DataFrame()
 overview_df["experiment"] = [experiment_name]
-overview_df["cell_type_test"] = dataset.target_cell_type
+overview_df["cell_type_test"] = target_cell_type
 overview_df["DEGs"] = all_df["DEGs"].mean()
 overview_df["r2mean_all_boostrap_mean"] = all_df["r2mean_all_boostrap_mean"].mean()
 overview_df["r2mean_top20_boostrap_mean"] = all_df["r2mean_top20_boostrap_mean"].mean()
@@ -155,7 +165,7 @@ append_csv(overview_df, ROOT / "analysis" / "multi_task_aae_overview.csv")
 
 # %%
 def umaps(adata, title: str = ""):
-    tensor = dataset.get_gene_expressions(adata).to("cuda")
+    tensor = DosagesDataset.get_gene_expressions(adata).to("cuda")
     latent = AnnData(X=model.get_latent_representation(tensor), obs=adata.obs.copy())
 
     latent.obs["Dose"] = latent.obs["Dose"].astype("category")
@@ -179,8 +189,12 @@ def umaps(adata, title: str = ""):
 
 
 # %%
-umaps(dataset.get_train(), title="train")
+train_adata, validation_adata = dataset_pipeline.split_dataset_to_train_validation(
+    target_cell_type=target_cell_type
+)
+umaps(train_adata, title="train")
+umaps(validation_adata, title="validation")
 
 # %%
 
-umaps(dataset.get_stim_test(), title="stim")
+umaps(stim_test, title="stim")
