@@ -451,7 +451,7 @@ class DosagesDataset(Dataset):
             )
         else:
             return np.random.uniform(
-                low=self._low_perturbed_label, high=self._high_control_label
+                low=self._low_perturbed_label, high=self._high_perturbed_label
             )
 
     @staticmethod
@@ -792,7 +792,7 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
         latent = self.model.encoder(gene_expression).detach()
         discriminator_output = self.model.discriminator(latent)
 
-        discriminator_loss = self.bce(discriminator_output, is_control_soft_labels)
+        discriminator_loss = self.bce(input=discriminator_output, target=is_control_soft_labels)
         return discriminator_loss
 
     def _get_reconstruction_loss(
@@ -800,7 +800,7 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
     ):
         latent = self.model.encoder(gene_expression)
         decoder_output = self.model.decoder(latent, dosages_one_hot_encoded)
-        reconstruction_loss = self.mse(decoder_output, gene_expression)
+        reconstruction_loss = self.mse(input=decoder_output, target=gene_expression)
         return reconstruction_loss, latent
 
     def _get_adversarial_loss(
@@ -808,13 +808,33 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
         generator_output: Tensor,
         dosages_one_hot_encoded: Tensor,
         is_control_soft_labels: Tensor,
-    ):
+    ) -> Optional[Tensor]:
+        """
+        Generator (Encoder) tries to fool perturbed as control
+        
+        If no perturbed samples in the batch, return None
+        """
         perturb_idx = ~self.train_dataset.get_ctrl_bool_idx(dosages_one_hot_encoded)
         real_perturb_labels = is_control_soft_labels[perturb_idx]
+        if real_perturb_labels.numel() == 0:
+            return None
         perturb_latent = generator_output[perturb_idx]
         fake_perturb_labels = torch.ones_like(real_perturb_labels) - real_perturb_labels
         discriminator_output = self.model.discriminator(perturb_latent)
-        adv_loss = self.bce(discriminator_output, fake_perturb_labels)
+        adv_loss = self.bce(input=discriminator_output, target=fake_perturb_labels)
+        return adv_loss
+    
+    def _get_adversarial_loss_swap(
+        self,
+        generator_output: Tensor,
+        is_control_soft_labels: Tensor,
+    ) -> Tensor:
+        """
+        Generator (Encoder) tries to fool both control and perturbed as perturbed and control respectively
+        """
+        fake_perturb_labels = torch.ones_like(is_control_soft_labels) - is_control_soft_labels
+        discriminator_output = self.model.discriminator(generator_output)
+        adv_loss = self.bce(input=discriminator_output, target=fake_perturb_labels)
         return adv_loss
 
     def _get_total_loss(self, rc_loss: Tensor, adv_loss: Tensor):
@@ -911,13 +931,17 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
                 adv_loss = self._get_adversarial_loss(
                     latent, dosages_one_hot_encoded, is_control_soft_labels
                 )
-                total_loss = self._get_total_loss(reconstruction_loss, adv_loss)
+                
+                if adv_loss is not None:
+                    total_loss = self._get_total_loss(reconstruction_loss, adv_loss)
+                    adversarial_loss_batches.append(adv_loss.item())
+                else:
+                    total_loss = reconstruction_loss
 
                 if is_train:
                     self._step_adv_autoencoder(total_loss)
 
                 reconstruction_loss_batches.append(reconstruction_loss.item())
-                adversarial_loss_batches.append(adv_loss.item())
                 total_loss_batches.append(total_loss.item())
 
                 discriminator_loss = self._get_discriminator_loss(

@@ -16,8 +16,54 @@ import os
 import matplotlib.pyplot as plt
 from thesis.utils import setup_seed
 from thesis.utils import append_csv
+import argparse
 
 overwrite = False
+
+parser = argparse.ArgumentParser(description="Run multi-task aae")
+parser.add_argument("--batch_size", type=int, required=False, help="Batch size")
+parser.add_argument("--lr", type=float, required=False, help="Learning rate")
+parser.add_argument(
+    "--autoencoder_pretrain_epochs",
+    type=int,
+    required=False,
+    help="Autoencoder pretrain epochs",
+)
+parser.add_argument(
+    "--discriminator_pretrain_epochs",
+    type=int,
+    required=False,
+    help="Discriminator pretrain epochs",
+)
+parser.add_argument(
+    "--adversarial_epochs", type=int, required=False, help="Adversarial epochs"
+)
+parser.add_argument(
+    "--coeff_adversarial", type=float, required=False, help="Adversarial coefficient"
+)
+parser.add_argument(
+    "--hidden_layers_ae",
+    type=int,
+    nargs="+",
+    required=False,
+    help="Hidden layers as space-separated integers (e.g., 64 128 256)",
+)
+parser.add_argument(
+    "--hidden_layers_disc",
+    type=int,
+    nargs="+",
+    required=False,
+    help="Hidden layers as space-separated integers (e.g., 64 128 256)",
+)
+parser.add_argument(
+    "--hidden_layers_film",
+    type=int,
+    nargs="+",
+    required=False,
+    help="Hidden layers as space-separated integers (e.g., 64 128 256)",
+)
+args = parser.parse_args()
+
 
 BASELINE_METRICS = [
     "DEGs",
@@ -29,7 +75,22 @@ DISTANCE_METRICS = ["edistance", "wasserstein", "euclidean", "mean_pairwise", "m
 
 METRICS = BASELINE_METRICS + DISTANCE_METRICS
 
-experiment_name = "test_128_64_32_16_lr3e-6"
+batch_size = args.batch_size or 256
+learning_rate = args.lr or 1e-4
+autoencoder_pretrain_epochs = args.autoencoder_pretrain_epochs or 100
+discriminator_pretrain_epochs = args.discriminator_pretrain_epochs or 10
+adversarial_epochs = args.adversarial_epochs or 100
+coeff_adversarial = args.coeff_adversarial or 0.05
+hidden_layers_autoencoder = args.hidden_layers_ae or [32, 32]
+hidden_layers_discriminator = args.hidden_layers_disc or [32, 32]
+hidden_layers_film = args.hidden_layers_film or []
+
+experiment_name = (
+    f"layers_ae_{hidden_layers_autoencoder}_disc_{hidden_layers_discriminator}_film_{hidden_layers_film}_"
+    f"lr_{learning_rate}_batch_{batch_size}_ae_epochs_{autoencoder_pretrain_epochs}_"
+    f"dis_epochs_{discriminator_pretrain_epochs}_adv_epochs_{adversarial_epochs}_"
+    f"coef_adv_{coeff_adversarial}"
+)
 print(experiment_name)
 
 MULTI_TASK_AAE_PATH = SAVED_RESULTS_PATH / "multi_task_aae" / experiment_name
@@ -64,12 +125,9 @@ num_features = dataset_pipeline.get_num_genes()
 
 film_factory = FilmLayerFactory(
     input_dim=condition_len,
-    hidden_layers=[16, 16],
+    hidden_layers=hidden_layers_film,
 )
 
-
-hidden_layers_autoencoder = [128, 64, 32, 16]
-hidden_layers_discriminator = [32, 32]
 
 if model_path.exists() and not overwrite:
     print("Loading model")
@@ -109,11 +167,11 @@ else:
         target_cell_type=target_cell_type,
         device="cuda",
         coeff_adversarial=0.05,
-        autoencoder_pretrain_epochs=100,
-        discriminator_pretrain_epochs=5,
-        adversarial_epochs=200,
-        lr=3e-6,
-        batch_size=64,
+        autoencoder_pretrain_epochs=autoencoder_pretrain_epochs,
+        discriminator_pretrain_epochs=discriminator_pretrain_epochs,
+        adversarial_epochs=adversarial_epochs,
+        lr=learning_rate,
+        batch_size=batch_size,
     )
 
     model_utils.train(trainer=trainer, save_path=MULTI_TASK_AAE_PATH)
