@@ -2,6 +2,7 @@ name: thesis
 channels:
   - pytorch
   - conda-forge
+  - bioconda
 dependencies:
   - python=3.10.*
   - pytorch
@@ -9,5 +10,35 @@ dependencies:
   - torchvision
   - torchaudio
   - torchmetrics
+  - optuna
   - setuptools
+  - scanpy
+  - numpy
   - pip
+  - seaborn
+  - matplotlib
+  - jupyter
+  - pandas
+  - tensorboard
+  - tabulate
+  - black
+  - pytest
+  - ridgeplot
+
+  # scvidr
+  - anndata<=0.8.0
+  - scipy<=1.10.0
+
+  # scbutterfly
+  - scikit-learn
+  - scvi-tools<=0.20.0 # for scgen
+  #- scipy # restricted by scvidr
+  #- episcanpy 0.3.2 can't be index by conda for python 3.10
+  - pot
+  - leidenalg
+  - pybedtools
+  - adjusttext
+
+  # unitednet
+  - shap<=0.40.0
+  - mne-connectivity

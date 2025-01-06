@@ -15,7 +15,7 @@ from vidr import vidr
 
 from thesis.evaluation import evaluation_out_of_sample
 
-from thesis.utils import SEED, FileModelUtils, append_csv, setup_seed
+from thesis.utils import FileModelUtils, SeedSingleton, append_csv
 from thesis.datasets import (
     MultipleConditionDatasetPipeline,
     SingleConditionDatasetPipeline,
@@ -48,6 +48,7 @@ class ModelPipeline(ABC, Generic[T]):
         self,
         dataset_pipeline: T,
         experiment_name: str,
+        seed: int = 19193,
     ) -> None:
         self.dataset_pipeline = dataset_pipeline
 
@@ -66,7 +67,12 @@ class ModelPipeline(ABC, Generic[T]):
         )
         print("Model config", self.model_config)
         
-        setup_seed()
+        
+        if not SeedSingleton.is_set():
+            SeedSingleton(seed=seed)
+        else:
+            print("seed already set", SeedSingleton.get_value())
+            print("ModelPipeline: Torch initial seed", torch.random.initial_seed())
 
     def is_single(self):
         return self.dataset_pipeline.is_single()
@@ -98,10 +104,13 @@ class ModelPipeline(ABC, Generic[T]):
             return
         else:
             input_adata, ground_truth_adata, predicted_adata = predict
+
         file_path = self.model_config.get_batch_path(batch=batch)
-        
-        print("Torch seed", torch.random.initial_seed())
-        assert torch.random.initial_seed() == SEED, "make sure models are using the same seed"
+
+        print("ModelPipeline: Torch initial seed", torch.initial_seed())
+        assert (
+            torch.random.initial_seed() == SeedSingleton.get_value()
+        ), f"make sure models are using the same seed {torch.random.initial_seed()} != {SeedSingleton.get_value()}"
 
         assert (
             len(ground_truth_adata)
@@ -173,6 +182,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         self,
         dataset_pipeline: SingleConditionDatasetPipeline,
         experiment_name: str,
+        seed: int = 19193,
         debug=False,
     ):
         self._epoch_pretrain1 = 1 if debug else 100
@@ -183,6 +193,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
+            seed=seed
         )
 
     def split_func(self):
@@ -289,7 +300,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
             validation_id_r=validation_id_control,
             validation_id_a=validation_id_perturb,
             output_path=file_path,
-            seed=SEED,
+            seed=SeedSingleton.get_value(),
             kl_mean=True,
             R_pretrain_kl_warmup=50,
             A_pretrain_kl_warmup=50,
@@ -323,12 +334,14 @@ class ScPreGanPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         experiment_name: str,
         dataset_pipeline: SingleConditionDatasetPipeline,
         debug: bool = False,
+        seed: int = 19193
     ):
         self._epochs = 1 if debug else 20_000
 
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
+            seed=seed
         )
 
     def _run(
@@ -364,7 +377,10 @@ class ScPreGanPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         tensorboard_path = self.model_config.get_batch_log_path(batch=batch)
 
         model = scpregan.Model(
-            n_features=n_features, n_classes=n_classes, use_cuda=True, manual_seed=SEED
+            n_features=n_features,
+            n_classes=n_classes,
+            use_cuda=True,
+            manual_seed=SeedSingleton.get_value(),
         )
 
         load_model = self.model_config.is_finished_batch_training(
@@ -424,7 +440,7 @@ class ScPreGanReproduciblePipeline(ScPreGanPipeline):
             "cell_type_key": "cell_type",
             "prediction_type": target_cell_type,
             "out_sample_prediction": True,
-            "manual_seed": SEED,
+            "manual_seed": SeedSingleton.get_value(),
             "data_name": "pbmc",
             "model_name": "pbmc_OOD",
             "outf": output_path_reproducible,
@@ -481,12 +497,14 @@ class ScGenPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         experiment_name: str,
         dataset_pipeline: SingleConditionDatasetPipeline,
         debug: bool = False,
+        seed: int = 19193
     ):
         self._epochs = 1 if debug else 100
 
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
+            seed=seed
         )
 
     def _run(
@@ -562,12 +580,14 @@ class VidrPipeline(ModelPipeline[T]):
         dataset_pipeline: T,
         debug: bool = False,
         is_scgen_variant: bool = False,
+        seed: int = 19193
     ):
         self._epochs = 1 if debug else 100
 
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
+            seed=seed
         )
 
         self._is_scgen_variant = is_scgen_variant
@@ -588,7 +608,9 @@ class VidrPipeline(ModelPipeline[T]):
         cell_types = dataset.obs[cell_type_key].unique().tolist()
         target_cell_type = cell_types[batch]
 
-        train_adata, _ = self.dataset_pipeline.split_dataset_to_train_validation(target_cell_type, validation_split=1.0)
+        train_adata, _ = self.dataset_pipeline.split_dataset_to_train_validation(
+            target_cell_type, validation_split=1.0
+        )
         perturb_test_adata = self.dataset_pipeline.get_stim_test(target_cell_type)
         control_test_adata = self.dataset_pipeline.get_ctrl_test(target_cell_type)
 
@@ -647,12 +669,14 @@ class VidrSinglePipeline(VidrPipeline[SingleConditionDatasetPipeline]):
         dataset_pipeline: SingleConditionDatasetPipeline,
         debug: bool = False,
         is_scgen_variant: bool = False,
+        seed: int = 19193
     ):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
             debug=debug,
             is_scgen_variant=is_scgen_variant,
+            seed=seed
         )
 
     def predict(self, model, target_cell_type: str):
@@ -674,12 +698,14 @@ class VidrMultiplePipeline(VidrPipeline[MultipleConditionDatasetPipeline]):
         dataset_pipeline: MultipleConditionDatasetPipeline,
         debug: bool = False,
         is_scgen_variant: bool = False,
+        seed: int = 19193
     ):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
             debug=debug,
             is_scgen_variant=is_scgen_variant,
+            seed=seed
         )
 
     def get_max_dosage(self):

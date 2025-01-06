@@ -22,24 +22,13 @@ setup(
         ]
     ),
     install_requires=[
-        "scanpy",
-        "numpy",
-        "adata",
+        # not indexed by conda
+        "episcanpy==0.3.2", # scbutterfly
         "pertpy",
-        "tensorboard",
-        "scvi-tools<=0.20.0",  # scgen
         "jax[cuda12]" # for pertpy
     ],
     extras_require={
         "dev": [
-            "matplotlib",
-            "plotly",
-            "seaborn",
-            "pandas",
-            "jupyter",
-            "black",
-            "pytest",
-            "ridgeplot"
         ]
     },
 )

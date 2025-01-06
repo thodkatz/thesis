@@ -8,7 +8,48 @@ from typing import List, Optional
 import scvi  # just importing it, sets the global seed to 0
 import torch
 
-SEED = 19193
+class SeedSingleton:
+    _seed: Optional[int]  = None
+    
+    def __init__(self, seed: Optional[int] = None):
+        if self._seed is not None and self._seed != seed:
+            raise ValueError("Seed has already been set")
+        SeedSingleton._seed = seed
+        self._setup_seed()
+        
+    def _setup_seed(self):
+        seed = SeedSingleton.get_value()
+        print(f"Seed has been set {seed}")
+        scvi.settings.seed = seed
+        np.random.seed(seed)
+        random.seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.manual_seed(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False        
+
+    @staticmethod
+    def get_value() -> int:
+        assert SeedSingleton.is_set()
+        return SeedSingleton._seed
+    
+    @staticmethod
+    def is_set() -> bool:
+        return SeedSingleton._seed is not None
+
+    @staticmethod    
+    def get_dataloader_worker(worker_id):
+        """
+        For the Dataloaders
+
+        todo: use this for scButterfly dataloading
+        todo: investigate if scvi handles the randomness of dataloaders
+        https://pytorch.org/docs/stable/notes/randomness.html
+        """
+        # worker_seed = (torch.initial_seed() + worker_id) % 2**32
+        worker_seed = SeedSingleton.get_value() + worker_id
+        np.random.seed(worker_seed)
+        random.seed(worker_seed)
 
 
 @dataclass(frozen=True)
@@ -95,32 +136,8 @@ def append_csv(df: DataFrame, path: Path):
         header_df.to_csv(path, index=False)
     print("Writing metrics to", path)
     df.to_csv(path, mode="a", header=False, index=False)
-
-
-def setup_seed():
-    seed = SEED
-    print(f"Seed has been set {seed}")
-    scvi.settings.seed = seed
-    np.random.seed(seed)
-    random.seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-
-
-# https://pytorch.org/docs/stable/notes/randomness.html
-def seed_worker(worker_id):
-    """
-    For the Dataloaders
-
-    todo: use this for scButterfly dataloading
-    todo: inverstiage if scvi handles the randomness of dataloaders
-    """
-    # worker_seed = (torch.initial_seed() + worker_id) % 2**32
-    worker_seed = SEED + worker_id
-    np.random.seed(worker_seed)
-    random.seed(worker_seed)
+    
+    
 
 
 def pretty_print(obj, skip_private=True):

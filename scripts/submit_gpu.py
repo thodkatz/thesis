@@ -28,6 +28,7 @@ def write_slurm_template(script, out_path, env_name,
                       "#SBATCH -p gpu-el8\n"
                     #   f"#SBATCH -C 'gpu=3090|gpu=2080Ti'\n"
                       f"#SBATCH --gres=shard:1\n\n"
+                      "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/g/kreshuk/katzalis/conda/miniforge3/envs/thesis/lib\n"
                       "module load cuDNN\n"
                       "source ~/.bashrc\n"
                       "echo Hostname: $HOSTNAME\n"

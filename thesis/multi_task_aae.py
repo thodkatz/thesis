@@ -22,7 +22,7 @@ from thesis.datasets import (
 from torch.utils.tensorboard import SummaryWriter
 from scipy import sparse
 
-from thesis.utils import SEED, pretty_print, seed_worker
+from thesis.utils import SeedSingleton, pretty_print
 
 
 Gamma = Tensor
@@ -515,6 +515,7 @@ class Trainer(ABC):
         batch_size: int,
         lr: float,
         device: str = "cuda",
+        seed: int = 19193,
     ):
         self.model = model
         self.device = device
@@ -523,7 +524,6 @@ class Trainer(ABC):
         self.batch_size = batch_size
         self.lr = lr
 
-        print("Torch seed", torch.initial_seed())
 
         def get_writer(tensorboard: Union[Path, SummaryWriter]):
             if isinstance(tensorboard, Path):
@@ -536,7 +536,16 @@ class Trainer(ABC):
         self.writer_val = get_writer(val_tensorboard)
 
         generator = torch.Generator()
-        generator.manual_seed(SEED)
+        
+        if not SeedSingleton.is_set():
+            SeedSingleton(seed=seed)
+        else:
+            print("seed already set", SeedSingleton.get_value())
+            print("ModelPipeline: Torch initial seed", torch.random.initial_seed())
+                        
+        generator.manual_seed(SeedSingleton.get_value())
+        
+        print("Torch initial seed", torch.initial_seed())
 
         train_adata, validation_adata = (
             split_dataset_pipeline.split_dataset_to_train_validation(
@@ -552,12 +561,12 @@ class Trainer(ABC):
             batch_size=batch_size,
             shuffle=True,
             num_workers=0,
-            worker_init_fn=seed_worker,
+            worker_init_fn=SeedSingleton.get_dataloader_worker,
             generator=generator,
         )
 
         generator = torch.Generator()
-        generator.manual_seed(SEED + 1)
+        generator.manual_seed(SeedSingleton.get_value() + 1)
 
         self.validation_dataset = DosagesDataset(
             dataset_pipeline=split_dataset_pipeline.dataset_pipeline,
@@ -569,7 +578,7 @@ class Trainer(ABC):
             batch_size=batch_size,
             shuffle=False,
             num_workers=0,
-            worker_init_fn=seed_worker,
+            worker_init_fn=SeedSingleton.get_dataloader_worker,
             generator=generator,
         )
 
@@ -604,6 +613,7 @@ class MultiTaskAutoencoderTrainer(Trainer):
         epochs: int = 100,
         lr: float = 0.001,
         batch_size: int = 64,
+        seed: int = 19193
     ):
 
         super().__init__(
@@ -615,6 +625,7 @@ class MultiTaskAutoencoderTrainer(Trainer):
             batch_size=batch_size,
             split_dataset_pipeline=split_dataset_pipeline,
             target_cell_type=target_cell_type,
+            seed=seed
         )
 
         self.epochs = epochs
@@ -707,6 +718,7 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
         adversarial_epochs: int = 50,
         lr: float = 1e-4,
         batch_size: int = 64,
+        seed: int = 19193,
     ):
         train_tensorboard = tensorboard_path / "train"
         val_tensorboard = tensorboard_path / "val"
@@ -719,6 +731,7 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
             batch_size=batch_size,
             split_dataset_pipeline=split_dataset_pipeline,
             target_cell_type=target_cell_type,
+            seed=seed
         )
 
         self.coeff_adversarial = coeff_adversarial
@@ -751,6 +764,7 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
             batch_size=self.batch_size,
             split_dataset_pipeline=split_dataset_pipeline,
             target_cell_type=self.target_cell_type,
+            seed=seed
         )
 
         self.warmup_learning_rate_steps = 100
@@ -928,8 +942,11 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
                 reconstruction_loss, latent = self._get_reconstruction_loss(
                     gene_expressions, dosages_one_hot_encoded
                 )
-                adv_loss = self._get_adversarial_loss(
-                    latent, dosages_one_hot_encoded, is_control_soft_labels
+                # adv_loss = self._get_adversarial_loss(
+                #     latent, dosages_one_hot_encoded, is_control_soft_labels
+                # )
+                adv_loss = self._get_adversarial_loss_swap(
+                    latent, is_control_soft_labels
                 )
                 
                 if adv_loss is not None:
