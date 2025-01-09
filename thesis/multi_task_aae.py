@@ -6,7 +6,7 @@ from anndata import AnnData
 import numpy as np
 from torch import nn
 from torch import Tensor
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Type
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.nn.utils import spectral_norm
@@ -17,12 +17,20 @@ from tqdm import tqdm
 
 from thesis.datasets import (
     DatasetPipeline,
+    NaultMultiplePipeline,
+    NaultPipeline,
+    NaultSinglePipeline,
     SplitDatasetPipeline,
 )
 from torch.utils.tensorboard import SummaryWriter
 from scipy import sparse
 
-from thesis.utils import SeedSingleton, pretty_print
+from thesis.evaluation import evaluation_out_of_sample
+from thesis.utils import SeedSingleton, append_csv, pretty_print
+from thesis import ROOT
+import pandas as pd
+import scanpy as sc
+import matplotlib.pyplot as plt
 
 
 Gamma = Tensor
@@ -249,6 +257,9 @@ class NetworkBlockFilm(NetworkBlock):
         output_dim: int,
         hidden_activation: LayerActivation = LayerActivation.LEAKY_RELU,
         output_activation: Optional[LayerActivation] = LayerActivation.LEAKY_RELU,
+        dropout_rate: float = 0.1,
+        norm_type: WeightNorm = WeightNorm.BATCH,
+        mask_rate: Optional[float] = None,
     ):
         super().__init__(
             input_dim=input_dim,
@@ -256,20 +267,26 @@ class NetworkBlockFilm(NetworkBlock):
             output_dim=output_dim,
             hidden_activation=hidden_activation,
             output_activation=output_activation,
+            dropout_rate = dropout_rate,
+            norm_type=norm_type
         )
 
         self.film_layer_factory = film_layer_factory
 
     def forward(self, x: Tensor, dosages: Tensor) -> Tensor:
-        for layer in self.hidden_layers:
+        x = self.mask_layer(x)
+        
+        for layer, norm, dropout in zip(self.hidden_layers, self.norm_layers, self.dropout_layers):
             x = layer(x)
             film_generator = self.film_layer_factory.create_film_generator(
                 dim=x.shape[1]
             )
             gamma, beta = film_generator(dosages)
             film_layer = FilmLayer()
+            x = norm(x)
             x = film_layer(x, gamma, beta)
             x = self.hidden_activation(x)
+            x = dropout(x)
         return self._forward_output_layer(x)
 
     @classmethod
@@ -278,19 +295,50 @@ class NetworkBlockFilm(NetworkBlock):
         input_dim: int,
         hidden_layers: List[int],
         film_layer_factory: FilmLayerFactory,
+        dropout_rate: float = 0.1,
+        mask_rate: float = 0.5,
     ):
         reverse_hidden_layers = hidden_layers[::-1]
         encoder = NetworkBlock(
             input_dim=input_dim,
             hidden_layer_dims=hidden_layers,
             output_dim=hidden_layers[-1],
-            mask_rate=0.5,
+            mask_rate=mask_rate,
+            dropout_rate=dropout_rate,
         )
         decoder = NetworkBlockFilm(
             input_dim=reverse_hidden_layers[0],
             hidden_layers=reverse_hidden_layers,
             output_dim=input_dim,
             film_layer_factory=film_layer_factory,
+            dropout_rate=dropout_rate,
+        )
+        return encoder, decoder
+    
+    @classmethod
+    def create_encoder_with_film_decoder_with_film(
+        cls,
+        input_dim: int,
+        hidden_layers: List[int],
+        film_layer_factory: FilmLayerFactory,
+        dropout_rate: float = 0.1,
+        mask_rate: float = 0.5,
+    ):
+        reverse_hidden_layers = hidden_layers[::-1]
+        encoder = NetworkBlockFilm(
+            input_dim=input_dim,
+            hidden_layers=hidden_layers,
+            output_dim=hidden_layers[-1],
+            film_layer_factory=film_layer_factory,
+            dropout_rate=dropout_rate,
+            mask_rate=mask_rate,
+        )
+        decoder = NetworkBlockFilm(
+            input_dim=reverse_hidden_layers[0],
+            hidden_layers=reverse_hidden_layers,
+            output_dim=input_dim,
+            film_layer_factory=film_layer_factory,
+            dropout_rate=dropout_rate,
         )
         return encoder, decoder
 
@@ -333,6 +381,8 @@ class MultiTaskAae(nn.Module):
         hidden_layers_autoencoder: List[int],
         hidden_layers_discriminator: List[int],
         film_layer_factory: FilmLayerFactory,
+        mask_rate: float = 0.5,
+        dropout_rate: float = 0.1,
     ):
         super().__init__()
 
@@ -340,6 +390,8 @@ class MultiTaskAae(nn.Module):
             input_dim=num_features,
             hidden_layers=hidden_layers_autoencoder,
             film_layer_factory=film_layer_factory,
+            mask_rate=mask_rate,
+            dropout_rate=dropout_rate,
         )
 
         self.discriminator = NetworkBlock.create_discriminator(
@@ -367,6 +419,8 @@ class MultiTaskAae(nn.Module):
         hidden_layers_autoencoder: List[int],
         hidden_layers_discriminator: List[int],
         film_layer_factory: FilmLayerFactory,
+        mask_rate: float,
+        dropout_rate: float,
         load_path: Path,
     ):
         model = MultiTaskAae(
@@ -374,6 +428,8 @@ class MultiTaskAae(nn.Module):
             hidden_layers_autoencoder=hidden_layers_autoencoder,
             hidden_layers_discriminator=hidden_layers_discriminator,
             film_layer_factory=film_layer_factory,
+            mask_rate=mask_rate,
+            dropout_rate=dropout_rate
         )
         load_path = load_path / "model.pt"
         model.load_state_dict(torch.load(load_path))
@@ -838,18 +894,6 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
         adv_loss = self.bce(input=discriminator_output, target=fake_perturb_labels)
         return adv_loss
     
-    def _get_adversarial_loss_swap(
-        self,
-        generator_output: Tensor,
-        is_control_soft_labels: Tensor,
-    ) -> Tensor:
-        """
-        Generator (Encoder) tries to fool both control and perturbed as perturbed and control respectively
-        """
-        fake_perturb_labels = torch.ones_like(is_control_soft_labels) - is_control_soft_labels
-        discriminator_output = self.model.discriminator(generator_output)
-        adv_loss = self.bce(input=discriminator_output, target=fake_perturb_labels)
-        return adv_loss
 
     def _get_total_loss(self, rc_loss: Tensor, adv_loss: Tensor):
         total_loss = (
@@ -942,11 +986,8 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
                 reconstruction_loss, latent = self._get_reconstruction_loss(
                     gene_expressions, dosages_one_hot_encoded
                 )
-                # adv_loss = self._get_adversarial_loss(
-                #     latent, dosages_one_hot_encoded, is_control_soft_labels
-                # )
-                adv_loss = self._get_adversarial_loss_swap(
-                    latent, is_control_soft_labels
+                adv_loss = self._get_adversarial_loss(
+                    latent, dosages_one_hot_encoded, is_control_soft_labels
                 )
                 
                 if adv_loss is not None:
@@ -1031,6 +1072,56 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
             self._run_adversarial_per_epoch(epoch)
 
 
+class MultiTaskAdversarialSwapAutoencoderTrainer(MultiTaskAdversarialAutoencoderTrainer):
+    def _get_adversarial_loss(
+        self,
+        generator_output: Tensor,
+        dosages_one_hot_encoded: Tensor,
+        is_control_soft_labels: Tensor,
+    ) -> Optional[Tensor]:
+        """
+        Generator (Encoder) tries to fool both control and perturbed as perturbed and control respectively
+        """
+        fake_perturb_labels = torch.ones_like(is_control_soft_labels) - is_control_soft_labels
+        discriminator_output = self.model.discriminator(generator_output)
+        adv_loss = self.bce(input=discriminator_output, target=fake_perturb_labels)
+        return adv_loss
+    
+class MultiTaskAdversarialGaussianAutoencoderTrainer(MultiTaskAdversarialAutoencoderTrainer):
+    def _get_adversarial_loss(
+        self,
+        generator_output: Tensor,
+        dosages_one_hot_encoded: Tensor,
+        is_control_soft_labels: Tensor,
+    ) -> Optional[Tensor]:
+        """
+        Generator (Encoder) tries to fool discriminator that gene expressions follow gaussian distribution
+        """
+        discriminator_output = self.model.discriminator(generator_output)
+        adv_loss = self.bce(input=discriminator_output, target=torch.ones_like(discriminator_output))
+        return adv_loss
+    
+    def _get_discriminator_loss(
+        self, gene_expression: Tensor, is_control_soft_labels: Tensor
+    ): 
+        latent = self.model.encoder(gene_expression).detach()
+        discriminator_output_genes = self.model.discriminator(latent)
+        discriminator_loss_genes = self.bce(
+            input=discriminator_output_genes, target=torch.zeros_like(discriminator_output_genes)
+        )
+        
+        gaussian_input = torch.normal(
+            mean=0.0, std=1.0, size=latent.size(), device=self.device
+        )
+        discriminator_output_gaussian = self.model.discriminator(gaussian_input)
+        discriminator_loss_gaussian = self.bce(
+            input=discriminator_output_gaussian, target=torch.ones_like(discriminator_output_gaussian)
+        )
+        
+        discriminator_loss = 0.5 * discriminator_loss_gaussian + 0.5 * discriminator_loss_genes
+        return discriminator_loss
+
+
 class MultiTaskAdversarialAutoencoderUtils:
     def __init__(
         self,
@@ -1048,9 +1139,7 @@ class MultiTaskAdversarialAutoencoderUtils:
     def train(
         self,
         save_path: Path,
-        trainer: Union[
-            MultiTaskAdversarialAutoencoderTrainer, MultiTaskAutoencoderTrainer
-        ],
+        trainer: Trainer,
     ):
         trainer()
         trainer.save(save_path)
@@ -1094,3 +1183,196 @@ class MultiTaskAdversarialAutoencoderUtils:
 
         # assumption: returns sorted based on drug dosage to test excluding control
         return list(predictions.values())
+
+
+def run_multi_task_aae(
+    *,
+    batch_size: int,
+    learning_rate: float,
+    autoencoder_pretrain_epochs: int,
+    discriminator_pretrain_epochs: int,
+    adversarial_epochs: int,
+    coeff_adversarial: float,
+    hidden_layers_autoencoder: list,
+    hidden_layers_discriminator: list,
+    hidden_layers_film: list,
+    seed: int,
+    saved_results_path: Path,
+    trainer_class: Type[MultiTaskAdversarialAutoencoderTrainer],
+    mask_rate: float = 0.5,
+    dropout_rate: float = 0.1,
+    overwrite: bool = False,
+):
+    experiment_name = (
+        f"layers_ae_{hidden_layers_autoencoder}_disc_{hidden_layers_discriminator}_film_{hidden_layers_film}_"
+        f"lr_{learning_rate}_batch_{batch_size}_ae_epochs_{autoencoder_pretrain_epochs}_"
+        f"dis_epochs_{discriminator_pretrain_epochs}_adv_epochs_{adversarial_epochs}_"
+        f"coef_adv_{coeff_adversarial}_"
+        f"mask_rate_{mask_rate}_dropout_{dropout_rate}_"
+        f"seed_{seed}_{trainer_class.__name__}"
+    )
+    print(experiment_name)
+
+    multi_task_aae_path = saved_results_path / "multi_task_aae" / experiment_name
+
+    tensorboard_path = saved_results_path / "runs" / "multi_task_aae" / experiment_name
+
+    model_path = multi_task_aae_path / "model.pt"
+
+    figures_path = multi_task_aae_path / "figures"
+
+    os.makedirs(multi_task_aae_path, exist_ok=True)
+    os.makedirs(figures_path, exist_ok=True)
+
+    is_single = False
+    # %%
+
+    if not is_single:
+        dataset_pipeline = NaultMultiplePipeline(dataset_pipeline=NaultPipeline())
+    else:
+        dataset_pipeline = NaultSinglePipeline(
+            dataset_pipeline=NaultPipeline(), dosages=30.0
+        )
+
+    condition_len = len(dataset_pipeline.get_dosages_unique())
+    num_features = dataset_pipeline.get_num_genes()
+
+    film_factory = FilmLayerFactory(
+        input_dim=condition_len,
+        hidden_layers=hidden_layers_film,
+    )
+
+    if model_path.exists() and not overwrite:
+        print("Loading model")
+        model = MultiTaskAae.load(
+            num_features=num_features,
+            hidden_layers_autoencoder=hidden_layers_autoencoder,
+            hidden_layers_discriminator=hidden_layers_discriminator,
+            film_layer_factory=film_factory,
+            load_path=multi_task_aae_path,
+            mask_rate=mask_rate,
+            dropout_rate=dropout_rate,
+        )
+        model = model.to("cuda")
+    else:
+        model = MultiTaskAae(
+            num_features=num_features,
+            hidden_layers_autoencoder=hidden_layers_autoencoder,
+            hidden_layers_discriminator=hidden_layers_discriminator,
+            film_layer_factory=film_factory,
+            mask_rate=mask_rate,
+            dropout_rate=dropout_rate
+        )
+
+    target_cell_type = "Hepatocytes - portal"
+
+    model_utils = MultiTaskAdversarialAutoencoderUtils(
+        split_dataset_pipeline=dataset_pipeline,
+        target_cell_type=target_cell_type,
+        model=model,
+    )
+
+    if model_path.exists() and not overwrite:
+        pass
+    else:
+        trainer = trainer_class(
+            model=model,
+            tensorboard_path=tensorboard_path,
+            split_dataset_pipeline=dataset_pipeline,
+            target_cell_type=target_cell_type,
+            device="cuda",
+            coeff_adversarial=coeff_adversarial,
+            autoencoder_pretrain_epochs=autoencoder_pretrain_epochs,
+            discriminator_pretrain_epochs=discriminator_pretrain_epochs,
+            adversarial_epochs=adversarial_epochs,
+            lr=learning_rate,
+            batch_size=batch_size,
+            seed=seed,
+        )
+
+        model_utils.train(trainer=trainer, save_path=multi_task_aae_path)
+
+    predictions = model_utils.predict()
+
+    dfs = []
+
+    stim_test = dataset_pipeline.get_stim_test(target_cell_type=target_cell_type)
+    control_test = dataset_pipeline.get_ctrl_test(target_cell_type=target_cell_type)
+
+    dosages_to_test = dataset_pipeline.get_dosages_unique(stim_test)
+
+    for idx, dosage in enumerate(dosages_to_test):
+        evaluation_path = multi_task_aae_path / f"dosage{dosage}"
+
+        df, _ = evaluation_out_of_sample(
+            control=control_test,
+            ground_truth=stim_test[
+                stim_test.obs[dataset_pipeline.dosage_key] == dosage
+            ],
+            predicted=predictions[idx],
+            output_path=evaluation_path,
+            save_plots=False,
+            cell_type_key=dataset_pipeline.cell_type_key,
+            skip_distances=True,
+        )
+        df["dose"] = dosage
+        df["experiment"] = experiment_name
+        append_csv(df, ROOT / "analysis" / "multi_task_aae.csv")
+        dfs.append(df)
+
+        print("Finished evaluation for dosage", dosage)
+
+    all_df = pd.concat(dfs, axis=0)
+
+    overview_df = pd.DataFrame()
+    overview_df["experiment"] = [experiment_name]
+    overview_df["cell_type_test"] = target_cell_type
+    overview_df["DEGs"] = all_df["DEGs"].mean()
+    overview_df["r2mean_all_boostrap_mean"] = all_df["r2mean_all_boostrap_mean"].mean()
+    overview_df["r2mean_top20_boostrap_mean"] = all_df[
+        "r2mean_top20_boostrap_mean"
+    ].mean()
+    overview_df["r2mean_top100_boostrap_mean"] = all_df[
+        "r2mean_top100_boostrap_mean"
+    ].mean()
+    append_csv(overview_df, ROOT / "analysis" / "multi_task_aae_overview.csv")
+
+    train_adata, validation_adata = dataset_pipeline.split_dataset_to_train_validation(
+        target_cell_type=target_cell_type
+    )
+
+    def umaps(adata: AnnData, title: str = ""):
+        tensor = DosagesDataset.get_gene_expressions(adata).to("cuda")
+        latent = AnnData(
+            X=model.get_latent_representation(tensor), obs=adata.obs.copy()
+        )
+
+        latent.obs["Dose"] = latent.obs["Dose"].astype("category")
+
+        sc.pp.neighbors(latent)
+        sc.tl.umap(latent)
+
+        sc.pl.umap(latent, color=["Dose"], show=False)
+        plt.savefig(
+            f"{figures_path}/multi_task_aae_umap_dose_{experiment_name}_{title}.pdf",
+            dpi=150,
+            bbox_inches="tight",
+        )
+
+        sc.pl.umap(latent, color=["celltype"], show=False)
+        plt.savefig(
+            f"{figures_path}/multi_task_aae_umap_celltype_{experiment_name}_{title}.pdf",
+            dpi=150,
+            bbox_inches="tight",
+        )
+
+    umaps(adata=train_adata, title="train")
+    umaps(adata=validation_adata, title="validation")
+    umaps(adata=stim_test, title="stim")
+
+    return (
+        overview_df["DEGs"].tolist()[0],
+        overview_df["r2mean_all_boostrap_mean"].tolist()[0],
+        overview_df["r2mean_top20_boostrap_mean"].tolist()[0],
+        overview_df["r2mean_top100_boostrap_mean"].tolist()[0],
+    )
