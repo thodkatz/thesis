@@ -84,6 +84,9 @@ class ModelPipeline(ABC, Generic[T]):
         refresh_training: bool = False,
         refresh_evaluation: bool = False,
     ) -> Optional[Predict]:
+        """
+        Batch is considered the index of the cell type to be held out for out of distribution prediction
+        """
         pass
 
     def __call__(

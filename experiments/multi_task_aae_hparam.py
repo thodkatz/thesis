@@ -1,9 +1,14 @@
 import json
 from thesis import SAVED_RESULTS_PATH
 from thesis.multi_task_aae import (
-    MultiTaskAdversarialAutoencoderTrainer,
+    MultiTaskAae,
+    MultiTaskAaeAdversarialAndOptimalTransportTrainer,
+    MultiTaskAdversarialTrainer,
     MultiTaskAdversarialGaussianAutoencoderTrainer,
-    run_multi_task_aae,
+    MultiTaskAdversarialOptimalTransportTrainer,
+    MultiTaskVae,
+    MultiTaskVaeAdversarialTrainer,
+    run_multi_task_adversarial_aae,
 )
 import optuna
 
@@ -90,7 +95,7 @@ def objective(trial):
     dropout_rate = trial.suggest_categorical("dropout_rate", [0, 0.1, 0.2, 0.3, 0.4, 0.5])
     #dropout_rate = 0.1
 
-    return run_multi_task_aae(
+    return run_multi_task_adversarial_aae(
         batch_size=batch_size,
         learning_rate=learning_rate,
         coeff_adversarial=coeff_adversarial,
@@ -103,7 +108,8 @@ def objective(trial):
         seed=seed,
         dropout_rate=dropout_rate,
         mask_rate=mask_rate,
-        trainer_class=MultiTaskAdversarialAutoencoderTrainer,
+        model_class=MultiTaskVae,
+        trainer_class=MultiTaskVaeAdversarialTrainer,
         saved_results_path=SAVED_RESULTS_PATH
     )
 
@@ -112,8 +118,8 @@ def objective(trial):
 if __name__ == "__main__":
     study = optuna.create_study(
         directions=["maximize", "maximize", "maximize", "maximize"],
-        study_name="multi_task_aae_no_adversarial_dropout_mask_rates_include_dropout_decoder",
-        storage="sqlite:////g/kreshuk/katzalis/optuna/db.sqlite3",
+        study_name="multi_task_vae",
+        storage="sqlite:////g/kreshuk/katzalis/repos/thesis-tmp/optuna/db.sqlite3",
         load_if_exists=True,
     )
     study.optimize(objective, n_trials=1)

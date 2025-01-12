@@ -4,9 +4,10 @@ import os
 from pathlib import Path
 from anndata import AnnData
 import numpy as np
+from scButterfly.split_datasets import get_ot
 from torch import nn
 from torch import Tensor
-from typing import List, Optional, Tuple, Union, Type
+from typing import Generic, List, Optional, Tuple, TypeVar, Union, Type
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.nn.utils import spectral_norm
@@ -80,11 +81,17 @@ class FilmGenerator(nn.Module):
             self._hidden_network = nn.Identity()
 
         self.gamma = NetworkBlock(
-            input_dim=last_hidden_dim, hidden_layer_dims=[], output_dim=output_dim
+            input_dim=last_hidden_dim,
+            hidden_layer_dims=[],
+            output_dim=output_dim,
+            dropout_rate=0,
         )
 
         self.beta = NetworkBlock(
-            input_dim=last_hidden_dim, hidden_layer_dims=[], output_dim=output_dim
+            input_dim=last_hidden_dim,
+            hidden_layer_dims=[],
+            output_dim=output_dim,
+            dropout_rate=0,
         )
 
     def forward(self, condition: Tensor) -> Tuple[Gamma, Beta]:
@@ -267,16 +274,18 @@ class NetworkBlockFilm(NetworkBlock):
             output_dim=output_dim,
             hidden_activation=hidden_activation,
             output_activation=output_activation,
-            dropout_rate = dropout_rate,
-            norm_type=norm_type
+            dropout_rate=dropout_rate,
+            norm_type=norm_type,
         )
 
         self.film_layer_factory = film_layer_factory
 
     def forward(self, x: Tensor, dosages: Tensor) -> Tensor:
         x = self.mask_layer(x)
-        
-        for layer, norm, dropout in zip(self.hidden_layers, self.norm_layers, self.dropout_layers):
+
+        for layer, norm, dropout in zip(
+            self.hidden_layers, self.norm_layers, self.dropout_layers
+        ):
             x = layer(x)
             film_generator = self.film_layer_factory.create_film_generator(
                 dim=x.shape[1]
@@ -314,7 +323,7 @@ class NetworkBlockFilm(NetworkBlock):
             dropout_rate=dropout_rate,
         )
         return encoder, decoder
-    
+
     @classmethod
     def create_encoder_with_film_decoder_with_film(
         cls,
@@ -351,16 +360,19 @@ class FilmLayerFactory:
         self,
         input_dim: int,
         hidden_layers: List[int],
+        dropout_rate: float = 0.1,
         device: str = "cuda",
     ):
         self.input_dim = input_dim
         self.hidden_layers = hidden_layers
         self.device = device
+        self.dropout_rate = dropout_rate
 
     def create_film_generator(self, dim: int) -> FilmGenerator:
         film_generator = FilmGenerator(
             input_dim=self.input_dim,
             hidden_layer_dims=self.hidden_layers,
+            dropout_rate=self.dropout_rate,
             output_dim=dim,
         ).to(self.device)
         return film_generator
@@ -405,6 +417,9 @@ class MultiTaskAae(nn.Module):
         x = self.decoder(x, dosages)
         return x
 
+    def predict(self, x: Tensor, dosages: Tensor) -> Tensor:
+        return self.forward(x, dosages)
+
     def get_latent_representation(self, x: Tensor):
         with torch.no_grad():
             return self.encoder(x).detach().cpu().numpy()
@@ -429,7 +444,7 @@ class MultiTaskAae(nn.Module):
             hidden_layers_discriminator=hidden_layers_discriminator,
             film_layer_factory=film_layer_factory,
             mask_rate=mask_rate,
-            dropout_rate=dropout_rate
+            dropout_rate=dropout_rate,
         )
         load_path = load_path / "model.pt"
         model.load_state_dict(torch.load(load_path))
@@ -470,12 +485,117 @@ class Aae(nn.Module):
         return pretty_print(self)
 
 
+class MultiTaskVae(nn.Module):
+    """
+    Multi-task Variational Autoencoder
+
+    """
+
+    def __init__(
+        self,
+        num_features: int,
+        hidden_layers_autoencoder: List[int],
+        hidden_layers_discriminator: List[int],
+        film_layer_factory: FilmLayerFactory,
+        mask_rate: float = 0.5,
+        dropout_rate: float = 0.1,
+    ):
+        super().__init__()
+
+        self.encoder, self.decoder = NetworkBlockFilm.create_encoder_decoder_with_film(
+            input_dim=num_features,
+            hidden_layers=hidden_layers_autoencoder,
+            film_layer_factory=film_layer_factory,
+            mask_rate=mask_rate,
+            dropout_rate=dropout_rate,
+        )
+
+        self.mu = NetworkBlock(
+            input_dim=self.get_latent_dim(),
+            hidden_layer_dims=[],
+            dropout_rate=0,  # should they have dropout?
+            output_dim=self.get_latent_dim(),
+        )
+        self.var = NetworkBlock(
+            input_dim=self.get_latent_dim(),
+            hidden_layer_dims=[],
+            dropout_rate=0,  # should they have dropout?
+            output_dim=self.get_latent_dim(),
+        )
+
+    def reparameterize(self, mu, var):
+        std = torch.exp(0.5 * var)
+        eps = torch.randn_like(std)
+        return mu + eps * std
+
+    def forward(
+        self, x: Tensor, dosages: Tensor, is_train: bool
+    ) -> Tuple[Tensor, Tensor, Tensor]:
+        x = self.encoder(x)
+        mu, var = self.mu(x), self.var(x)
+        if is_train:
+            x = self.reparameterize(mu, var)
+        else:
+            x = mu
+        x = self.decoder(x, dosages)
+        return x, mu, var
+
+    def predict(self, x: Tensor, dosages: Tensor) -> Tensor:
+        assert self.training is False
+        x = self.encoder(x)
+        x = self.mu(x)
+        x = self.decoder(x, dosages)
+        return x
+
+    def get_latent_representation(self, x: Tensor):
+        with torch.no_grad():
+            x = self.encoder(x)
+            x = self.mu(x)
+            return x.detach().cpu().numpy()
+
+    def get_latent_dim(self):
+        return self.encoder.output_dim
+
+    @classmethod
+    def load(
+        cls,
+        num_features: int,
+        hidden_layers_autoencoder: List[int],
+        hidden_layers_discriminator: List[int],
+        film_layer_factory: FilmLayerFactory,
+        mask_rate: float,
+        dropout_rate: float,
+        load_path: Path,
+    ):
+        model = MultiTaskAae(
+            num_features=num_features,
+            hidden_layers_autoencoder=hidden_layers_autoencoder,
+            hidden_layers_discriminator=hidden_layers_discriminator,
+            film_layer_factory=film_layer_factory,
+            mask_rate=mask_rate,
+            dropout_rate=dropout_rate,
+        )
+        load_path = load_path / "model.pt"
+        model.load_state_dict(torch.load(load_path))
+        return model
+
+    def save(self, path: Path):
+        os.makedirs(path, exist_ok=True)
+        model_path = path / "model.pt"
+        torch.save(self.state_dict(), model_path)
+
+    def __str__(self) -> str:
+        return pretty_print(self)
+
+
 class DosagesDataset(Dataset):
     def __init__(
         self,
         dataset_pipeline: DatasetPipeline,
         adata: AnnData,
+        target_cell_type: str,
     ):
+        self._target_cell_type = target_cell_type  # just for metadata
         self._dataset_pipeline = dataset_pipeline
         self.control_dose = self._dataset_pipeline.control_dose
 
@@ -499,6 +619,23 @@ class DosagesDataset(Dataset):
         self.dosages_one_hot_encoded = self.get_one_hot_encoded_dosages(dosages_numeric)
 
         assert len(self.gene_expressions) == len(self.dosages_one_hot_encoded)
+
+    @classmethod
+    def get_train_val_datasets(
+        cls, split_dataset_pipeline: SplitDatasetPipeline, target_cell_type: str
+    ):
+        train_adata, val_adata = (
+            split_dataset_pipeline.split_dataset_to_train_validation(target_cell_type)
+        )
+        return cls(
+            dataset_pipeline=split_dataset_pipeline.dataset_pipeline,
+            adata=train_adata,
+            target_cell_type=target_cell_type,
+        ), cls(
+            dataset_pipeline=split_dataset_pipeline.dataset_pipeline,
+            adata=val_adata,
+            target_cell_type=target_cell_type,
+        )
 
     def get_soft_labels_control(self, dosage: float):
         if dosage == self.control_dose:
@@ -533,9 +670,6 @@ class DosagesDataset(Dataset):
     def get_condition_len(self) -> int:
         return len(self._dosages_unique)
 
-    def get_dosages(self, adata: AnnData):
-        self._dataset_pipeline.get_dosages_unique(adata=adata)
-
     def get_ctrl_bool_idx(self, dosages_one_hot_encoded: Tensor):
         assert len(dosages_one_hot_encoded.shape) == 2
         assert dosages_one_hot_encoded.shape[1] == self.get_condition_len()
@@ -560,11 +694,120 @@ class DosagesDataset(Dataset):
         return f"Dataset(target: high_control: {self._high_control_label}, low_control: {self._low_control_label}, high_perturbed: {self._high_perturbed_label}, low_perturbed: {self._low_perturbed_label}, high_perturbed: {self._high_perturbed_label}"
 
 
-class Trainer(ABC):
+class DosagesOptimalTransportDataset(DosagesDataset):
     def __init__(
         self,
-        model: MultiTaskAae,
-        split_dataset_pipeline: SplitDatasetPipeline,
+        dataset_pipeline: DatasetPipeline,
+        adata: AnnData,
+        target_cell_type: str,
+    ):
+        super().__init__(
+            dataset_pipeline=dataset_pipeline,
+            adata=adata,
+            target_cell_type=target_cell_type,
+        )
+
+        control_adata = adata[
+            adata.obs[dataset_pipeline.dosage_key] == self.control_dose
+        ]
+
+        # order control by cell type (needed by optimal transport functionality)
+        cell_types = list(
+            control_adata.obs[dataset_pipeline.cell_type_key].cat.categories
+        )
+
+        control_cell_type_indices = []
+        for cell_type in cell_types:
+            mask = control_adata.obs[dataset_pipeline.cell_type_key] == cell_type
+            cell_type_indices = control_adata.obs[mask].index
+            control_cell_type_indices.extend(cell_type_indices)
+        self.control_gene_expressions = self.get_gene_expressions(
+            control_adata[control_cell_type_indices]
+        )
+
+        self.perturb_ot_gene_expressions = []
+        for condition in self.get_condition_labels():
+            if condition == self.control_dose:
+                continue
+            condition_adata = adata[adata.obs[dataset_pipeline.dosage_key] == condition]
+
+            # prepare for optimal transport from scbutterfly
+            control_adata.obs["cell_type"] = control_adata.obs[
+                dataset_pipeline.cell_type_key
+            ]
+            condition_adata.obs["cell_type"] = condition_adata.obs[
+                dataset_pipeline.cell_type_key
+            ]
+            control_adata.obs["condition"] = "control"
+            condition_adata.obs["condition"] = "stimulated"
+
+            embedding_dict = get_ot(control_adata, condition_adata)
+            perturb_control_indices = []
+            for cell_type in cell_types:
+                perturb_control_indices.extend(embedding_dict[cell_type])
+            perturb_gene_expressions = self.get_gene_expressions(
+                condition_adata[perturb_control_indices]
+            )
+            assert len(perturb_gene_expressions) == len(self.control_gene_expressions)
+            self.perturb_ot_gene_expressions.append(perturb_gene_expressions)
+
+    @classmethod
+    def get_train_val_datasets(
+        cls, split_dataset_pipeline: SplitDatasetPipeline, target_cell_type: str
+    ):
+        train_adata, val_adata = (
+            split_dataset_pipeline.split_dataset_to_train_validation(target_cell_type)
+        )
+        # exclude the target cell type for the control (perturb already excluded)
+        # todo: this should be already handled by the split dataset pipleine
+        train_adata = train_adata[
+            ~(train_adata.obs[split_dataset_pipeline.cell_type_key] == target_cell_type)
+        ]
+        val_adata = val_adata[
+            ~(val_adata.obs[split_dataset_pipeline.cell_type_key] == target_cell_type)
+        ]
+
+        return cls(
+            dataset_pipeline=split_dataset_pipeline.dataset_pipeline,
+            adata=train_adata,
+            target_cell_type=target_cell_type,
+        ), cls(
+            dataset_pipeline=split_dataset_pipeline.dataset_pipeline,
+            adata=val_adata,
+            target_cell_type=target_cell_type,
+        )
+
+    def __len__(self):
+        return len(self.control_gene_expressions) * (
+            self.get_condition_len() - 1
+        )  # exclude control
+
+    def __getitem__(self, index):
+        control_gene_expressions_len = len(self.control_gene_expressions)
+        perturbation_idx = index // control_gene_expressions_len
+        gene_expression_idx = index % control_gene_expressions_len
+
+        dosage = self.get_condition_labels()[perturbation_idx + 1]  # include control
+        dosages_one_hot_encoded = self.get_one_hot_encoded_dosages(dosages=[dosage])[0]
+        is_control_soft_labels = torch.tensor([self.get_soft_labels_control(dosage)])[0]
+
+        return (
+            self.control_gene_expressions[gene_expression_idx],
+            self.perturb_ot_gene_expressions[perturbation_idx][gene_expression_idx],
+            dosages_one_hot_encoded,
+            is_control_soft_labels,  # not actually used, keep it for consistent interface
+        )
+
+
+T = TypeVar("T", bound=Dataset)
+
+
+class Trainer(ABC, Generic[T]):
+    def __init__(
+        self,
+        model: Union[MultiTaskAae, MultiTaskVae],
+        train_dataset: T,
+        val_dataset: T,
         target_cell_type: str,
         train_tensorboard: Union[Path, SummaryWriter],
         val_tensorboard: Union[Path, SummaryWriter],
@@ -580,7 +823,6 @@ class Trainer(ABC):
         self.batch_size = batch_size
         self.lr = lr
 
-
         def get_writer(tensorboard: Union[Path, SummaryWriter]):
             if isinstance(tensorboard, Path):
                 os.makedirs(tensorboard, exist_ok=True)
@@ -592,25 +834,18 @@ class Trainer(ABC):
         self.writer_val = get_writer(val_tensorboard)
 
         generator = torch.Generator()
-        
+
         if not SeedSingleton.is_set():
             SeedSingleton(seed=seed)
         else:
             print("seed already set", SeedSingleton.get_value())
             print("ModelPipeline: Torch initial seed", torch.random.initial_seed())
-                        
+
         generator.manual_seed(SeedSingleton.get_value())
-        
+
         print("Torch initial seed", torch.initial_seed())
 
-        train_adata, validation_adata = (
-            split_dataset_pipeline.split_dataset_to_train_validation(
-                target_cell_type=target_cell_type
-            )
-        )
-        self.train_dataset = DosagesDataset(
-            dataset_pipeline=split_dataset_pipeline.dataset_pipeline, adata=train_adata
-        )
+        self.train_dataset = train_dataset
 
         self.train_dataloader = DataLoader(
             dataset=self.train_dataset,
@@ -624,10 +859,7 @@ class Trainer(ABC):
         generator = torch.Generator()
         generator.manual_seed(SeedSingleton.get_value() + 1)
 
-        self.validation_dataset = DosagesDataset(
-            dataset_pipeline=split_dataset_pipeline.dataset_pipeline,
-            adata=validation_adata,
-        )
+        self.validation_dataset = val_dataset
 
         self.validation_dataloader = DataLoader(
             dataset=self.validation_dataset,
@@ -657,11 +889,12 @@ class Trainer(ABC):
         return pretty_print(self)
 
 
-class MultiTaskAutoencoderTrainer(Trainer):
+class MultiTaskAutoencoderTrainer(Trainer[T]):
     def __init__(
         self,
-        model: MultiTaskAae,
-        split_dataset_pipeline: SplitDatasetPipeline,
+        model: Union[MultiTaskAae, MultiTaskVae],
+        train_dataset: T,
+        val_dataset: T,
         target_cell_type: str,
         train_tensorboard: Union[Path, SummaryWriter],
         val_tensorboard: Union[Path, SummaryWriter],
@@ -669,19 +902,20 @@ class MultiTaskAutoencoderTrainer(Trainer):
         epochs: int = 100,
         lr: float = 0.001,
         batch_size: int = 64,
-        seed: int = 19193
+        seed: int = 19193,
     ):
 
         super().__init__(
             model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
             device=device,
             lr=lr,
             batch_size=batch_size,
-            split_dataset_pipeline=split_dataset_pipeline,
             target_cell_type=target_cell_type,
-            seed=seed
+            seed=seed,
         )
 
         self.epochs = epochs
@@ -712,6 +946,9 @@ class MultiTaskAutoencoderTrainer(Trainer):
             self.optimizer_decoder, lr_lambda=warmup_learning_rate
         )
 
+        self.num_iterations = 0
+        self.total_iterations = len(self.train_dataloader) * self.epochs
+
     def _step_autoencoder(self, loss: Tensor):
         self.optimizer_encoder.zero_grad()
         self.optimizer_decoder.zero_grad()
@@ -720,6 +957,52 @@ class MultiTaskAutoencoderTrainer(Trainer):
         self.optimizer_decoder.step()
         self.scheduler_decoder.step()
         self.scheduler_encoder.step()
+
+    @abstractmethod
+    def _run_per_epoch(self, epoch: int):
+        pass
+
+    def train(self):
+        for epoch in tqdm(range(self.epochs), desc="Epochs"):
+            self._run_per_epoch(epoch)
+
+
+class MultiTaskAutoencoderDosagesTrainer(MultiTaskAutoencoderTrainer[DosagesDataset]):
+    """
+    Decoder reconstructs input
+    """
+
+    @classmethod
+    def from_pipeline(
+        cls,
+        model: MultiTaskAae,
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
+        train_tensorboard: Union[Path, SummaryWriter],
+        val_tensorboard: Union[Path, SummaryWriter],
+        device: str = "cuda",
+        epochs: int = 100,
+        lr: float = 0.001,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+        train_dataset, val_dataset = DosagesDataset.get_train_val_datasets(
+            split_dataset_pipeline=split_dataset_pipeline,
+            target_cell_type=target_cell_type,
+        )
+        cls(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
+            device=device,
+            epochs=epochs,
+            lr=lr,
+            batch_size=batch_size,
+            seed=seed,
+            target_cell_type=target_cell_type,
+        )
 
     def _run_per_epoch(self, epoch: int):
         def _run(dataloader: DataLoader, is_train: bool = True):
@@ -755,16 +1038,309 @@ class MultiTaskAutoencoderTrainer(Trainer):
         with torch.no_grad():
             _run(self.validation_dataloader, is_train=False)
 
-    def train(self):
-        for epoch in tqdm(range(self.epochs), desc="Epochs"):
-            self._run_per_epoch(epoch)
+
+class MultiTaskVaeDosagesTrainer(MultiTaskAutoencoderTrainer[DosagesDataset]):
+    """
+    Decoder reconstructs input
+    """
+
+    @classmethod
+    def from_pipeline(
+        cls,
+        model: MultiTaskVae,
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
+        train_tensorboard: Union[Path, SummaryWriter],
+        val_tensorboard: Union[Path, SummaryWriter],
+        device: str = "cuda",
+        epochs: int = 100,
+        lr: float = 0.001,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+        train_dataset, val_dataset = DosagesDataset.get_train_val_datasets(
+            split_dataset_pipeline=split_dataset_pipeline,
+            target_cell_type=target_cell_type,
+        )
+        cls(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
+            device=device,
+            epochs=epochs,
+            lr=lr,
+            batch_size=batch_size,
+            seed=seed,
+            target_cell_type=target_cell_type,
+        )
+
+    def _run_per_epoch(self, epoch: int):
+        def _run(dataloader: DataLoader, is_train: bool = True):
+            dataset_size = len(dataloader.dataset)
+            beta_max = 4
+
+            reconstruction_loss_batches = []
+            kl_loss_batches = []
+            total_loss_batches = []
+            for (
+                gene_expressions,
+                dosages,
+                is_control,
+            ) in dataloader:
+                gene_expressions = gene_expressions.to(self.device)
+                dosages = dosages.to(self.device)
+                is_control = is_control.to(self.device)
+                is_control = torch.reshape(is_control, (is_control.shape[0], 1))
+
+                decoder_output, mu, var = self.model(
+                    gene_expressions, dosages, is_train
+                )
+                kld_loss = torch.mean(
+                    -0.5 * torch.sum(1 + var - mu**2 - var.exp(), dim=1), dim=0
+                )
+                scale = self.batch_size / dataset_size  # Scale factor for KLD
+                rc_loss = self.mse(decoder_output, gene_expressions)
+
+                # Linear annealing
+                # conclusion: I have attempted fixed values, 0, 1, 4, 10, and annealing
+                # only when we use 0, excluding the kld loss, the model's performance improves (effectively a simple autoencoder)
+                beta = min(
+                    beta_max, (self.num_iterations / self.total_iterations) * beta_max
+                )
+                # beta = 1
+
+                total_loss = rc_loss + kld_loss * scale * beta
+                if is_train:
+                    self._step_autoencoder(total_loss)
+                reconstruction_loss_batches.append(rc_loss.item())
+                kl_loss_batches.append(kld_loss.item())
+                total_loss_batches.append(total_loss.item())
+                self.num_iterations += 1
+
+            reconstruction_loss = np.mean(reconstruction_loss_batches)
+            kl_loss = np.mean(kl_loss_batches)
+            total_loss = np.mean(total_loss_batches)
+            if is_train:
+                writer = self.writer_train
+                rc_loss_name = "rc loss"
+                kl_loss_name = "kl loss"
+                total_loss_name = "total loss"
+            else:
+                writer = self.writer_val
+                rc_loss_name = "rc val loss"
+                kl_loss_name = "kl val loss"
+                total_loss_name = "total val loss"
+            writer.add_scalar("reconstruction_loss", reconstruction_loss, epoch)
+            writer.add_scalar("kl_loss", kl_loss, epoch)
+            writer.add_scalar("total_loss", total_loss, epoch)
+            tqdm_text = f"Epoch [{epoch + 1}/{self.epochs}], {rc_loss_name}: {reconstruction_loss}, {kl_loss_name}: {kl_loss}, {total_loss_name}: {total_loss}"
+            tqdm.write(tqdm_text)
+
+        self.model.train()
+        _run(self.train_dataloader, is_train=True)
+        self.model.eval()
+        with torch.no_grad():
+            _run(self.validation_dataloader, is_train=False)
 
 
-class MultiTaskAdversarialAutoencoderTrainer(Trainer):
+class MultiTaskAutoencoderOptimalTransportTrainer(
+    MultiTaskAutoencoderTrainer[DosagesOptimalTransportDataset]
+):
+    """
+    Utilize OT idea of scbutterfly, and compare control with perturbed samples
+    """
+
+    @classmethod
+    def from_pipeline(
+        cls,
+        model: MultiTaskAae,
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
+        train_tensorboard: Union[Path, SummaryWriter],
+        val_tensorboard: Union[Path, SummaryWriter],
+        device: str = "cuda",
+        epochs: int = 100,
+        lr: float = 0.001,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+        train_dataset, val_dataset = (
+            DosagesOptimalTransportDataset.get_train_val_datasets(
+                split_dataset_pipeline=split_dataset_pipeline,
+                target_cell_type=target_cell_type,
+            )
+        )
+        cls(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
+            device=device,
+            epochs=epochs,
+            lr=lr,
+            batch_size=batch_size,
+            seed=seed,
+            target_cell_type=target_cell_type,
+        )
+
+    def _run_per_epoch(self, epoch: int):
+        def _run(dataloader: DataLoader, is_train: bool = True):
+            reconstruction_loss_batches = []
+            for (
+                gene_expressions,
+                perturb_expressions,
+                dosages,
+                is_control,
+            ) in dataloader:
+                gene_expressions = gene_expressions.to(self.device)
+                perturb_expressions = perturb_expressions.to(self.device)
+                dosages = dosages.to(self.device)
+                is_control = is_control.to(self.device)
+                is_control = torch.reshape(is_control, (is_control.shape[0], 1))
+
+                latent = self.model.encoder(gene_expressions)
+                decoder_output = self.model.decoder(latent, dosages)
+
+                rc_loss = self.mse(decoder_output, perturb_expressions)
+                if is_train:
+                    self._step_autoencoder(rc_loss)
+                reconstruction_loss_batches.append(rc_loss.item())
+
+            reconstruction_loss = np.mean(reconstruction_loss_batches)
+            if is_train:
+                writer = self.writer_train
+                rc_loss_name = "rc loss"
+            else:
+                writer = self.writer_val
+                rc_loss_name = "rc val loss"
+            writer.add_scalar("reconstruction_loss", reconstruction_loss, epoch)
+            tqdm_text = f"Epoch [{epoch + 1}/{self.epochs}], {rc_loss_name}: {reconstruction_loss}"
+            tqdm.write(tqdm_text)
+
+        self.model.train()
+        _run(self.train_dataloader, is_train=True)
+        self.model.eval()
+        with torch.no_grad():
+            _run(self.validation_dataloader, is_train=False)
+
+
+class MultiTaskVaeOptimalTransportTrainer(
+    MultiTaskAutoencoderTrainer[DosagesOptimalTransportDataset]
+):
+    """
+    Utilize OT idea of scbutterfly, and compare control with perturbed samples
+    """
+
+    @classmethod
+    def from_pipeline(
+        cls,
+        model: MultiTaskVae,
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
+        train_tensorboard: Union[Path, SummaryWriter],
+        val_tensorboard: Union[Path, SummaryWriter],
+        device: str = "cuda",
+        epochs: int = 100,
+        lr: float = 0.001,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+        train_dataset, val_dataset = (
+            DosagesOptimalTransportDataset.get_train_val_datasets(
+                split_dataset_pipeline=split_dataset_pipeline,
+                target_cell_type=target_cell_type,
+            )
+        )
+        cls(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
+            device=device,
+            epochs=epochs,
+            lr=lr,
+            batch_size=batch_size,
+            seed=seed,
+            target_cell_type=target_cell_type,
+        )
+
+    def _run_per_epoch(self, epoch: int):
+        def _run(dataloader: DataLoader, is_train: bool = True):
+            dataset_size = len(dataloader.dataset)
+
+            reconstruction_loss_batches = []
+            kl_loss_batches = []
+            total_loss_batches = []
+            for (
+                gene_expressions,
+                perturb_expressions,
+                dosages,
+                is_control,
+            ) in dataloader:
+                gene_expressions = gene_expressions.to(self.device)
+                perturb_expressions = perturb_expressions.to(self.device)
+                dosages = dosages.to(self.device)
+                is_control = is_control.to(self.device)
+                is_control = torch.reshape(is_control, (is_control.shape[0], 1))
+
+                decoder_output, mu, var = self.model(
+                    gene_expressions, dosages, is_train
+                )
+                kld_loss = torch.mean(
+                    -0.5 * torch.sum(1 + var - mu**2 - var.exp(), dim=1), dim=0
+                )
+                scale = self.batch_size / dataset_size  # Scale factor for KLD
+                rc_loss = self.mse(decoder_output, perturb_expressions)
+                beta = 4  # ?
+                total_loss = rc_loss + kld_loss * scale * beta
+                if is_train:
+                    self._step_autoencoder(total_loss)
+                reconstruction_loss_batches.append(rc_loss.item())
+                kl_loss_batches.append(kld_loss.item())
+                total_loss_batches.append(total_loss.item())
+
+            reconstruction_loss = np.mean(reconstruction_loss_batches)
+            kl_loss = np.mean(kl_loss_batches)
+            total_loss = np.mean(total_loss_batches)
+            if is_train:
+                writer = self.writer_train
+                rc_loss_name = "rc loss"
+                kl_loss_name = "kl loss"
+                total_loss_name = "total loss"
+            else:
+                writer = self.writer_val
+                rc_loss_name = "rc val loss"
+                kl_loss_name = "kl val loss"
+                total_loss_name = "total val loss"
+            writer.add_scalar("reconstruction_loss", reconstruction_loss, epoch)
+            writer.add_scalar("kl_loss", kl_loss, epoch)
+            writer.add_scalar("total_loss", total_loss, epoch)
+            tqdm_text = f"Epoch [{epoch + 1}/{self.epochs}], {rc_loss_name}: {reconstruction_loss}, {kl_loss_name}: {kl_loss}, {total_loss_name}: {total_loss}"
+            tqdm.write(tqdm_text)
+
+        self.model.train()
+        _run(self.train_dataloader, is_train=True)
+        self.model.eval()
+        with torch.no_grad():
+            _run(self.validation_dataloader, is_train=False)
+
+
+class MultiTaskAdversarialOptimalTransportTrainer(
+    Trainer[DosagesOptimalTransportDataset]
+):
+    """
+    Just a convenient wrapper to have a common interface. Adversarial training not utilized yet.
+    """
+
     def __init__(
         self,
         model: MultiTaskAae,
-        split_dataset_pipeline: SplitDatasetPipeline,
+        train_dataset: DosagesOptimalTransportDataset,
+        val_dataset: DosagesOptimalTransportDataset,
         target_cell_type: str,
         tensorboard_path: Path,
         device: str = "cuda",
@@ -778,16 +1354,554 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
     ):
         train_tensorboard = tensorboard_path / "train"
         val_tensorboard = tensorboard_path / "val"
+
+        self.autoencoder_pretrain_epochs = autoencoder_pretrain_epochs
+
         super().__init__(
             model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
             device=device,
             lr=lr,
             batch_size=batch_size,
+            target_cell_type=target_cell_type,
+            seed=seed,
+        )
+
+        self.autoencoder_trainer = MultiTaskAutoencoderOptimalTransportTrainer(
+            model=self.model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            train_tensorboard=self.writer_train,
+            val_tensorboard=self.writer_val,
+            device=self.device,
+            epochs=autoencoder_pretrain_epochs,
+            lr=self.lr,
+            batch_size=self.batch_size,
+            target_cell_type=self.target_cell_type,
+            seed=seed,
+        )
+
+    @classmethod
+    def from_pipeline(
+        cls,
+        model: MultiTaskAae,
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
+        tensorboard_path: Path,
+        device: str = "cuda",
+        coeff_adversarial: float = 0.1,
+        discriminator_pretrain_epochs: int = 50,
+        autoencoder_pretrain_epochs: int = 50,
+        adversarial_epochs: int = 50,
+        lr: float = 1e-4,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+
+        train_dataset, val_dataset = (
+            DosagesOptimalTransportDataset.get_train_val_datasets(
+                split_dataset_pipeline=split_dataset_pipeline,
+                target_cell_type=target_cell_type,
+            )
+        )
+
+        return cls(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            tensorboard_path=tensorboard_path,
+            device=device,
+            target_cell_type=target_cell_type,
+            lr=lr,
+            batch_size=batch_size,
+            seed=seed,
+            coeff_adversarial=coeff_adversarial,
+            discriminator_pretrain_epochs=discriminator_pretrain_epochs,
+            autoencoder_pretrain_epochs=autoencoder_pretrain_epochs,
+            adversarial_epochs=adversarial_epochs,
+        )
+
+    def train(self):
+        """
+        Pretrain autoencoder
+        """
+        self.autoencoder_trainer.train()
+
+
+class MultiTaskVaeAdversarialTrainer(Trainer[DosagesDataset]):
+    """
+    Just a convenient wrapper to have a common interface. Adversarial training not utilized yet.
+    """
+
+    def __init__(
+        self,
+        model: MultiTaskVae,
+        train_dataset: DosagesDataset,
+        val_dataset: DosagesDataset,
+        target_cell_type: str,
+        tensorboard_path: Path,
+        device: str = "cuda",
+        coeff_adversarial: float = 0.1,
+        discriminator_pretrain_epochs: int = 50,
+        autoencoder_pretrain_epochs: int = 50,
+        adversarial_epochs: int = 50,
+        lr: float = 1e-4,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+        train_tensorboard = tensorboard_path / "train"
+        val_tensorboard = tensorboard_path / "val"
+
+        self.autoencoder_pretrain_epochs = autoencoder_pretrain_epochs
+
+        super().__init__(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
+            device=device,
+            lr=lr,
+            batch_size=batch_size,
+            target_cell_type=target_cell_type,
+            seed=seed,
+        )
+
+        self.autoencoder_trainer = MultiTaskVaeDosagesTrainer(
+            model=self.model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            train_tensorboard=self.writer_train,
+            val_tensorboard=self.writer_val,
+            device=self.device,
+            epochs=autoencoder_pretrain_epochs,
+            lr=self.lr,
+            batch_size=self.batch_size,
+            target_cell_type=self.target_cell_type,
+            seed=seed,
+        )
+
+    @classmethod
+    def from_pipeline(
+        cls,
+        model: MultiTaskAae,
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
+        tensorboard_path: Path,
+        device: str = "cuda",
+        coeff_adversarial: float = 0.1,
+        discriminator_pretrain_epochs: int = 50,
+        autoencoder_pretrain_epochs: int = 50,
+        adversarial_epochs: int = 50,
+        lr: float = 1e-4,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+
+        train_dataset, val_dataset = DosagesDataset.get_train_val_datasets(
             split_dataset_pipeline=split_dataset_pipeline,
             target_cell_type=target_cell_type,
-            seed=seed
+        )
+
+        return cls(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            tensorboard_path=tensorboard_path,
+            device=device,
+            target_cell_type=target_cell_type,
+            lr=lr,
+            batch_size=batch_size,
+            seed=seed,
+            coeff_adversarial=coeff_adversarial,
+            discriminator_pretrain_epochs=discriminator_pretrain_epochs,
+            autoencoder_pretrain_epochs=autoencoder_pretrain_epochs,
+            adversarial_epochs=adversarial_epochs,
+        )
+
+    def train(self):
+        """
+        Pretrain autoencoder
+        """
+        self.autoencoder_trainer.train()
+
+
+class MultiTaskVaeAdversarialOptimalTransportTrainer(
+    Trainer[DosagesOptimalTransportDataset]
+):
+    """
+    Just a convenient wrapper to have a common interface. Adversarial training probably shouldn't be utilized for vae
+    """
+
+    def __init__(
+        self,
+        model: MultiTaskVae,
+        train_dataset: DosagesOptimalTransportDataset,
+        val_dataset: DosagesOptimalTransportDataset,
+        target_cell_type: str,
+        tensorboard_path: Path,
+        device: str = "cuda",
+        coeff_adversarial: float = 0.1,
+        discriminator_pretrain_epochs: int = 50,
+        autoencoder_pretrain_epochs: int = 50,
+        adversarial_epochs: int = 50,
+        lr: float = 1e-4,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+        train_tensorboard = tensorboard_path / "train"
+        val_tensorboard = tensorboard_path / "val"
+
+        self.autoencoder_pretrain_epochs = autoencoder_pretrain_epochs
+
+        super().__init__(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
+            device=device,
+            lr=lr,
+            batch_size=batch_size,
+            target_cell_type=target_cell_type,
+            seed=seed,
+        )
+
+        self.autoencoder_trainer = MultiTaskVaeOptimalTransportTrainer(
+            model=self.model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            train_tensorboard=self.writer_train,
+            val_tensorboard=self.writer_val,
+            device=self.device,
+            epochs=autoencoder_pretrain_epochs,
+            lr=self.lr,
+            batch_size=self.batch_size,
+            target_cell_type=self.target_cell_type,
+            seed=seed,
+        )
+
+    @classmethod
+    def from_pipeline(
+        cls,
+        model: MultiTaskVae,
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
+        tensorboard_path: Path,
+        device: str = "cuda",
+        coeff_adversarial: float = 0.1,
+        discriminator_pretrain_epochs: int = 50,
+        autoencoder_pretrain_epochs: int = 50,
+        adversarial_epochs: int = 50,
+        lr: float = 1e-4,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+
+        train_dataset, val_dataset = (
+            DosagesOptimalTransportDataset.get_train_val_datasets(
+                split_dataset_pipeline=split_dataset_pipeline,
+                target_cell_type=target_cell_type,
+            )
+        )
+
+        return cls(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            tensorboard_path=tensorboard_path,
+            device=device,
+            target_cell_type=target_cell_type,
+            lr=lr,
+            batch_size=batch_size,
+            seed=seed,
+            coeff_adversarial=coeff_adversarial,
+            discriminator_pretrain_epochs=discriminator_pretrain_epochs,
+            autoencoder_pretrain_epochs=autoencoder_pretrain_epochs,
+            adversarial_epochs=adversarial_epochs,
+        )
+
+    def train(self):
+        """
+        Pretrain autoencoder
+        """
+        self.autoencoder_trainer.train()
+
+
+class MultiTaskVaeAdversarialAndOptimalTransportTrainer(Trainer):
+    """
+    Just a convenient wrapper to have a common interface. Adversarial training probably shouldn't be utilized for vae
+    """
+
+    def __init__(
+        self,
+        model: MultiTaskVae,
+        train_dataset_1: DosagesDataset,
+        val_dataset_1: DosagesDataset,
+        train_dataset_2: DosagesOptimalTransportDataset,
+        val_dataset_2: DosagesOptimalTransportDataset,
+        target_cell_type: str,
+        tensorboard_path: Path,
+        device: str = "cuda",
+        coeff_adversarial: float = 0.1,
+        discriminator_pretrain_epochs: int = 50,
+        autoencoder_pretrain_epochs: int = 50,
+        adversarial_epochs: int = 50,
+        lr: float = 1e-4,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+        train_tensorboard = tensorboard_path / "train"
+        val_tensorboard = tensorboard_path / "val"
+
+        self.autoencoder_pretrain_epochs = autoencoder_pretrain_epochs
+
+        super().__init__(
+            model=model,
+            train_dataset=train_dataset_1,  # not used yet
+            val_dataset=val_dataset_1,  # not used yet
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
+            device=device,
+            lr=lr,
+            batch_size=batch_size,
+            target_cell_type=target_cell_type,
+            seed=seed,
+        )
+
+        self.autoencoder_trainer_1 = MultiTaskVaeDosagesTrainer(
+            model=self.model,
+            train_dataset=train_dataset_1,
+            val_dataset=val_dataset_1,
+            train_tensorboard=self.writer_train,
+            val_tensorboard=self.writer_val,
+            device=self.device,
+            epochs=autoencoder_pretrain_epochs,
+            lr=self.lr,
+            batch_size=self.batch_size,
+            target_cell_type=self.target_cell_type,
+            seed=seed,
+        )
+
+        self.autoencoder_trainer_2 = MultiTaskVaeOptimalTransportTrainer(
+            model=self.model,
+            train_dataset=train_dataset_2,
+            val_dataset=val_dataset_2,
+            train_tensorboard=self.writer_train,
+            val_tensorboard=self.writer_val,
+            device=self.device,
+            epochs=autoencoder_pretrain_epochs,
+            lr=self.lr,
+            batch_size=self.batch_size,
+            target_cell_type=self.target_cell_type,
+            seed=seed,
+        )
+
+    @classmethod
+    def from_pipeline(
+        cls,
+        model: MultiTaskVae,
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
+        tensorboard_path: Path,
+        device: str = "cuda",
+        coeff_adversarial: float = 0.1,
+        discriminator_pretrain_epochs: int = 50,
+        autoencoder_pretrain_epochs: int = 50,
+        adversarial_epochs: int = 50,
+        lr: float = 1e-4,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+        train_dataset_1, val_dataset_1 = DosagesDataset.get_train_val_datasets(
+            split_dataset_pipeline=split_dataset_pipeline,
+            target_cell_type=target_cell_type,
+        )
+
+        train_dataset_2, val_dataset_2 = (
+            DosagesOptimalTransportDataset.get_train_val_datasets(
+                split_dataset_pipeline=split_dataset_pipeline,
+                target_cell_type=target_cell_type,
+            )
+        )
+
+        return cls(
+            model=model,
+            train_dataset_1=train_dataset_1,
+            val_dataset_1=val_dataset_1,
+            train_dataset_2=train_dataset_2,
+            val_dataset_2=val_dataset_2,
+            tensorboard_path=tensorboard_path,
+            device=device,
+            target_cell_type=target_cell_type,
+            lr=lr,
+            batch_size=batch_size,
+            seed=seed,
+            coeff_adversarial=coeff_adversarial,
+            discriminator_pretrain_epochs=discriminator_pretrain_epochs,
+            autoencoder_pretrain_epochs=autoencoder_pretrain_epochs,
+            adversarial_epochs=adversarial_epochs,
+        )
+
+    def train(self):
+        self.autoencoder_trainer_1.train()
+        self.autoencoder_trainer_2.train()
+
+
+class MultiTaskAaeAdversarialAndOptimalTransportTrainer(Trainer):
+    """
+    Just a convenient wrapper to have a common interface. Adversarial training probably shouldn't be utilized for vae
+    """
+
+    def __init__(
+        self,
+        model: MultiTaskAae,
+        train_dataset_1: DosagesDataset,
+        val_dataset_1: DosagesDataset,
+        train_dataset_2: DosagesOptimalTransportDataset,
+        val_dataset_2: DosagesOptimalTransportDataset,
+        target_cell_type: str,
+        tensorboard_path: Path,
+        device: str = "cuda",
+        coeff_adversarial: float = 0.1,
+        discriminator_pretrain_epochs: int = 50,
+        autoencoder_pretrain_epochs: int = 50,
+        adversarial_epochs: int = 50,
+        lr: float = 1e-4,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+        train_tensorboard = tensorboard_path / "train"
+        val_tensorboard = tensorboard_path / "val"
+
+        self.autoencoder_pretrain_epochs = autoencoder_pretrain_epochs
+
+        super().__init__(
+            model=model,
+            train_dataset=train_dataset_1,  # not used yet
+            val_dataset=val_dataset_1,  # not used yet
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
+            device=device,
+            lr=lr,
+            batch_size=batch_size,
+            target_cell_type=target_cell_type,
+            seed=seed,
+        )
+
+        self.autoencoder_trainer_1 = MultiTaskAutoencoderDosagesTrainer(
+            model=self.model,
+            train_dataset=train_dataset_1,
+            val_dataset=val_dataset_1,
+            train_tensorboard=self.writer_train,
+            val_tensorboard=self.writer_val,
+            device=self.device,
+            epochs=autoencoder_pretrain_epochs,
+            lr=self.lr,
+            batch_size=self.batch_size,
+            target_cell_type=self.target_cell_type,
+            seed=seed,
+        )
+
+        self.autoencoder_trainer_2 = MultiTaskAutoencoderOptimalTransportTrainer(
+            model=self.model,
+            train_dataset=train_dataset_2,
+            val_dataset=val_dataset_2,
+            train_tensorboard=self.writer_train,
+            val_tensorboard=self.writer_val,
+            device=self.device,
+            epochs=autoencoder_pretrain_epochs,
+            lr=self.lr,
+            batch_size=self.batch_size,
+            target_cell_type=self.target_cell_type,
+            seed=seed,
+        )
+
+    @classmethod
+    def from_pipeline(
+        cls,
+        model: MultiTaskAae,
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
+        tensorboard_path: Path,
+        device: str = "cuda",
+        coeff_adversarial: float = 0.1,
+        discriminator_pretrain_epochs: int = 50,
+        autoencoder_pretrain_epochs: int = 50,
+        adversarial_epochs: int = 50,
+        lr: float = 1e-4,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+        train_dataset_1, val_dataset_1 = DosagesDataset.get_train_val_datasets(
+            split_dataset_pipeline=split_dataset_pipeline,
+            target_cell_type=target_cell_type,
+        )
+
+        train_dataset_2, val_dataset_2 = (
+            DosagesOptimalTransportDataset.get_train_val_datasets(
+                split_dataset_pipeline=split_dataset_pipeline,
+                target_cell_type=target_cell_type,
+            )
+        )
+
+        return cls(
+            model=model,
+            train_dataset_1=train_dataset_1,
+            val_dataset_1=val_dataset_1,
+            train_dataset_2=train_dataset_2,
+            val_dataset_2=val_dataset_2,
+            tensorboard_path=tensorboard_path,
+            device=device,
+            target_cell_type=target_cell_type,
+            lr=lr,
+            batch_size=batch_size,
+            seed=seed,
+            coeff_adversarial=coeff_adversarial,
+            discriminator_pretrain_epochs=discriminator_pretrain_epochs,
+            autoencoder_pretrain_epochs=autoencoder_pretrain_epochs,
+            adversarial_epochs=adversarial_epochs,
+        )
+
+    def train(self):
+        self.autoencoder_trainer_1.train()
+        self.autoencoder_trainer_2.train()
+
+
+class MultiTaskAdversarialTrainer(Trainer[DosagesDataset]):
+    def __init__(
+        self,
+        model: Union[MultiTaskAae, MultiTaskVae],
+        train_dataset: DosagesDataset,
+        val_dataset: DosagesDataset,
+        target_cell_type: str,
+        tensorboard_path: Path,
+        device: str = "cuda",
+        coeff_adversarial: float = 0.1,
+        discriminator_pretrain_epochs: int = 50,
+        autoencoder_pretrain_epochs: int = 50,
+        adversarial_epochs: int = 50,
+        lr: float = 1e-4,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+        train_tensorboard = tensorboard_path / "train"
+        val_tensorboard = tensorboard_path / "val"
+
+        super().__init__(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
+            device=device,
+            lr=lr,
+            batch_size=batch_size,
+            target_cell_type=target_cell_type,
+            seed=seed,
         )
 
         self.coeff_adversarial = coeff_adversarial
@@ -810,17 +1924,18 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
             self.model.discriminator.parameters(), lr=lr
         )
 
-        self.autoencoder_trainer = MultiTaskAutoencoderTrainer(
+        self.autoencoder_trainer = MultiTaskAutoencoderDosagesTrainer(
             model=self.model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
             train_tensorboard=self.writer_train,
             val_tensorboard=self.writer_val,
             device=self.device,
             epochs=self.autoencoder_epochs,
             lr=self.lr,
             batch_size=self.batch_size,
-            split_dataset_pipeline=split_dataset_pipeline,
             target_cell_type=self.target_cell_type,
-            seed=seed
+            seed=seed,
         )
 
         self.warmup_learning_rate_steps = 100
@@ -856,13 +1971,52 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
         #     self.optimizer_discriminator, mode="min", factor=0.1, patience=5
         # )
 
+    @classmethod
+    def from_pipeline(
+        cls,
+        model: MultiTaskAae,
+        split_dataset_pipeline: SplitDatasetPipeline,
+        target_cell_type: str,
+        tensorboard_path: Path,
+        device: str = "cuda",
+        coeff_adversarial: float = 0.1,
+        discriminator_pretrain_epochs: int = 50,
+        autoencoder_pretrain_epochs: int = 50,
+        adversarial_epochs: int = 50,
+        lr: float = 1e-4,
+        batch_size: int = 64,
+        seed: int = 19193,
+    ):
+
+        train_dataset, val_dataset = DosagesDataset.get_train_val_datasets(
+            split_dataset_pipeline=split_dataset_pipeline,
+            target_cell_type=target_cell_type,
+        )
+        return cls(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            tensorboard_path=tensorboard_path,
+            device=device,
+            target_cell_type=target_cell_type,
+            lr=lr,
+            batch_size=batch_size,
+            seed=seed,
+            coeff_adversarial=coeff_adversarial,
+            discriminator_pretrain_epochs=discriminator_pretrain_epochs,
+            autoencoder_pretrain_epochs=autoencoder_pretrain_epochs,
+            adversarial_epochs=adversarial_epochs,
+        )
+
     def _get_discriminator_loss(
         self, gene_expression: Tensor, is_control_soft_labels: Tensor
     ):
         latent = self.model.encoder(gene_expression).detach()
         discriminator_output = self.model.discriminator(latent)
 
-        discriminator_loss = self.bce(input=discriminator_output, target=is_control_soft_labels)
+        discriminator_loss = self.bce(
+            input=discriminator_output, target=is_control_soft_labels
+        )
         return discriminator_loss
 
     def _get_reconstruction_loss(
@@ -881,7 +2035,7 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
     ) -> Optional[Tensor]:
         """
         Generator (Encoder) tries to fool perturbed as control
-        
+
         If no perturbed samples in the batch, return None
         """
         perturb_idx = ~self.train_dataset.get_ctrl_bool_idx(dosages_one_hot_encoded)
@@ -893,7 +2047,6 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
         discriminator_output = self.model.discriminator(perturb_latent)
         adv_loss = self.bce(input=discriminator_output, target=fake_perturb_labels)
         return adv_loss
-    
 
     def _get_total_loss(self, rc_loss: Tensor, adv_loss: Tensor):
         total_loss = (
@@ -989,7 +2142,7 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
                 adv_loss = self._get_adversarial_loss(
                     latent, dosages_one_hot_encoded, is_control_soft_labels
                 )
-                
+
                 if adv_loss is not None:
                     total_loss = self._get_total_loss(reconstruction_loss, adv_loss)
                     adversarial_loss_batches.append(adv_loss.item())
@@ -1072,7 +2225,7 @@ class MultiTaskAdversarialAutoencoderTrainer(Trainer):
             self._run_adversarial_per_epoch(epoch)
 
 
-class MultiTaskAdversarialSwapAutoencoderTrainer(MultiTaskAdversarialAutoencoderTrainer):
+class MultiTaskAdversarialSwapAutoencoderTrainer(MultiTaskAdversarialTrainer):
     def _get_adversarial_loss(
         self,
         generator_output: Tensor,
@@ -1081,13 +2234,18 @@ class MultiTaskAdversarialSwapAutoencoderTrainer(MultiTaskAdversarialAutoencoder
     ) -> Optional[Tensor]:
         """
         Generator (Encoder) tries to fool both control and perturbed as perturbed and control respectively
+
+        This doesn't seem to have any theoretical basis, and has contradicting objectives.
         """
-        fake_perturb_labels = torch.ones_like(is_control_soft_labels) - is_control_soft_labels
+        fake_perturb_labels = (
+            torch.ones_like(is_control_soft_labels) - is_control_soft_labels
+        )
         discriminator_output = self.model.discriminator(generator_output)
         adv_loss = self.bce(input=discriminator_output, target=fake_perturb_labels)
         return adv_loss
-    
-class MultiTaskAdversarialGaussianAutoencoderTrainer(MultiTaskAdversarialAutoencoderTrainer):
+
+
+class MultiTaskAdversarialGaussianAutoencoderTrainer(MultiTaskAdversarialTrainer):
     def _get_adversarial_loss(
         self,
         generator_output: Tensor,
@@ -1098,31 +2256,37 @@ class MultiTaskAdversarialGaussianAutoencoderTrainer(MultiTaskAdversarialAutoenc
         Generator (Encoder) tries to fool discriminator that gene expressions follow gaussian distribution
         """
         discriminator_output = self.model.discriminator(generator_output)
-        adv_loss = self.bce(input=discriminator_output, target=torch.ones_like(discriminator_output))
+        adv_loss = self.bce(
+            input=discriminator_output, target=torch.ones_like(discriminator_output)
+        )
         return adv_loss
-    
+
     def _get_discriminator_loss(
         self, gene_expression: Tensor, is_control_soft_labels: Tensor
-    ): 
+    ):
         latent = self.model.encoder(gene_expression).detach()
         discriminator_output_genes = self.model.discriminator(latent)
         discriminator_loss_genes = self.bce(
-            input=discriminator_output_genes, target=torch.zeros_like(discriminator_output_genes)
+            input=discriminator_output_genes,
+            target=torch.zeros_like(discriminator_output_genes),
         )
-        
+
         gaussian_input = torch.normal(
             mean=0.0, std=1.0, size=latent.size(), device=self.device
         )
         discriminator_output_gaussian = self.model.discriminator(gaussian_input)
         discriminator_loss_gaussian = self.bce(
-            input=discriminator_output_gaussian, target=torch.ones_like(discriminator_output_gaussian)
+            input=discriminator_output_gaussian,
+            target=torch.ones_like(discriminator_output_gaussian),
         )
-        
-        discriminator_loss = 0.5 * discriminator_loss_gaussian + 0.5 * discriminator_loss_genes
+
+        discriminator_loss = (
+            0.5 * discriminator_loss_gaussian + 0.5 * discriminator_loss_genes
+        )
         return discriminator_loss
 
 
-class MultiTaskAdversarialAutoencoderUtils:
+class MultiTaskAutoencoderUtils:
     def __init__(
         self,
         split_dataset_pipeline: SplitDatasetPipeline,
@@ -1161,6 +2325,7 @@ class MultiTaskAdversarialAutoencoderUtils:
         stim_test_dataset = DosagesDataset(
             dataset_pipeline=self.split_dataset_pipeline.dataset_pipeline,
             adata=stim_test_adata,
+            target_cell_type=self.target_cell_type,
         )
 
         self.model.eval()
@@ -1172,10 +2337,9 @@ class MultiTaskAdversarialAutoencoderUtils:
                 gene_expressions = gene_expressions.to(self.device)
                 dosages_one_hot_encoded = dosages_one_hot_encoded.to(self.device)
 
+                output = self.model.predict(gene_expressions, dosages_one_hot_encoded)
                 predictions[dosage] = AnnData(
-                    X=self.model(gene_expressions, dosages_one_hot_encoded)
-                    .cpu()
-                    .numpy(),
+                    X=output.cpu().numpy(),
                     obs=control_test_adata.obs.copy(),
                     var=control_test_adata.var.copy(),
                     obsm=control_test_adata.obsm.copy(),
@@ -1185,7 +2349,7 @@ class MultiTaskAdversarialAutoencoderUtils:
         return list(predictions.values())
 
 
-def run_multi_task_aae(
+def run_multi_task_adversarial_aae(
     *,
     batch_size: int,
     learning_rate: float,
@@ -1198,7 +2362,17 @@ def run_multi_task_aae(
     hidden_layers_film: list,
     seed: int,
     saved_results_path: Path,
-    trainer_class: Type[MultiTaskAdversarialAutoencoderTrainer],
+    model_class: Type[Union[MultiTaskAae, MultiTaskVae]],
+    trainer_class: Type[
+        Union[
+            MultiTaskAdversarialTrainer,
+            MultiTaskAdversarialOptimalTransportTrainer,
+            MultiTaskVaeAdversarialOptimalTransportTrainer,
+            MultiTaskVaeAdversarialTrainer,
+            MultiTaskAaeAdversarialAndOptimalTransportTrainer,
+            MultiTaskVaeAdversarialAndOptimalTransportTrainer,
+        ]
+    ],
     mask_rate: float = 0.5,
     dropout_rate: float = 0.1,
     overwrite: bool = False,
@@ -1209,7 +2383,7 @@ def run_multi_task_aae(
         f"dis_epochs_{discriminator_pretrain_epochs}_adv_epochs_{adversarial_epochs}_"
         f"coef_adv_{coeff_adversarial}_"
         f"mask_rate_{mask_rate}_dropout_{dropout_rate}_"
-        f"seed_{seed}_{trainer_class.__name__}"
+        f"seed_{seed}_{trainer_class.__name__}_{model_class.__name__}"
     )
     print(experiment_name)
 
@@ -1240,11 +2414,12 @@ def run_multi_task_aae(
     film_factory = FilmLayerFactory(
         input_dim=condition_len,
         hidden_layers=hidden_layers_film,
+        dropout_rate=dropout_rate,
     )
 
     if model_path.exists() and not overwrite:
         print("Loading model")
-        model = MultiTaskAae.load(
+        model = model_class.load(
             num_features=num_features,
             hidden_layers_autoencoder=hidden_layers_autoencoder,
             hidden_layers_discriminator=hidden_layers_discriminator,
@@ -1255,18 +2430,18 @@ def run_multi_task_aae(
         )
         model = model.to("cuda")
     else:
-        model = MultiTaskAae(
+        model = model_class(
             num_features=num_features,
             hidden_layers_autoencoder=hidden_layers_autoencoder,
             hidden_layers_discriminator=hidden_layers_discriminator,
             film_layer_factory=film_factory,
             mask_rate=mask_rate,
-            dropout_rate=dropout_rate
+            dropout_rate=dropout_rate,
         )
 
     target_cell_type = "Hepatocytes - portal"
 
-    model_utils = MultiTaskAdversarialAutoencoderUtils(
+    model_utils = MultiTaskAutoencoderUtils(
         split_dataset_pipeline=dataset_pipeline,
         target_cell_type=target_cell_type,
         model=model,
@@ -1275,7 +2450,7 @@ def run_multi_task_aae(
     if model_path.exists() and not overwrite:
         pass
     else:
-        trainer = trainer_class(
+        trainer = trainer_class.from_pipeline(
             model=model,
             tensorboard_path=tensorboard_path,
             split_dataset_pipeline=dataset_pipeline,
@@ -1354,14 +2529,14 @@ def run_multi_task_aae(
 
         sc.pl.umap(latent, color=["Dose"], show=False)
         plt.savefig(
-            f"{figures_path}/multi_task_aae_umap_dose_{experiment_name}_{title}.pdf",
+            f"{figures_path}/multi_task_aae_umap_dose_{title}.pdf",
             dpi=150,
             bbox_inches="tight",
         )
 
         sc.pl.umap(latent, color=["celltype"], show=False)
         plt.savefig(
-            f"{figures_path}/multi_task_aae_umap_celltype_{experiment_name}_{title}.pdf",
+            f"{figures_path}/multi_task_aae_umap_celltype_{title}.pdf",
             dpi=150,
             bbox_inches="tight",
         )
