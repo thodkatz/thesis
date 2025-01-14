@@ -64,6 +64,9 @@ parser.add_argument(
 parser.add_argument(
     "--mask", type=float, required=False, help="Mask rate"
 )
+parser.add_argument(
+    "--beta", type=float, required=False, help="beta for vae"
+)
 args = parser.parse_args()
 
 
@@ -77,13 +80,14 @@ DISTANCE_METRICS = ["edistance", "wasserstein", "euclidean", "mean_pairwise", "m
 
 METRICS = BASELINE_METRICS + DISTANCE_METRICS
 
-batch_size = args.batch_size or 256
-learning_rate = args.lr or 5e-4
-autoencoder_pretrain_epochs = args.autoencoder_pretrain_epochs or 100
+batch_size = args.batch_size or 512
+learning_rate = args.lr or 5e-5
+autoencoder_pretrain_epochs = args.autoencoder_pretrain_epochs or 1000
 hidden_layers_autoencoder = args.hidden_layers_ae or [256, 128]
 hidden_layers_film = args.hidden_layers_film or []
 mask_rate = args.mask or 0.4
 dropout_rate = args.dropout or 0.2
+beta = args.beta or 0.1
 
 adversarial_epochs = args.adversarial_epochs or 100
 if adversarial_epochs == 0:
@@ -99,6 +103,7 @@ seed = args.seed or 19193
 
 
 run_multi_task_adversarial_aae(
+    beta=beta,
     batch_size=batch_size,
     learning_rate=learning_rate,
     autoencoder_pretrain_epochs=autoencoder_pretrain_epochs,

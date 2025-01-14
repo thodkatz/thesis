@@ -499,6 +499,7 @@ class MultiTaskVae(nn.Module):
         film_layer_factory: FilmLayerFactory,
         mask_rate: float = 0.5,
         dropout_rate: float = 0.1,
+        beta: float  = 1
     ):
         super().__init__()
 
@@ -523,6 +524,9 @@ class MultiTaskVae(nn.Module):
             output_dim=self.get_latent_dim(),
         )
 
+        self.mse = nn.MSELoss()
+        self.beta = beta
+
     def reparameterize(self, mu, var):
         std = torch.exp(0.5 * var)
         eps = torch.randn_like(std)
@@ -546,6 +550,36 @@ class MultiTaskVae(nn.Module):
         x = self.mu(x)
         x = self.decoder(x, dosages)
         return x
+
+    def compute_loss(
+        self,
+        gene_expressions: Tensor,
+        target: Tensor,
+        dosages: Tensor,
+        scale: float,
+        is_train: bool,
+    ):
+        decoder_output, mu, var = self.forward(
+            x=gene_expressions, dosages=dosages, is_train=is_train
+        )
+        kld_loss = torch.mean(
+            -0.5 * torch.sum(1 + var - mu**2 - var.exp(), dim=1), dim=0
+        )
+        rc_loss = self.mse(decoder_output, target)
+
+        # Linear annealing
+        # conclusion: I have attempted fixed values, 0, 1, 4, 10, and annealing
+        # only when we use 0, excluding the kld loss, the model's performance improves (effectively a simple autoencoder)
+        # beta_max = 4
+        # beta = min(
+        #     beta_max, (self.num_iterations / self.total_iterations) * beta_max
+        # )
+        beta = self.beta
+
+        total_loss = (
+            rc_loss + kld_loss * scale * beta
+        )  # source: https://github.com/AntixK/PyTorch-VAE/blob/master/models/beta_vae.py
+        return total_loss, rc_loss, kld_loss
 
     def get_latent_representation(self, x: Tensor):
         with torch.no_grad():
@@ -728,6 +762,7 @@ class DosagesOptimalTransportDataset(DosagesDataset):
         self.perturb_ot_gene_expressions = []
         for condition in self.get_condition_labels():
             if condition == self.control_dose:
+                self.perturb_ot_gene_expressions.append(self.control_gene_expressions)
                 continue
             condition_adata = adata[adata.obs[dataset_pipeline.dosage_key] == condition]
 
@@ -779,15 +814,15 @@ class DosagesOptimalTransportDataset(DosagesDataset):
 
     def __len__(self):
         return len(self.control_gene_expressions) * (
-            self.get_condition_len() - 1
-        )  # exclude control
+            self.get_condition_len()
+        )
 
     def __getitem__(self, index):
         control_gene_expressions_len = len(self.control_gene_expressions)
         perturbation_idx = index // control_gene_expressions_len
         gene_expression_idx = index % control_gene_expressions_len
 
-        dosage = self.get_condition_labels()[perturbation_idx + 1]  # include control
+        dosage = self.get_condition_labels()[perturbation_idx]
         dosages_one_hot_encoded = self.get_one_hot_encoded_dosages(dosages=[dosage])[0]
         is_control_soft_labels = torch.tensor([self.get_soft_labels_control(dosage)])[0]
 
@@ -1079,7 +1114,6 @@ class MultiTaskVaeDosagesTrainer(MultiTaskAutoencoderTrainer[DosagesDataset]):
     def _run_per_epoch(self, epoch: int):
         def _run(dataloader: DataLoader, is_train: bool = True):
             dataset_size = len(dataloader.dataset)
-            beta_max = 4
 
             reconstruction_loss_batches = []
             kl_loss_batches = []
@@ -1094,24 +1128,14 @@ class MultiTaskVaeDosagesTrainer(MultiTaskAutoencoderTrainer[DosagesDataset]):
                 is_control = is_control.to(self.device)
                 is_control = torch.reshape(is_control, (is_control.shape[0], 1))
 
-                decoder_output, mu, var = self.model(
-                    gene_expressions, dosages, is_train
+                total_loss, rc_loss, kld_loss = self.model.compute_loss(
+                    gene_expressions=gene_expressions,
+                    target=gene_expressions,
+                    dosages=dosages,
+                    is_train=is_train,
+                    scale=self.batch_size / dataset_size,
                 )
-                kld_loss = torch.mean(
-                    -0.5 * torch.sum(1 + var - mu**2 - var.exp(), dim=1), dim=0
-                )
-                scale = self.batch_size / dataset_size  # Scale factor for KLD
-                rc_loss = self.mse(decoder_output, gene_expressions)
 
-                # Linear annealing
-                # conclusion: I have attempted fixed values, 0, 1, 4, 10, and annealing
-                # only when we use 0, excluding the kld loss, the model's performance improves (effectively a simple autoencoder)
-                beta = min(
-                    beta_max, (self.num_iterations / self.total_iterations) * beta_max
-                )
-                # beta = 1
-
-                total_loss = rc_loss + kld_loss * scale * beta
                 if is_train:
                     self._step_autoencoder(total_loss)
                 reconstruction_loss_batches.append(rc_loss.item())
@@ -1151,6 +1175,50 @@ class MultiTaskAutoencoderOptimalTransportTrainer(
     """
     Utilize OT idea of scbutterfly, and compare control with perturbed samples
     """
+    def __init__(
+        self,
+        model: MultiTaskAae,
+        train_dataset: DosagesOptimalTransportDataset,
+        val_dataset: DosagesOptimalTransportDataset,
+        train_tensorboard: Union[Path, SummaryWriter],
+        val_tensorboard: Union[Path, SummaryWriter],
+        device: str = "cuda",
+        epochs: int = 100,
+        lr: float = 0.001,
+        batch_size: int = 64,
+        seed: int = 19193,
+        target_cell_type: str = "all",
+    ):
+        super().__init__(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
+            device=device,
+            epochs=epochs,
+            lr=lr,
+            batch_size=batch_size,
+            seed=seed,
+            target_cell_type=target_cell_type,
+        )
+        
+        self._freeze_encoder = False # if true should be used in conjunction with reconstruction trainer, so that the encoder is trained
+                
+    def train(self):
+        # freeze encoder
+        if self._freeze_encoder:
+            for param in self.model.encoder.parameters():
+                param.requires_grad = False
+        
+        for epoch in tqdm(range(self.epochs), desc="Epochs"):
+            self._run_per_epoch(epoch)
+            
+        # unfreeze, in case other trainers are piped
+        if self._freeze_encoder:
+            for param in self.model.encoder.parameters():
+                param.requires_grad = True        
+            
 
     @classmethod
     def from_pipeline(
@@ -1233,6 +1301,49 @@ class MultiTaskVaeOptimalTransportTrainer(
     """
     Utilize OT idea of scbutterfly, and compare control with perturbed samples
     """
+    def __init__(
+        self,
+        model: MultiTaskVae,
+        train_dataset: DosagesOptimalTransportDataset,
+        val_dataset: DosagesOptimalTransportDataset,
+        train_tensorboard: Union[Path, SummaryWriter],
+        val_tensorboard: Union[Path, SummaryWriter],
+        device: str = "cuda",
+        epochs: int = 100,
+        lr: float = 0.001,
+        batch_size: int = 64,
+        seed: int = 19193,
+        target_cell_type: str = "all",
+    ):
+        super().__init__(
+            model=model,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            train_tensorboard=train_tensorboard,
+            val_tensorboard=val_tensorboard,
+            device=device,
+            epochs=epochs,
+            lr=lr,
+            batch_size=batch_size,
+            seed=seed,
+            target_cell_type=target_cell_type,
+        )
+        
+        self._freeze_encoder = False # if true should be used in conjunction with reconstruction trainer, so that the encoder is trained
+                        
+    def train(self):
+        # freeze encoder
+        if self._freeze_encoder:
+            for param in self.model.encoder.parameters():
+                param.requires_grad = False
+        
+        for epoch in tqdm(range(self.epochs), desc="Epochs"):
+            self._run_per_epoch(epoch)
+            
+        # unfreeze, in case other trainers are piped
+        if self._freeze_encoder:
+            for param in self.model.encoder.parameters():
+                param.requires_grad = True
 
     @classmethod
     def from_pipeline(
@@ -1267,6 +1378,7 @@ class MultiTaskVaeOptimalTransportTrainer(
             seed=seed,
             target_cell_type=target_cell_type,
         )
+        
 
     def _run_per_epoch(self, epoch: int):
         def _run(dataloader: DataLoader, is_train: bool = True):
@@ -1287,16 +1399,14 @@ class MultiTaskVaeOptimalTransportTrainer(
                 is_control = is_control.to(self.device)
                 is_control = torch.reshape(is_control, (is_control.shape[0], 1))
 
-                decoder_output, mu, var = self.model(
-                    gene_expressions, dosages, is_train
+                total_loss, rc_loss, kld_loss = self.model.compute_loss(
+                    gene_expressions=gene_expressions,
+                    target=perturb_expressions,
+                    dosages=dosages,
+                    is_train=is_train,
+                    scale=self.batch_size / dataset_size,
                 )
-                kld_loss = torch.mean(
-                    -0.5 * torch.sum(1 + var - mu**2 - var.exp(), dim=1), dim=0
-                )
-                scale = self.batch_size / dataset_size  # Scale factor for KLD
-                rc_loss = self.mse(decoder_output, perturb_expressions)
-                beta = 4  # ?
-                total_loss = rc_loss + kld_loss * scale * beta
+
                 if is_train:
                     self._step_autoencoder(total_loss)
                 reconstruction_loss_batches.append(rc_loss.item())
@@ -2351,6 +2461,7 @@ class MultiTaskAutoencoderUtils:
 
 def run_multi_task_adversarial_aae(
     *,
+    beta: float, # used for vae case
     batch_size: int,
     learning_rate: float,
     autoencoder_pretrain_epochs: int,
@@ -2377,12 +2488,16 @@ def run_multi_task_adversarial_aae(
     dropout_rate: float = 0.1,
     overwrite: bool = False,
 ):
+    """
+    Refactor the function. Currently we pass all the arguments for all the possible combinations of models, trainers
+    """
     experiment_name = (
         f"layers_ae_{hidden_layers_autoencoder}_disc_{hidden_layers_discriminator}_film_{hidden_layers_film}_"
         f"lr_{learning_rate}_batch_{batch_size}_ae_epochs_{autoencoder_pretrain_epochs}_"
         f"dis_epochs_{discriminator_pretrain_epochs}_adv_epochs_{adversarial_epochs}_"
         f"coef_adv_{coeff_adversarial}_"
         f"mask_rate_{mask_rate}_dropout_{dropout_rate}_"
+        f"beta_{beta}_"
         f"seed_{seed}_{trainer_class.__name__}_{model_class.__name__}"
     )
     print(experiment_name)
@@ -2418,7 +2533,7 @@ def run_multi_task_adversarial_aae(
     )
 
     if model_path.exists() and not overwrite:
-        print("Loading model")
+        print("Loading model") # fix
         model = model_class.load(
             num_features=num_features,
             hidden_layers_autoencoder=hidden_layers_autoencoder,
@@ -2430,14 +2545,25 @@ def run_multi_task_adversarial_aae(
         )
         model = model.to("cuda")
     else:
-        model = model_class(
-            num_features=num_features,
-            hidden_layers_autoencoder=hidden_layers_autoencoder,
-            hidden_layers_discriminator=hidden_layers_discriminator,
-            film_layer_factory=film_factory,
-            mask_rate=mask_rate,
-            dropout_rate=dropout_rate,
-        )
+        if model_class == MultiTaskVae:
+            model = model_class(
+                beta=beta,
+                num_features=num_features,
+                hidden_layers_autoencoder=hidden_layers_autoencoder,
+                hidden_layers_discriminator=hidden_layers_discriminator,
+                film_layer_factory=film_factory,
+                mask_rate=mask_rate,
+                dropout_rate=dropout_rate,
+            )
+        else:
+            model = model_class(
+                num_features=num_features,
+                hidden_layers_autoencoder=hidden_layers_autoencoder,
+                hidden_layers_discriminator=hidden_layers_discriminator,
+                film_layer_factory=film_factory,
+                mask_rate=mask_rate,
+                dropout_rate=dropout_rate,
+            )
 
     target_cell_type = "Hepatocytes - portal"
 

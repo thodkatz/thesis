@@ -94,8 +94,17 @@ def objective(trial):
     
     dropout_rate = trial.suggest_categorical("dropout_rate", [0, 0.1, 0.2, 0.3, 0.4, 0.5])
     #dropout_rate = 0.1
+    
+    model_class = MultiTaskVae
+    trainer_class = MultiTaskVaeAdversarialTrainer
+    
+    if model_class == MultiTaskVae:
+        beta = trial.suggest_loguniform("beta", 1e-3, 10)
+    else:
+        beta = 1 # not used
 
     return run_multi_task_adversarial_aae(
+        beta=beta,
         batch_size=batch_size,
         learning_rate=learning_rate,
         coeff_adversarial=coeff_adversarial,
@@ -108,8 +117,8 @@ def objective(trial):
         seed=seed,
         dropout_rate=dropout_rate,
         mask_rate=mask_rate,
-        model_class=MultiTaskVae,
-        trainer_class=MultiTaskVaeAdversarialTrainer,
+        model_class=model_class,
+        trainer_class=trainer_class,
         saved_results_path=SAVED_RESULTS_PATH
     )
 
@@ -118,7 +127,7 @@ def objective(trial):
 if __name__ == "__main__":
     study = optuna.create_study(
         directions=["maximize", "maximize", "maximize", "maximize"],
-        study_name="multi_task_vae",
+        study_name="multi_task_vae_with_beta_tuning",
         storage="sqlite:////g/kreshuk/katzalis/repos/thesis-tmp/optuna/db.sqlite3",
         load_if_exists=True,
     )
