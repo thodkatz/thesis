@@ -15,10 +15,23 @@ from vidr import vidr
 
 from thesis.evaluation import evaluation_out_of_sample
 
+from thesis.multi_task_aae import (
+    FilmLayerFactory,
+    MultiTaskAae,
+    MultiTaskAaeAdversarialAndOptimalTransportTrainer,
+    MultiTaskAdversarialGaussianAutoencoderTrainer,
+    MultiTaskAdversarialTrainer,
+    MultiTaskAutoencoderDosagesTrainer,
+    MultiTaskAutoencoderOptimalTransportTrainer,
+    MultiTaskAutoencoderUtils,
+    MultiTaskVae,
+    MultiTaskVaeAdversarialAndOptimalTransportTrainer,
+)
 from thesis.utils import FileModelUtils, SeedSingleton, append_csv
 from thesis.datasets import (
     MultipleConditionDatasetPipeline,
     SingleConditionDatasetPipeline,
+    SplitDatasetPipeline,
 )
 from thesis import METRICS_PATH, SAVED_RESULTS_PATH
 import scButterfly.train_model_perturb as scbutterfly
@@ -66,8 +79,7 @@ class ModelPipeline(ABC, Generic[T]):
             root_path=SAVED_RESULTS_PATH,
         )
         print("Model config", self.model_config)
-        
-        
+
         if not SeedSingleton.is_set():
             SeedSingleton(seed=seed)
         else:
@@ -86,6 +98,8 @@ class ModelPipeline(ABC, Generic[T]):
     ) -> Optional[Predict]:
         """
         Batch is considered the index of the cell type to be held out for out of distribution prediction
+
+        Return None if the evaluation is already finished
         """
         pass
 
@@ -196,10 +210,10 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
-            seed=seed
+            seed=seed,
         )
 
-    def split_func(self):
+    def _split_func(self):
         return unpaired_split_dataset_perturb(
             self.dataset_pipeline.control,
             self.dataset_pipeline.perturb,
@@ -220,7 +234,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         control.obs.index = [str(i) for i in range(control.X.shape[0])]
         perturb.obs.index = [str(i) for i in range(perturb.X.shape[0])]
 
-        id_list = self.split_func()
+        id_list = self._split_func()
 
         (
             train_id_control,
@@ -324,7 +338,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
 
 
 class ButterflyPipelineNoReusing(ButterflyPipeline):
-    def split_func(self):
+    def _split_func(self):
         return unpaired_split_dataset_perturb_no_reusing(
             self.dataset_pipeline.control,
             self.dataset_pipeline.perturb,
@@ -337,14 +351,14 @@ class ScPreGanPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         experiment_name: str,
         dataset_pipeline: SingleConditionDatasetPipeline,
         debug: bool = False,
-        seed: int = 19193
+        seed: int = 19193,
     ):
         self._epochs = 1 if debug else 20_000
 
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
-            seed=seed
+            seed=seed,
         )
 
     def _run(
@@ -500,14 +514,14 @@ class ScGenPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         experiment_name: str,
         dataset_pipeline: SingleConditionDatasetPipeline,
         debug: bool = False,
-        seed: int = 19193
+        seed: int = 19193,
     ):
         self._epochs = 1 if debug else 100
 
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
-            seed=seed
+            seed=seed,
         )
 
     def _run(
@@ -583,14 +597,14 @@ class VidrPipeline(ModelPipeline[T]):
         dataset_pipeline: T,
         debug: bool = False,
         is_scgen_variant: bool = False,
-        seed: int = 19193
+        seed: int = 19193,
     ):
         self._epochs = 1 if debug else 100
 
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
-            seed=seed
+            seed=seed,
         )
 
         self._is_scgen_variant = is_scgen_variant
@@ -605,14 +619,13 @@ class VidrPipeline(ModelPipeline[T]):
         refresh_training: bool = False,
         refresh_evaluation: bool = False,
     ) -> Optional[Predict]:
-        dataset = self.dataset_pipeline.dataset
         cell_type_key = self.model_config.cell_type_key
         dose_key = self.model_config.dose_key
-        cell_types = dataset.obs[cell_type_key].unique().tolist()
+        cell_types = self.dataset_pipeline.get_cell_types()
         target_cell_type = cell_types[batch]
 
         train_adata, _ = self.dataset_pipeline.split_dataset_to_train_validation(
-            target_cell_type, validation_split=1.0
+            target_cell_type, validation_split=1.0  # vidr uses its own validation
         )
         perturb_test_adata = self.dataset_pipeline.get_stim_test(target_cell_type)
         control_test_adata = self.dataset_pipeline.get_ctrl_test(target_cell_type)
@@ -640,6 +653,8 @@ class VidrPipeline(ModelPipeline[T]):
 
         self.model_config.log_training_batch_is_finished(batch=batch)
 
+        # why only in the single case? Because in the multi case we have multiple evaluations, requires more logic to handle this
+        # and the bottleneck is the training, not the evaluation
         if self.is_single() and self.model_config.is_finished_evaluation(
             batch=batch, refresh=refresh_evaluation
         ):
@@ -672,17 +687,17 @@ class VidrSinglePipeline(VidrPipeline[SingleConditionDatasetPipeline]):
         dataset_pipeline: SingleConditionDatasetPipeline,
         debug: bool = False,
         is_scgen_variant: bool = False,
-        seed: int = 19193
+        seed: int = 19193,
     ):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
             debug=debug,
             is_scgen_variant=is_scgen_variant,
-            seed=seed
+            seed=seed,
         )
 
-    def predict(self, model, target_cell_type: str):
+    def predict(self, model: vidr.VIDR, target_cell_type: str):
         pred, delta, reg = model.predict(
             ctrl_key=0.0,
             treat_key=self.dataset_pipeline.dosages,
@@ -701,20 +716,20 @@ class VidrMultiplePipeline(VidrPipeline[MultipleConditionDatasetPipeline]):
         dataset_pipeline: MultipleConditionDatasetPipeline,
         debug: bool = False,
         is_scgen_variant: bool = False,
-        seed: int = 19193
+        seed: int = 19193,
     ):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
             debug=debug,
             is_scgen_variant=is_scgen_variant,
-            seed=seed
+            seed=seed,
         )
 
     def get_max_dosage(self):
         return max(self.dataset_pipeline.dosages)
 
-    def predict(self, model, target_cell_type: str):
+    def predict(self, model: vidr.VIDR, target_cell_type: str):
         pred, delta, reg = model.predict(
             ctrl_key=0.0,
             treat_key=self.get_max_dosage(),
@@ -724,3 +739,401 @@ class VidrMultiplePipeline(VidrPipeline[MultipleConditionDatasetPipeline]):
             doses=self.dataset_pipeline.dosages,  # except 0.0
         )
         return pred, delta, reg
+
+
+class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
+    def __init__(
+        self,
+        experiment_name: str,
+        dataset_pipeline: SplitDatasetPipeline,
+        debug: bool = False,
+        seed: int = 19193,
+    ):
+        super().__init__(
+            dataset_pipeline=dataset_pipeline,
+            experiment_name=experiment_name,
+            seed=seed,
+        )
+
+        self._epochs = 1 if debug else 400
+        self._dropout_rate = 0.5
+        self._mask_rate = 0.1
+        self._hidden_layers_film = []
+        self._hidden_layers_autoencoder = [512, 256, 128]
+        self._hidden_layers_discriminator = []  # not used
+        self._lr = 2.4590236785521603e-05
+        self._batch_size = 64
+
+    def _load_model(
+        self,
+        num_features: int,
+        hidden_layers_autoencoder: List[int],
+        hidden_layers_discriminator: List[int],
+        film_factory: FilmLayerFactory,
+        mask_rate: float,
+        dropout_rate: float,
+        output_path: Path,
+    ):
+        model = MultiTaskAae.load(
+            num_features=num_features,
+            hidden_layers_autoencoder=hidden_layers_autoencoder,
+            hidden_layers_discriminator=hidden_layers_discriminator,
+            film_layer_factory=film_factory,
+            load_path=output_path,
+            mask_rate=mask_rate,
+            dropout_rate=dropout_rate,
+        )
+
+        return model
+
+    def _init_model(
+        self,
+        num_features: int,
+        hidden_layers_autoencoder: List[int],
+        hidden_layers_discriminator: List[int],
+        film_factory: FilmLayerFactory,
+        mask_rate: float,
+        dropout_rate: float,
+    ):
+        model = MultiTaskAae(
+            num_features=num_features,
+            hidden_layers_autoencoder=hidden_layers_autoencoder,
+            hidden_layers_discriminator=hidden_layers_discriminator,
+            film_layer_factory=film_factory,
+            mask_rate=mask_rate,
+            dropout_rate=dropout_rate,
+        )
+        return model
+
+    def _init_trainer(
+        self,
+        model: MultiTaskAae,
+        tensorboard_path: Path,
+        target_cell_type: str,
+    ):
+        trainer = MultiTaskAutoencoderDosagesTrainer.from_pipeline(
+            model=model,
+            train_tensorboard=tensorboard_path / "train",
+            val_tensorboard=tensorboard_path / "val",
+            split_dataset_pipeline=self.dataset_pipeline,
+            target_cell_type=target_cell_type,
+            device="cuda",
+            epochs=self._epochs,
+            lr=self._lr,
+            batch_size=self._batch_size,
+            seed=SeedSingleton.get_value(),
+        )
+        return trainer
+
+    def _run(
+        self,
+        batch: int,
+        refresh_training: bool = False,
+        refresh_evaluation: bool = False,
+    ) -> Optional[Predict]:
+        dose_key = self.model_config.dose_key
+        cell_types = self.dataset_pipeline.get_cell_types()
+        target_cell_type = cell_types[batch]
+        output_path = self.model_config.get_batch_path(batch=batch)
+        tensorboard_path = self.model_config.get_batch_log_path(batch=batch)
+        condition_len = len(self.dataset_pipeline.get_dosages_unique())
+        num_features = self.dataset_pipeline.get_num_genes()
+
+        film_factory = FilmLayerFactory(
+            input_dim=condition_len,
+            hidden_layers=self._hidden_layers_film,
+            dropout_rate=self._dropout_rate,
+        )
+
+        if self.model_config.is_finished_batch_training(
+            batch=batch, refresh=refresh_training
+        ):
+            model = self._load_model(
+                num_features=num_features,
+                hidden_layers_autoencoder=self._hidden_layers_autoencoder,
+                hidden_layers_discriminator=self._hidden_layers_discriminator,
+                film_factory=film_factory,
+                mask_rate=self._mask_rate,
+                dropout_rate=self._dropout_rate,
+                output_path=output_path,
+            )
+            model = model.to("cuda")
+        else:
+            model = self._init_model(
+                num_features=num_features,
+                hidden_layers_autoencoder=self._hidden_layers_autoencoder,
+                hidden_layers_discriminator=self._hidden_layers_discriminator,
+                film_factory=film_factory,
+                mask_rate=self._mask_rate,
+                dropout_rate=self._dropout_rate,
+            )
+
+        model_utils = MultiTaskAutoencoderUtils(
+            split_dataset_pipeline=self.dataset_pipeline,
+            target_cell_type=target_cell_type,
+            model=model,
+        )
+
+        if not self.model_config.is_finished_batch_training(
+            batch=batch, refresh=refresh_training
+        ):
+            trainer = self._init_trainer(
+                model=model,
+                tensorboard_path=tensorboard_path,
+                target_cell_type=target_cell_type,
+            )
+
+            model_utils.train(trainer=trainer, save_path=output_path)
+
+        self.model_config.log_training_batch_is_finished(batch=batch)
+
+        pred = model_utils.predict()
+
+        # why only in the single case?
+        if self.is_single() and self.model_config.is_finished_evaluation(
+            batch=batch, refresh=refresh_evaluation
+        ):
+            return None
+
+        stim_test_adata = self.dataset_pipeline.get_stim_test(target_cell_type)
+        control_test_adata = self.dataset_pipeline.get_ctrl_test(target_cell_type)
+        
+        dosages_to_test = self.dataset_pipeline.get_dosages_unique(stim_test_adata)
+
+        perturb_test_adata_per_dose = []
+        predictions = []
+        for id, dose in enumerate(dosages_to_test):
+            stim_per_dose = stim_test_adata[
+                stim_test_adata.obs[dose_key] == dose
+            ]
+            predictions.append(pred[dose])
+            perturb_test_adata_per_dose.append(stim_per_dose)
+
+        return control_test_adata, perturb_test_adata_per_dose, predictions
+
+
+class MultiTaskAaeAutoencoderOptimalTransportPipeline(MultiTaskAaeAutoencoderPipeline):
+    def _init_trainer(
+        self,
+        model: MultiTaskAae,
+        tensorboard_path: Path,
+        target_cell_type: str,
+    ) -> MultiTaskAutoencoderOptimalTransportTrainer:
+
+        return MultiTaskAutoencoderOptimalTransportTrainer.from_pipeline(
+            model=model,
+            split_dataset_pipeline=self.dataset_pipeline,
+            train_tensorboard=tensorboard_path / "train",
+            val_tensorboard=tensorboard_path / "val",
+            device="cuda",
+            epochs=self._epochs,
+            lr=self._lr,
+            batch_size=self._batch_size,
+            target_cell_type=target_cell_type,
+            seed=SeedSingleton.get_value(),
+        )
+
+
+class MultiTaskAaeAdversarialPipeline(MultiTaskAaeAutoencoderPipeline):
+    def __init__(
+        self,
+        experiment_name: str,
+        dataset_pipeline: SplitDatasetPipeline,
+        debug: bool = False,
+        seed: int = 19193,
+    ):
+        super().__init__(
+            dataset_pipeline=dataset_pipeline,
+            experiment_name=experiment_name,
+            seed=seed,
+        )
+
+        self._autoencoder_pretrain_epochs = 1 if debug else 400
+        self._adversarial_epochs = 1 if debug else 100
+        self._discriminator_pretrain_epochs = 1 if debug else 400
+        self._coeff_adversarial = 0.1
+
+    def _init_trainer(
+        self,
+        model: MultiTaskAae,
+        tensorboard_path: Path,
+        target_cell_type: str,
+    ) -> MultiTaskAdversarialTrainer:
+
+        return MultiTaskAdversarialTrainer.from_pipeline(
+            model=model,
+            split_dataset_pipeline=self.dataset_pipeline,
+            tensorboard_path=tensorboard_path,
+            device="cuda",
+            autoencoder_pretrain_epochs=self._autoencoder_pretrain_epochs,
+            discriminator_pretrain_epochs=self._discriminator_pretrain_epochs,
+            adversarial_epochs=self._adversarial_epochs,
+            coeff_adversarial=self._coeff_adversarial,
+            lr=self._lr,
+            batch_size=self._batch_size,
+            target_cell_type=target_cell_type,
+            seed=SeedSingleton.get_value(),
+        )
+
+
+class MultiTaskAaeAdversarialGaussianPipeline(MultiTaskAaeAdversarialPipeline):
+    def _init_trainer(
+        self,
+        model: MultiTaskAae,
+        tensorboard_path: Path,
+        target_cell_type: str,
+    ) -> MultiTaskAdversarialGaussianAutoencoderTrainer:
+
+        return MultiTaskAdversarialGaussianAutoencoderTrainer.from_pipeline(
+            model=model,
+            split_dataset_pipeline=self.dataset_pipeline,
+            tensorboard_path=tensorboard_path,
+            device="cuda",
+            autoencoder_pretrain_epochs=self._autoencoder_pretrain_epochs,
+            discriminator_pretrain_epochs=self._discriminator_pretrain_epochs,
+            adversarial_epochs=self._adversarial_epochs,
+            coeff_adversarial=self._coeff_adversarial,
+            lr=self._lr,
+            batch_size=self._batch_size,
+            target_cell_type=target_cell_type,
+            seed=SeedSingleton.get_value(),
+        )
+
+
+class MultiTaskAaeAdutoencoderAndOptimalTransportPipeline(
+    MultiTaskAaeAdversarialPipeline
+):
+    def _init_trainer(
+        self,
+        model: MultiTaskAae,
+        tensorboard_path: Path,
+        target_cell_type: str,
+    ) -> MultiTaskAaeAdversarialAndOptimalTransportTrainer:
+
+        return MultiTaskAaeAdversarialAndOptimalTransportTrainer.from_pipeline(
+            model=model,
+            split_dataset_pipeline=self.dataset_pipeline,
+            tensorboard_path=tensorboard_path,
+            device="cuda",
+            autoencoder_pretrain_epochs=self._autoencoder_pretrain_epochs,
+            discriminator_pretrain_epochs=self._discriminator_pretrain_epochs,
+            adversarial_epochs=self._adversarial_epochs,
+            coeff_adversarial=self._coeff_adversarial,
+            lr=self._lr,
+            batch_size=self._batch_size,
+            target_cell_type=target_cell_type,
+            seed=SeedSingleton.get_value(),
+        )
+
+
+class MultiTaskVaeAutoencoderPipeline(MultiTaskAaeAutoencoderPipeline):
+    def _init_model(
+        self,
+        num_features: int,
+        hidden_layers_autoencoder: List[int],
+        hidden_layers_discriminator: List[int],
+        film_factory: FilmLayerFactory,
+        mask_rate: float,
+        dropout_rate: float,
+    ):
+        return super()._init_model(
+            num_features,
+            hidden_layers_autoencoder,
+            hidden_layers_discriminator,
+            film_factory,
+            mask_rate,
+            dropout_rate,
+        )
+
+    def _load_model(
+        self,
+        num_features: int,
+        hidden_layers_autoencoder: List[int],
+        hidden_layers_discriminator: List[int],
+        film_factory: FilmLayerFactory,
+        mask_rate: float,
+        dropout_rate: float,
+        output_path: Path,
+    ):
+        return super()._load_model(
+            num_features,
+            hidden_layers_autoencoder,
+            hidden_layers_discriminator,
+            film_factory,
+            mask_rate,
+            dropout_rate,
+            output_path,
+        )
+
+    def _init_trainer(
+        self, model: MultiTaskAae, tensorboard_path: Path, target_cell_type: str
+    ):
+        return super()._init_trainer(model, tensorboard_path, target_cell_type)
+
+
+class MultiTaskVaeAutoencoderOptimalTransportPipeline(MultiTaskVaeAutoencoderPipeline):
+    def _init_trainer(
+        self,
+        model: MultiTaskAae,
+        tensorboard_path: Path,
+        target_cell_type: str,
+    ) -> MultiTaskAutoencoderOptimalTransportTrainer:
+
+        return MultiTaskAutoencoderOptimalTransportTrainer.from_pipeline(
+            model=model,
+            split_dataset_pipeline=self.dataset_pipeline,
+            train_tensorboard=tensorboard_path / "train",
+            val_tensorboard=tensorboard_path / "val",
+            device="cuda",
+            epochs=self._epochs,
+            lr=self._lr,
+            batch_size=self._batch_size,
+            target_cell_type=target_cell_type,
+            seed=SeedSingleton.get_value(),
+        )
+
+
+class MultiTaskVaeAutoencoderAndOptimalTransportPipeline(
+    MultiTaskVaeAutoencoderPipeline
+):
+    def __init__(
+        self,
+        experiment_name: str,
+        dataset_pipeline: SplitDatasetPipeline,
+        debug: bool = False,
+        seed: int = 19193,
+    ):
+        super().__init__(
+            dataset_pipeline=dataset_pipeline,
+            experiment_name=experiment_name,
+            seed=seed,
+        )
+
+        self._autoencoder_pretrain_epochs = 1 if debug else 400
+
+        # not used
+        self._adversarial_epochs = 1
+        self._discriminator_pretrain_epochs = 1
+        self._coeff_adversarial = 0
+
+    def _init_trainer(
+        self,
+        model: MultiTaskVae,
+        tensorboard_path: Path,
+        target_cell_type: str,
+    ) -> MultiTaskVaeAdversarialAndOptimalTransportTrainer:
+
+        return MultiTaskVaeAdversarialAndOptimalTransportTrainer.from_pipeline(
+            model=model,
+            split_dataset_pipeline=self.dataset_pipeline,
+            tensorboard_path=tensorboard_path,
+            device="cuda",
+            autoencoder_pretrain_epochs=self._autoencoder_pretrain_epochs,
+            discriminator_pretrain_epochs=self._discriminator_pretrain_epochs,
+            adversarial_epochs=self._adversarial_epochs,
+            coeff_adversarial=self._coeff_adversarial,
+            lr=self._lr,
+            batch_size=self._batch_size,
+            target_cell_type=target_cell_type,
+            seed=SeedSingleton.get_value(),
+        )

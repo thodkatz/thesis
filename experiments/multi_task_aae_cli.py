@@ -80,16 +80,18 @@ DISTANCE_METRICS = ["edistance", "wasserstein", "euclidean", "mean_pairwise", "m
 
 METRICS = BASELINE_METRICS + DISTANCE_METRICS
 
-batch_size = args.batch_size or 512
-learning_rate = args.lr or 5e-5
-autoencoder_pretrain_epochs = args.autoencoder_pretrain_epochs or 1000
-hidden_layers_autoencoder = args.hidden_layers_ae or [256, 128]
+# default values coming from hyperparameter tuning using optuna (for the MultiTaskAdversarialTrainer case)
+
+batch_size = args.batch_size or 64
+learning_rate = args.lr or 2.4590236785521603e-05
+autoencoder_pretrain_epochs = args.autoencoder_pretrain_epochs or 400
+hidden_layers_autoencoder = args.hidden_layers_ae or [512, 256, 128]
 hidden_layers_film = args.hidden_layers_film or []
-mask_rate = args.mask or 0.4
-dropout_rate = args.dropout or 0.2
+mask_rate = args.mask or 0.1
+dropout_rate = args.dropout or 0.5
 beta = args.beta or 0.1
 
-adversarial_epochs = args.adversarial_epochs or 100
+adversarial_epochs = args.adversarial_epochs or 0
 if adversarial_epochs == 0:
     discriminator_pretrain_epochs = 0
     coeff_adversarial = 0
@@ -116,8 +118,8 @@ run_multi_task_adversarial_aae(
     seed=seed,
     dropout_rate=dropout_rate,
     mask_rate=mask_rate,
-    model_class=MultiTaskAae,    
-    trainer_class=MultiTaskAdversarialOptimalTransportTrainer,
+    model_class=MultiTaskAae,
+    trainer_class=MultiTaskAdversarialTrainer,
     saved_results_path=SAVED_RESULTS_PATH,
     overwrite=True,
     )

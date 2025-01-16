@@ -1,9 +1,8 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
-
-import pandas as pd
 
 from thesis import DATA_PATH
 import scanpy as sc
@@ -13,6 +12,12 @@ from thesis.preprocessing import (
 )
 from anndata import AnnData
 import anndata as ad
+
+"""
+TODO:
+Revise the dataset functionality. The single and multiple conditions could be unified.
+We can assume all expected datasets to have a interface of perturbations and dosages.
+"""
 
 Train = AnnData
 Validation = AnnData
@@ -129,10 +134,13 @@ class SplitDatasetPipeline(ABC):
     def __init__(self, dataset_pipeline: DatasetPipeline) -> None:
         self._dataset_pipeline_name = str(dataset_pipeline)
         self.dataset_pipeline = dataset_pipeline
-        self.dataset = dataset_pipeline.dataset
         self.cell_type_key = dataset_pipeline.cell_type_key
         self.dosage_key = dataset_pipeline.dosage_key
         self.control_dose = dataset_pipeline.control_dose
+
+    @property
+    def dataset(self) -> AnnData:
+        return self.dataset_pipeline.dataset
 
     def split_dataset_to_train_validation(
         self, target_cell_type: str, validation_split: float = 0.8
@@ -181,7 +189,6 @@ class SplitDatasetPipeline(ABC):
 
     def get_cell_types(self):
         return self.dataset_pipeline.get_cell_types()
-    
     
     def get_num_genes(self):
         return self.dataset_pipeline.get_num_genes()
@@ -239,7 +246,12 @@ class MultipleConditionDatasetPipeline(SplitDatasetPipeline):
             dosages = dataset_pipeline.get_dosages_unique()
             dosages.remove(0)
         else:
-            dosages = dosages
+            dosages = sorted(dosages)
+            dosages_to_filter = deepcopy(dosages)
+            dosages_to_filter.append(self.control_dose)
+            self.dataset_pipeline.dataset = self.dataset_pipeline.dataset[
+                self.dataset_pipeline.dataset.obs[self.dosage_key].isin(dosages_to_filter)
+            ]
         self.dosages = dosages
         self.perturbation = perturbation
 
@@ -247,7 +259,7 @@ class MultipleConditionDatasetPipeline(SplitDatasetPipeline):
         return self.dataset[
             ~(
                 (self.dataset.obs[self.cell_type_key] == target_cell_type)
-                & (self.dataset.obs[self.dosage_key] > self.control_dose)
+                & (self.dataset.obs[self.dosage_key] != self.control_dose)
             )
         ]
 
@@ -260,7 +272,7 @@ class MultipleConditionDatasetPipeline(SplitDatasetPipeline):
     def get_stim_test(self, target_cell_type: str) -> AnnData:
         return self.dataset[
             (self.dataset.obs[self.cell_type_key] == target_cell_type)
-            & (self.dataset.obs[self.dosage_key] > self.control_dose)
+            & (self.dataset.obs[self.dosage_key] != self.control_dose)
         ]
 
 
@@ -320,11 +332,11 @@ class PbmcSinglePipeline(SingleConditionDatasetPipeline):
             perturbation=perturbation,
         )
 
-        # hack to make vidr work with non dosages datasets for single condition experiments
+        # hack to make dosages based models (e.g. vidr) work with non dosages datasets for single condition experiments
         dose_key = dataset_pipeline.dosage_key
         self.control.obs[dose_key] = 0.0
         self.perturb.obs[dose_key] = -1.0
-        self.dataset = ad.concat(
+        self.dataset_pipeline.dataset = ad.concat(
             [self.control, self.perturb],
             join="outer",
             label="batch",

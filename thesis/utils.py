@@ -88,7 +88,6 @@ class FileModelUtils:
         return self.get_batch_path(batch=batch) / "metrics.csv"
 
     def get_dose_path_multi(self, batch: int, dosage: float) -> Path:
-        assert self.is_multi_dose()
         return self.get_batch_path(batch=batch) / f"dose{dosage}"
 
     def get_dose_path_multi_metrics(self, batch: int, dosage: float) -> Path:
@@ -136,8 +135,6 @@ def append_csv(df: DataFrame, path: Path):
         header_df.to_csv(path, index=False)
     print("Writing metrics to", path)
     df.to_csv(path, mode="a", header=False, index=False)
-    
-    
 
 
 def pretty_print(obj, skip_private=True):

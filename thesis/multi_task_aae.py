@@ -7,7 +7,7 @@ import numpy as np
 from scButterfly.split_datasets import get_ot
 from torch import nn
 from torch import Tensor
-from typing import Generic, List, Optional, Tuple, TypeVar, Union, Type
+from typing import Dict, Generic, List, Optional, Tuple, TypeVar, Union, Type
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.nn.utils import spectral_norm
@@ -889,6 +889,7 @@ class Trainer(ABC, Generic[T]):
             num_workers=0,
             worker_init_fn=SeedSingleton.get_dataloader_worker,
             generator=generator,
+            drop_last=True
         )
 
         generator = torch.Generator()
@@ -903,6 +904,7 @@ class Trainer(ABC, Generic[T]):
             num_workers=0,
             worker_init_fn=SeedSingleton.get_dataloader_worker,
             generator=generator,
+            drop_last=True
         )
 
         print("train dataset len", len(self.train_dataset))
@@ -1020,12 +1022,12 @@ class MultiTaskAutoencoderDosagesTrainer(MultiTaskAutoencoderTrainer[DosagesData
         lr: float = 0.001,
         batch_size: int = 64,
         seed: int = 19193,
-    ):
+    ) -> MultiTaskAutoencoderDosagesTrainer:
         train_dataset, val_dataset = DosagesDataset.get_train_val_datasets(
             split_dataset_pipeline=split_dataset_pipeline,
             target_cell_type=target_cell_type,
         )
-        cls(
+        return cls(
             model=model,
             train_dataset=train_dataset,
             val_dataset=val_dataset,
@@ -1240,7 +1242,7 @@ class MultiTaskAutoencoderOptimalTransportTrainer(
                 target_cell_type=target_cell_type,
             )
         )
-        cls(
+        return cls(
             model=model,
             train_dataset=train_dataset,
             val_dataset=val_dataset,
@@ -1365,7 +1367,7 @@ class MultiTaskVaeOptimalTransportTrainer(
                 target_cell_type=target_cell_type,
             )
         )
-        cls(
+        return cls(
             model=model,
             train_dataset=train_dataset,
             val_dataset=val_dataset,
@@ -2418,7 +2420,7 @@ class MultiTaskAutoencoderUtils:
         trainer()
         trainer.save(save_path)
 
-    def predict(self):
+    def predict(self) -> Dict[str, AnnData]:
         control_test_adata = self.split_dataset_pipeline.get_ctrl_test(
             target_cell_type=self.target_cell_type
         )
@@ -2428,13 +2430,14 @@ class MultiTaskAutoencoderUtils:
         dosages_to_test = self.split_dataset_pipeline.get_dosages_unique(
             stim_test_adata
         )
-        predictions = {}
+        predictions: Dict[str, AnnData] = {}
 
         gene_expressions = DosagesDataset.get_gene_expressions(control_test_adata)
 
+        # refactor: used to access only the one hot encoded dosages
         stim_test_dataset = DosagesDataset(
             dataset_pipeline=self.split_dataset_pipeline.dataset_pipeline,
-            adata=stim_test_adata,
+            adata=stim_test_adata, # not used
             target_cell_type=self.target_cell_type,
         )
 
@@ -2454,9 +2457,9 @@ class MultiTaskAutoencoderUtils:
                     var=control_test_adata.var.copy(),
                     obsm=control_test_adata.obsm.copy(),
                 )
+                predictions[dosage].obs[self.split_dataset_pipeline.dosage_key] = dosage
 
-        # assumption: returns sorted based on drug dosage to test excluding control
-        return list(predictions.values())
+        return predictions
 
 
 def run_multi_task_adversarial_aae(
@@ -2610,7 +2613,7 @@ def run_multi_task_adversarial_aae(
             ground_truth=stim_test[
                 stim_test.obs[dataset_pipeline.dosage_key] == dosage
             ],
-            predicted=predictions[idx],
+            predicted=predictions[dosage],
             output_path=evaluation_path,
             save_plots=False,
             cell_type_key=dataset_pipeline.cell_type_key,

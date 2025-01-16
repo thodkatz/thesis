@@ -121,7 +121,7 @@ def evaluation_out_of_sample(
     elif isinstance(predicted, AnnData):
         pass
     else:
-        raise ValueError("predicted must be a list of tensors or anndata")
+        raise ValueError(f"predicted must be a list of tensors or anndata got {type(predict)}")
     # assert input.shape == predicted.shape
 
     assert len(ground_truth.shape) == len(control.shape) == 2
