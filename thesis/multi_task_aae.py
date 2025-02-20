@@ -599,15 +599,17 @@ class MultiTaskVae(nn.Module):
         film_layer_factory: FilmLayerFactory,
         mask_rate: float,
         dropout_rate: float,
+        beta: float,
         load_path: Path,
     ):
-        model = MultiTaskAae(
+        model = MultiTaskVae(
             num_features=num_features,
             hidden_layers_autoencoder=hidden_layers_autoencoder,
             hidden_layers_discriminator=hidden_layers_discriminator,
             film_layer_factory=film_layer_factory,
             mask_rate=mask_rate,
             dropout_rate=dropout_rate,
+            beta=beta
         )
         load_path = load_path / "model.pt"
         model.load_state_dict(torch.load(load_path))
@@ -1099,7 +1101,7 @@ class MultiTaskVaeDosagesTrainer(MultiTaskAutoencoderTrainer[DosagesDataset]):
             split_dataset_pipeline=split_dataset_pipeline,
             target_cell_type=target_cell_type,
         )
-        cls(
+        return cls(
             model=model,
             train_dataset=train_dataset,
             val_dataset=val_dataset,
@@ -2615,7 +2617,7 @@ def run_multi_task_adversarial_aae(
             ],
             predicted=predictions[dosage],
             output_path=evaluation_path,
-            save_plots=False,
+            save_plots=True,
             cell_type_key=dataset_pipeline.cell_type_key,
             skip_distances=True,
         )

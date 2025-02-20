@@ -26,6 +26,8 @@ from thesis.multi_task_aae import (
     MultiTaskAutoencoderUtils,
     MultiTaskVae,
     MultiTaskVaeAdversarialAndOptimalTransportTrainer,
+    MultiTaskVaeDosagesTrainer,
+    MultiTaskVaeOptimalTransportTrainer,
 )
 from thesis.utils import FileModelUtils, SeedSingleton, append_csv
 from thesis.datasets import (
@@ -147,7 +149,7 @@ class ModelPipeline(ABC, Generic[T]):
             if not self.is_single() and self.model_config.is_finished_evaluation_multi(
                 batch=batch, dosage=dose, refresh=refresh_evaluation
             ):
-                return
+                continue
 
             self.evaluation(
                 control=input_adata,
@@ -435,6 +437,14 @@ class ScPreGanPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
 
 
 class ScPreGanReproduciblePipeline(ScPreGanPipeline):
+    """
+    ScPreGan had two different repos:
+    - https://github.com/JaneJiayiDong/scPreGAN
+    - https://github.com/XiajieWei/scPreGAN-reproducibility/tree/master
+    
+    This model uses the reproducible one, just for sanity check.
+    It is aborted in favor of the main one (`ScPreGanPipeline`).
+    """
     def _run(
         self,
         batch: int,
@@ -591,6 +601,10 @@ class ScGenPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
 
 
 class VidrPipeline(ModelPipeline[T]):
+    """
+    sources:
+    - https://github.com/BhattacharyaLab/scVIDR/blob/main/bin/scvidr_train.py
+    """
     def __init__(
         self,
         experiment_name: str,
@@ -653,11 +667,24 @@ class VidrPipeline(ModelPipeline[T]):
 
         self.model_config.log_training_batch_is_finished(batch=batch)
 
-        # why only in the single case? Because in the multi case we have multiple evaluations, requires more logic to handle this
-        # and the bottleneck is the training, not the evaluation
+        dosages_to_test = self.dataset_pipeline.get_dosages_unique(perturb_test_adata)
+        # todo: just use a file as a flag to log if evaluation is done or not, similar with training
+        # todo: this is the same logic with the MultiTaskAaeAutoencoderPipeline
         if self.is_single() and self.model_config.is_finished_evaluation(
             batch=batch, refresh=refresh_evaluation
         ):
+            return None
+
+        multi_finished = True
+        if not self.is_single():
+            for dose in dosages_to_test:
+                multi_finished = (
+                    multi_finished
+                    and self.model_config.is_finished_evaluation_multi(
+                        batch=batch, dosage=dose, refresh=refresh_evaluation
+                    )
+                )
+        if multi_finished:
             return None
 
         pred, delta, reg = self.predict(model, target_cell_type)
@@ -681,6 +708,10 @@ class VidrPipeline(ModelPipeline[T]):
 
 
 class VidrSinglePipeline(VidrPipeline[SingleConditionDatasetPipeline]):
+    """
+    sources: 
+    - https://github.com/BhattacharyaLab/scVIDR/blob/main/bin/scvidr_predict.py
+    """
     def __init__(
         self,
         experiment_name: str,
@@ -710,6 +741,10 @@ class VidrSinglePipeline(VidrPipeline[SingleConditionDatasetPipeline]):
 
 
 class VidrMultiplePipeline(VidrPipeline[MultipleConditionDatasetPipeline]):
+    """
+    sources: 
+    - https://github.com/BhattacharyaLab/scVIDR/blob/main/bin/scvidr_predict.py
+    """
     def __init__(
         self,
         experiment_name: str,
@@ -736,7 +771,7 @@ class VidrMultiplePipeline(VidrPipeline[MultipleConditionDatasetPipeline]):
             cell_type_to_predict=target_cell_type,
             regression=not self._is_scgen_variant,
             continuous=True,
-            doses=self.dataset_pipeline.dosages,  # except 0.0
+            doses=self.dataset_pipeline.dosages, # excluding control dose
         )
         return pred, delta, reg
 
@@ -767,21 +802,17 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
     def _load_model(
         self,
         num_features: int,
-        hidden_layers_autoencoder: List[int],
-        hidden_layers_discriminator: List[int],
         film_factory: FilmLayerFactory,
-        mask_rate: float,
-        dropout_rate: float,
         output_path: Path,
     ):
         model = MultiTaskAae.load(
             num_features=num_features,
-            hidden_layers_autoencoder=hidden_layers_autoencoder,
-            hidden_layers_discriminator=hidden_layers_discriminator,
+            hidden_layers_autoencoder=self._hidden_layers_autoencoder,
+            hidden_layers_discriminator=self._hidden_layers_discriminator,
             film_layer_factory=film_factory,
             load_path=output_path,
-            mask_rate=mask_rate,
-            dropout_rate=dropout_rate,
+            mask_rate=self._mask_rate,
+            dropout_rate=self._dropout_rate,
         )
 
         return model
@@ -789,19 +820,15 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
     def _init_model(
         self,
         num_features: int,
-        hidden_layers_autoencoder: List[int],
-        hidden_layers_discriminator: List[int],
         film_factory: FilmLayerFactory,
-        mask_rate: float,
-        dropout_rate: float,
     ):
         model = MultiTaskAae(
             num_features=num_features,
-            hidden_layers_autoencoder=hidden_layers_autoencoder,
-            hidden_layers_discriminator=hidden_layers_discriminator,
+            hidden_layers_autoencoder=self._hidden_layers_autoencoder,
+            hidden_layers_discriminator=self._hidden_layers_discriminator,
             film_layer_factory=film_factory,
-            mask_rate=mask_rate,
-            dropout_rate=dropout_rate,
+            mask_rate=self._mask_rate,
+            dropout_rate=self._dropout_rate,
         )
         return model
 
@@ -850,22 +877,14 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
         ):
             model = self._load_model(
                 num_features=num_features,
-                hidden_layers_autoencoder=self._hidden_layers_autoencoder,
-                hidden_layers_discriminator=self._hidden_layers_discriminator,
                 film_factory=film_factory,
-                mask_rate=self._mask_rate,
-                dropout_rate=self._dropout_rate,
                 output_path=output_path,
             )
             model = model.to("cuda")
         else:
             model = self._init_model(
                 num_features=num_features,
-                hidden_layers_autoencoder=self._hidden_layers_autoencoder,
-                hidden_layers_discriminator=self._hidden_layers_discriminator,
                 film_factory=film_factory,
-                mask_rate=self._mask_rate,
-                dropout_rate=self._dropout_rate,
             )
 
         model_utils = MultiTaskAutoencoderUtils(
@@ -887,25 +906,36 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
 
         self.model_config.log_training_batch_is_finished(batch=batch)
 
-        pred = model_utils.predict()
+        stim_test_adata = self.dataset_pipeline.get_stim_test(target_cell_type)
+        control_test_adata = self.dataset_pipeline.get_ctrl_test(target_cell_type)
+        dosages_to_test = self.dataset_pipeline.get_dosages_unique(stim_test_adata)
+        print("dosages_to_test", dosages_to_test)
 
-        # why only in the single case?
+        # todo: just use a file as a flag to log if evaluation is done or not, similar with training
         if self.is_single() and self.model_config.is_finished_evaluation(
             batch=batch, refresh=refresh_evaluation
         ):
             return None
 
-        stim_test_adata = self.dataset_pipeline.get_stim_test(target_cell_type)
-        control_test_adata = self.dataset_pipeline.get_ctrl_test(target_cell_type)
-        
-        dosages_to_test = self.dataset_pipeline.get_dosages_unique(stim_test_adata)
+        multi_finished = True
+        if not self.is_single():
+            for dose in dosages_to_test:
+                multi_finished = (
+                    multi_finished
+                    and self.model_config.is_finished_evaluation_multi(
+                        batch=batch, dosage=dose, refresh=refresh_evaluation
+                    )
+                )
+                print("multi_finished", multi_finished)
+        if multi_finished:
+            return None
+
+        pred = model_utils.predict()
 
         perturb_test_adata_per_dose = []
         predictions = []
         for id, dose in enumerate(dosages_to_test):
-            stim_per_dose = stim_test_adata[
-                stim_test_adata.obs[dose_key] == dose
-            ]
+            stim_per_dose = stim_test_adata[stim_test_adata.obs[dose_key] == dose]
             predictions.append(pred[dose])
             perturb_test_adata_per_dose.append(stim_per_dose)
 
@@ -951,7 +981,8 @@ class MultiTaskAaeAdversarialPipeline(MultiTaskAaeAutoencoderPipeline):
         self._autoencoder_pretrain_epochs = 1 if debug else 400
         self._adversarial_epochs = 1 if debug else 100
         self._discriminator_pretrain_epochs = 1 if debug else 400
-        self._coeff_adversarial = 0.1
+        self._hidden_layers_discriminator = [32]
+        self._coeff_adversarial = 0.01
 
     def _init_trainer(
         self,
@@ -1000,7 +1031,7 @@ class MultiTaskAaeAdversarialGaussianPipeline(MultiTaskAaeAdversarialPipeline):
         )
 
 
-class MultiTaskAaeAdutoencoderAndOptimalTransportPipeline(
+class MultiTaskAaeAutoencoderAndOptimalTransportPipeline(
     MultiTaskAaeAdversarialPipeline
 ):
     def _init_trainer(
@@ -1027,59 +1058,82 @@ class MultiTaskAaeAdutoencoderAndOptimalTransportPipeline(
 
 
 class MultiTaskVaeAutoencoderPipeline(MultiTaskAaeAutoencoderPipeline):
+    def __init__(
+        self,
+        experiment_name: str,
+        dataset_pipeline: SplitDatasetPipeline,
+        debug: bool = False,
+        seed: int = 19193,
+    ):
+        super().__init__(
+            dataset_pipeline=dataset_pipeline,
+            experiment_name=experiment_name,
+            seed=seed,
+            debug=debug,
+        )
+
+        self._beta = 0.004
+        self._lr = 6.62135564829619e-06
+        self._batch_size = 32
+
     def _init_model(
         self,
         num_features: int,
-        hidden_layers_autoencoder: List[int],
-        hidden_layers_discriminator: List[int],
         film_factory: FilmLayerFactory,
-        mask_rate: float,
-        dropout_rate: float,
     ):
-        return super()._init_model(
-            num_features,
-            hidden_layers_autoencoder,
-            hidden_layers_discriminator,
-            film_factory,
-            mask_rate,
-            dropout_rate,
+        return MultiTaskVae(
+            num_features=num_features,
+            hidden_layers_autoencoder=self._hidden_layers_autoencoder,
+            hidden_layers_discriminator=self._hidden_layers_discriminator,
+            film_layer_factory=film_factory,
+            mask_rate=self._mask_rate,
+            dropout_rate=self._dropout_rate,
+            beta=self._beta,
         )
 
     def _load_model(
         self,
         num_features: int,
-        hidden_layers_autoencoder: List[int],
-        hidden_layers_discriminator: List[int],
         film_factory: FilmLayerFactory,
-        mask_rate: float,
-        dropout_rate: float,
         output_path: Path,
     ):
-        return super()._load_model(
-            num_features,
-            hidden_layers_autoencoder,
-            hidden_layers_discriminator,
-            film_factory,
-            mask_rate,
-            dropout_rate,
-            output_path,
+        return MultiTaskVae.load(
+            num_features=num_features,
+            hidden_layers_autoencoder=self._hidden_layers_autoencoder,
+            hidden_layers_discriminator=self._hidden_layers_discriminator,
+            film_layer_factory=film_factory,
+            mask_rate=self._mask_rate,
+            dropout_rate=self._dropout_rate,
+            load_path=output_path,
+            beta=self._beta,
         )
 
     def _init_trainer(
-        self, model: MultiTaskAae, tensorboard_path: Path, target_cell_type: str
+        self, model: MultiTaskVae, tensorboard_path: Path, target_cell_type: str
     ):
-        return super()._init_trainer(model, tensorboard_path, target_cell_type)
+        return MultiTaskVaeDosagesTrainer.from_pipeline(
+            model=model,
+            split_dataset_pipeline=self.dataset_pipeline,
+            target_cell_type=target_cell_type,
+            train_tensorboard=tensorboard_path / "train",
+            val_tensorboard=tensorboard_path / "val",
+            device="cuda",
+            epochs=self._epochs,
+            lr=self._lr,
+            batch_size=self._batch_size,
+            seed=SeedSingleton.get_value(),
+        )
 
 
 class MultiTaskVaeAutoencoderOptimalTransportPipeline(MultiTaskVaeAutoencoderPipeline):
     def _init_trainer(
         self,
-        model: MultiTaskAae,
+        model: MultiTaskVae,
         tensorboard_path: Path,
         target_cell_type: str,
-    ) -> MultiTaskAutoencoderOptimalTransportTrainer:
+    ) -> MultiTaskVaeOptimalTransportTrainer:
 
-        return MultiTaskAutoencoderOptimalTransportTrainer.from_pipeline(
+        return MultiTaskVaeOptimalTransportTrainer.from_pipeline(
             model=model,
             split_dataset_pipeline=self.dataset_pipeline,
             train_tensorboard=tensorboard_path / "train",

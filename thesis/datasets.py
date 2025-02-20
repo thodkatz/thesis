@@ -13,12 +13,6 @@ from thesis.preprocessing import (
 from anndata import AnnData
 import anndata as ad
 
-"""
-TODO:
-Revise the dataset functionality. The single and multiple conditions could be unified.
-We can assume all expected datasets to have a interface of perturbations and dosages.
-"""
-
 Train = AnnData
 Validation = AnnData
 
@@ -144,7 +138,7 @@ class SplitDatasetPipeline(ABC):
 
     def split_dataset_to_train_validation(
         self, target_cell_type: str, validation_split: float = 0.8
-    ) -> Tuple[AnnData, AnnData]:
+    ) -> Tuple[AnnData, Optional[AnnData]]:
         """
         Splits the dataset into training and validation subsets based on cell types and dosages.
 
@@ -158,6 +152,9 @@ class SplitDatasetPipeline(ABC):
         adata = self._get_dataset_to_split(target_cell_type=target_cell_type)
         train_ilocs = []
         valid_ilocs = []
+        if validation_split == 1.0:
+            return adata, None
+        
         for cell_type in self.get_cell_types():
             dataset_cell_type = adata[adata.obs[self.cell_type_key] == cell_type]
             for dose in self.get_dosages_unique(dataset_cell_type):
@@ -198,6 +195,9 @@ class SplitDatasetPipeline(ABC):
 
 
 class SingleConditionDatasetPipeline(SplitDatasetPipeline):
+    """
+    This class serves the need to have an interface of data being split to control and perturb used by scbutterfly, scgen, scpregan.
+    """
     def __init__(
         self,
         dataset_pipeline: DatasetPipeline,
@@ -209,13 +209,14 @@ class SingleConditionDatasetPipeline(SplitDatasetPipeline):
         super().__init__(dataset_pipeline)
         self.control = control
         self.perturb = perturb
-        self.dataset = ad.concat(
+        self.dataset_pipeline.dataset = ad.concat(
             [self.control, self.perturb],
             join="outer",
             label="condition",
             keys=["control", "stimulated"],
             index_unique=None,
         )
+        self.dataset_pipeline.dataset.var = self.control.var.copy()        
         self.perturbation = perturbation
         self.dosages = dosages
 
@@ -235,6 +236,9 @@ class SingleConditionDatasetPipeline(SplitDatasetPipeline):
 
 
 class MultipleConditionDatasetPipeline(SplitDatasetPipeline):
+    """
+    Utility to split dataset based on a subset of dosages
+    """
     def __init__(
         self,
         dataset_pipeline: DatasetPipeline,
@@ -324,6 +328,12 @@ class PbmcSinglePipeline(SingleConditionDatasetPipeline):
         dataset = dataset_pipeline.dataset
         control = dataset[dataset.obs["condition"] == "control"]
         perturb = dataset[dataset.obs["condition"] == "stimulated"]
+        
+        # hack to make dosages based models (e.g. vidr) work with non dosages datasets for single condition experiments
+        dose_key = dataset_pipeline.dosage_key
+        control.obs[dose_key] = 0.0
+        perturb.obs[dose_key] = -1.0        
+        
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             control=control,
@@ -331,19 +341,6 @@ class PbmcSinglePipeline(SingleConditionDatasetPipeline):
             dosages=-1.0,
             perturbation=perturbation,
         )
-
-        # hack to make dosages based models (e.g. vidr) work with non dosages datasets for single condition experiments
-        dose_key = dataset_pipeline.dosage_key
-        self.control.obs[dose_key] = 0.0
-        self.perturb.obs[dose_key] = -1.0
-        self.dataset_pipeline.dataset = ad.concat(
-            [self.control, self.perturb],
-            join="outer",
-            label="batch",
-            keys=["control", "stimulated"],
-            index_unique=None,
-        )
-
 
 class Sciplex3SinglePipeline(SingleConditionDatasetPipeline):
     def __init__(

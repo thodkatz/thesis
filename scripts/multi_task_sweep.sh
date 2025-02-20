@@ -67,9 +67,11 @@ generate_combinations() {
         echo $experiment
         echo $combination
 
-        for seed in 1 2 19193; do
-            $HELPER $REPO/scripts/multi_task_sweep.py --dosages $combination --experiment "${experiment}${seed}" --seed $seed
-        done
+        # seed 1 2 19193
+        # be careful to not clog the cluster
+        #for seed in 19193; do
+            #$HELPER $REPO/scripts/multi_task_sweep.py --dosages $combination --experiment "${experiment}${seed}" --seed $seed
+        #done
 
     done
 }

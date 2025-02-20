@@ -1,6 +1,10 @@
 from thesis.model import (
     ButterflyPipeline,
     ButterflyPipelineNoReusing,
+    MultiTaskAaeAdversarialGaussianPipeline,
+    MultiTaskAaeAdversarialPipeline,
+    MultiTaskAaeAutoencoderPipeline,
+    MultiTaskVaeAutoencoderPipeline,
     ScGenPipeline,
     ScPreGanPipeline,
     ScPreGanReproduciblePipeline,
@@ -34,6 +38,7 @@ if __name__ == "__main__":
     parser.add_argument("--perturbation", type=str, required=True, help="perturbation")
     parser.add_argument("--dosages", type=float, required=False, help="drug dosage")
     parser.add_argument("--batch", type=int, required=True, help="batch id")
+    parser.add_argument("--seed", type=int, default=19193, help="random seed")    
     parser.add_argument(
         "--model",
         choices=[
@@ -44,6 +49,7 @@ if __name__ == "__main__":
             "scpregan-reproducible",
             "vidr-single",
             "vidr-multi",
+            "simple"
         ],
         help="Chooose model",
     )
@@ -70,6 +76,10 @@ if __name__ == "__main__":
         "scbutterfly-no-reusing": ButterflyPipelineNoReusing,
         "vidr-single": VidrSinglePipeline,
         "vidr-multi": VidrMultiplePipeline,
+        "simple": MultiTaskAaeAutoencoderPipeline,
+        "simple_vae": MultiTaskVaeAutoencoderPipeline,
+        "adversarial": MultiTaskAaeAdversarialPipeline,
+        "adversarial_gaussian": MultiTaskAaeAdversarialGaussianPipeline,
     }
 
     preprocessing2class = {
@@ -85,7 +95,7 @@ if __name__ == "__main__":
         "nault-liver": NaultSinglePipeline,
         "nault-liver-multi": NaultMultiplePipeline
     }
-    
+
     dataset2class = {
         "pbmc": PbmcPipeline,
         "nault": NaultPipeline,
@@ -94,7 +104,7 @@ if __name__ == "__main__":
         "nault-liver": NaultLiverTissuePipeline,
         "nault-liver-multi": NaultLiverTissuePipeline
     }
-    
+
     dataset_pipeline = dataset2class[args.dataset](
         preprocessing_pipeline=preprocessing2class[args.preprocessing](),
     )
@@ -107,8 +117,9 @@ if __name__ == "__main__":
 
     model_pipeline = model2class[args.model](
         dataset_pipeline=dataset_condition_pipeline,
-        experiment_name=args.experiment or "",
+        experiment_name=args.experiment or "seed_" + str(args.seed),
         debug=args.debug,
+        seed=args.seed
     )
 
     model_pipeline(

@@ -26,7 +26,7 @@ class SeedSingleton:
         torch.cuda.manual_seed_all(seed)
         torch.manual_seed(seed)
         torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False        
+        torch.backends.cudnn.benchmark = False
 
     @staticmethod
     def get_value() -> int:
@@ -102,7 +102,7 @@ class FileModelUtils:
         self, batch: int, dosage: float, refresh: bool = False
     ) -> bool:
         exists = self.get_dose_path_multi_metrics(batch=batch, dosage=dosage).exists()
-        print("Metrics path exist", exists, "refresh", refresh)
+        print("Metrics path exist", exists, "refresh", refresh, "dosage", dosage)
         return exists and not refresh
 
     def is_finished_batch_training(self, batch: int, refresh: bool = False) -> bool:

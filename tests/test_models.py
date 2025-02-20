@@ -25,7 +25,7 @@ def test_vidr_pbmc():
     )
     dose_key = dataset_pipeline.dosage_key
 
-    assert dataset_pipeline.dosages == [-1.0]
+    assert dataset_pipeline.dosages == -1.0
 
     assert sorted(model.dataset_pipeline.dataset.obs[dose_key].unique().tolist()) == [
         -1.0,
