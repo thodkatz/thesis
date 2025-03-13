@@ -361,11 +361,13 @@ class FilmLayerFactory:
         input_dim: int,
         hidden_layers: List[int],
         dropout_rate: float = 0.1,
-        device: str = "cuda",
     ):
         self.input_dim = input_dim
         self.hidden_layers = hidden_layers
-        self.device = device
+        if torch.cuda.is_available():
+            self.device = "cuda"
+        else:
+            self.device = "cpu"
         self.dropout_rate = dropout_rate
 
     def create_film_generator(self, dim: int) -> FilmGenerator:
@@ -850,11 +852,13 @@ class Trainer(ABC, Generic[T]):
         val_tensorboard: Union[Path, SummaryWriter],
         batch_size: int,
         lr: float,
-        device: str = "cuda",
         seed: int = 19193,
     ):
         self.model = model
-        self.device = device
+        if torch.cuda.is_available():
+            self.device = "cuda"
+        else:
+            self.device = "cpu"
         self.target_cell_type = target_cell_type
         self.model = self.model.to(self.device)
         self.batch_size = batch_size
@@ -937,7 +941,6 @@ class MultiTaskAutoencoderTrainer(Trainer[T]):
         target_cell_type: str,
         train_tensorboard: Union[Path, SummaryWriter],
         val_tensorboard: Union[Path, SummaryWriter],
-        device: str = "cuda",
         epochs: int = 100,
         lr: float = 0.001,
         batch_size: int = 64,
@@ -950,7 +953,6 @@ class MultiTaskAutoencoderTrainer(Trainer[T]):
             val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             lr=lr,
             batch_size=batch_size,
             target_cell_type=target_cell_type,
@@ -1019,7 +1021,6 @@ class MultiTaskAutoencoderDosagesTrainer(MultiTaskAutoencoderTrainer[DosagesData
         target_cell_type: str,
         train_tensorboard: Union[Path, SummaryWriter],
         val_tensorboard: Union[Path, SummaryWriter],
-        device: str = "cuda",
         epochs: int = 100,
         lr: float = 0.001,
         batch_size: int = 64,
@@ -1035,7 +1036,6 @@ class MultiTaskAutoencoderDosagesTrainer(MultiTaskAutoencoderTrainer[DosagesData
             val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             epochs=epochs,
             lr=lr,
             batch_size=batch_size,
@@ -1091,7 +1091,6 @@ class MultiTaskVaeDosagesTrainer(MultiTaskAutoencoderTrainer[DosagesDataset]):
         target_cell_type: str,
         train_tensorboard: Union[Path, SummaryWriter],
         val_tensorboard: Union[Path, SummaryWriter],
-        device: str = "cuda",
         epochs: int = 100,
         lr: float = 0.001,
         batch_size: int = 64,
@@ -1107,7 +1106,6 @@ class MultiTaskVaeDosagesTrainer(MultiTaskAutoencoderTrainer[DosagesDataset]):
             val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             epochs=epochs,
             lr=lr,
             batch_size=batch_size,
@@ -1186,7 +1184,6 @@ class MultiTaskAutoencoderOptimalTransportTrainer(
         val_dataset: DosagesOptimalTransportDataset,
         train_tensorboard: Union[Path, SummaryWriter],
         val_tensorboard: Union[Path, SummaryWriter],
-        device: str = "cuda",
         epochs: int = 100,
         lr: float = 0.001,
         batch_size: int = 64,
@@ -1199,7 +1196,6 @@ class MultiTaskAutoencoderOptimalTransportTrainer(
             val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             epochs=epochs,
             lr=lr,
             batch_size=batch_size,
@@ -1232,7 +1228,6 @@ class MultiTaskAutoencoderOptimalTransportTrainer(
         target_cell_type: str,
         train_tensorboard: Union[Path, SummaryWriter],
         val_tensorboard: Union[Path, SummaryWriter],
-        device: str = "cuda",
         epochs: int = 100,
         lr: float = 0.001,
         batch_size: int = 64,
@@ -1250,7 +1245,6 @@ class MultiTaskAutoencoderOptimalTransportTrainer(
             val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             epochs=epochs,
             lr=lr,
             batch_size=batch_size,
@@ -1312,7 +1306,6 @@ class MultiTaskVaeOptimalTransportTrainer(
         val_dataset: DosagesOptimalTransportDataset,
         train_tensorboard: Union[Path, SummaryWriter],
         val_tensorboard: Union[Path, SummaryWriter],
-        device: str = "cuda",
         epochs: int = 100,
         lr: float = 0.001,
         batch_size: int = 64,
@@ -1325,7 +1318,6 @@ class MultiTaskVaeOptimalTransportTrainer(
             val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             epochs=epochs,
             lr=lr,
             batch_size=batch_size,
@@ -1357,7 +1349,6 @@ class MultiTaskVaeOptimalTransportTrainer(
         target_cell_type: str,
         train_tensorboard: Union[Path, SummaryWriter],
         val_tensorboard: Union[Path, SummaryWriter],
-        device: str = "cuda",
         epochs: int = 100,
         lr: float = 0.001,
         batch_size: int = 64,
@@ -1375,7 +1366,6 @@ class MultiTaskVaeOptimalTransportTrainer(
             val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             epochs=epochs,
             lr=lr,
             batch_size=batch_size,
@@ -1457,7 +1447,6 @@ class MultiTaskAdversarialOptimalTransportTrainer(
         val_dataset: DosagesOptimalTransportDataset,
         target_cell_type: str,
         tensorboard_path: Path,
-        device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discriminator_pretrain_epochs: int = 50,
         autoencoder_pretrain_epochs: int = 50,
@@ -1477,7 +1466,6 @@ class MultiTaskAdversarialOptimalTransportTrainer(
             val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             lr=lr,
             batch_size=batch_size,
             target_cell_type=target_cell_type,
@@ -1490,7 +1478,6 @@ class MultiTaskAdversarialOptimalTransportTrainer(
             val_dataset=val_dataset,
             train_tensorboard=self.writer_train,
             val_tensorboard=self.writer_val,
-            device=self.device,
             epochs=autoencoder_pretrain_epochs,
             lr=self.lr,
             batch_size=self.batch_size,
@@ -1505,7 +1492,6 @@ class MultiTaskAdversarialOptimalTransportTrainer(
         split_dataset_pipeline: SplitDatasetPipeline,
         target_cell_type: str,
         tensorboard_path: Path,
-        device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discriminator_pretrain_epochs: int = 50,
         autoencoder_pretrain_epochs: int = 50,
@@ -1527,7 +1513,6 @@ class MultiTaskAdversarialOptimalTransportTrainer(
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             tensorboard_path=tensorboard_path,
-            device=device,
             target_cell_type=target_cell_type,
             lr=lr,
             batch_size=batch_size,
@@ -1557,7 +1542,6 @@ class MultiTaskVaeAdversarialTrainer(Trainer[DosagesDataset]):
         val_dataset: DosagesDataset,
         target_cell_type: str,
         tensorboard_path: Path,
-        device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discriminator_pretrain_epochs: int = 50,
         autoencoder_pretrain_epochs: int = 50,
@@ -1577,7 +1561,6 @@ class MultiTaskVaeAdversarialTrainer(Trainer[DosagesDataset]):
             val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             lr=lr,
             batch_size=batch_size,
             target_cell_type=target_cell_type,
@@ -1590,7 +1573,6 @@ class MultiTaskVaeAdversarialTrainer(Trainer[DosagesDataset]):
             val_dataset=val_dataset,
             train_tensorboard=self.writer_train,
             val_tensorboard=self.writer_val,
-            device=self.device,
             epochs=autoencoder_pretrain_epochs,
             lr=self.lr,
             batch_size=self.batch_size,
@@ -1605,7 +1587,6 @@ class MultiTaskVaeAdversarialTrainer(Trainer[DosagesDataset]):
         split_dataset_pipeline: SplitDatasetPipeline,
         target_cell_type: str,
         tensorboard_path: Path,
-        device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discriminator_pretrain_epochs: int = 50,
         autoencoder_pretrain_epochs: int = 50,
@@ -1625,7 +1606,6 @@ class MultiTaskVaeAdversarialTrainer(Trainer[DosagesDataset]):
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             tensorboard_path=tensorboard_path,
-            device=device,
             target_cell_type=target_cell_type,
             lr=lr,
             batch_size=batch_size,
@@ -1657,7 +1637,6 @@ class MultiTaskVaeAdversarialOptimalTransportTrainer(
         val_dataset: DosagesOptimalTransportDataset,
         target_cell_type: str,
         tensorboard_path: Path,
-        device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discriminator_pretrain_epochs: int = 50,
         autoencoder_pretrain_epochs: int = 50,
@@ -1677,7 +1656,6 @@ class MultiTaskVaeAdversarialOptimalTransportTrainer(
             val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             lr=lr,
             batch_size=batch_size,
             target_cell_type=target_cell_type,
@@ -1690,7 +1668,6 @@ class MultiTaskVaeAdversarialOptimalTransportTrainer(
             val_dataset=val_dataset,
             train_tensorboard=self.writer_train,
             val_tensorboard=self.writer_val,
-            device=self.device,
             epochs=autoencoder_pretrain_epochs,
             lr=self.lr,
             batch_size=self.batch_size,
@@ -1705,7 +1682,6 @@ class MultiTaskVaeAdversarialOptimalTransportTrainer(
         split_dataset_pipeline: SplitDatasetPipeline,
         target_cell_type: str,
         tensorboard_path: Path,
-        device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discriminator_pretrain_epochs: int = 50,
         autoencoder_pretrain_epochs: int = 50,
@@ -1727,7 +1703,6 @@ class MultiTaskVaeAdversarialOptimalTransportTrainer(
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             tensorboard_path=tensorboard_path,
-            device=device,
             target_cell_type=target_cell_type,
             lr=lr,
             batch_size=batch_size,
@@ -1759,7 +1734,6 @@ class MultiTaskVaeAdversarialAndOptimalTransportTrainer(Trainer):
         val_dataset_2: DosagesOptimalTransportDataset,
         target_cell_type: str,
         tensorboard_path: Path,
-        device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discriminator_pretrain_epochs: int = 50,
         autoencoder_pretrain_epochs: int = 50,
@@ -1779,7 +1753,6 @@ class MultiTaskVaeAdversarialAndOptimalTransportTrainer(Trainer):
             val_dataset=val_dataset_1,  # not used yet
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             lr=lr,
             batch_size=batch_size,
             target_cell_type=target_cell_type,
@@ -1792,7 +1765,6 @@ class MultiTaskVaeAdversarialAndOptimalTransportTrainer(Trainer):
             val_dataset=val_dataset_1,
             train_tensorboard=self.writer_train,
             val_tensorboard=self.writer_val,
-            device=self.device,
             epochs=autoencoder_pretrain_epochs,
             lr=self.lr,
             batch_size=self.batch_size,
@@ -1806,7 +1778,6 @@ class MultiTaskVaeAdversarialAndOptimalTransportTrainer(Trainer):
             val_dataset=val_dataset_2,
             train_tensorboard=self.writer_train,
             val_tensorboard=self.writer_val,
-            device=self.device,
             epochs=autoencoder_pretrain_epochs,
             lr=self.lr,
             batch_size=self.batch_size,
@@ -1821,7 +1792,6 @@ class MultiTaskVaeAdversarialAndOptimalTransportTrainer(Trainer):
         split_dataset_pipeline: SplitDatasetPipeline,
         target_cell_type: str,
         tensorboard_path: Path,
-        device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discriminator_pretrain_epochs: int = 50,
         autoencoder_pretrain_epochs: int = 50,
@@ -1849,7 +1819,6 @@ class MultiTaskVaeAdversarialAndOptimalTransportTrainer(Trainer):
             train_dataset_2=train_dataset_2,
             val_dataset_2=val_dataset_2,
             tensorboard_path=tensorboard_path,
-            device=device,
             target_cell_type=target_cell_type,
             lr=lr,
             batch_size=batch_size,
@@ -1879,7 +1848,6 @@ class MultiTaskAaeAdversarialAndOptimalTransportTrainer(Trainer):
         val_dataset_2: DosagesOptimalTransportDataset,
         target_cell_type: str,
         tensorboard_path: Path,
-        device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discriminator_pretrain_epochs: int = 50,
         autoencoder_pretrain_epochs: int = 50,
@@ -1899,7 +1867,6 @@ class MultiTaskAaeAdversarialAndOptimalTransportTrainer(Trainer):
             val_dataset=val_dataset_1,  # not used yet
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             lr=lr,
             batch_size=batch_size,
             target_cell_type=target_cell_type,
@@ -1912,7 +1879,6 @@ class MultiTaskAaeAdversarialAndOptimalTransportTrainer(Trainer):
             val_dataset=val_dataset_1,
             train_tensorboard=self.writer_train,
             val_tensorboard=self.writer_val,
-            device=self.device,
             epochs=autoencoder_pretrain_epochs,
             lr=self.lr,
             batch_size=self.batch_size,
@@ -1926,7 +1892,6 @@ class MultiTaskAaeAdversarialAndOptimalTransportTrainer(Trainer):
             val_dataset=val_dataset_2,
             train_tensorboard=self.writer_train,
             val_tensorboard=self.writer_val,
-            device=self.device,
             epochs=autoencoder_pretrain_epochs,
             lr=self.lr,
             batch_size=self.batch_size,
@@ -1941,7 +1906,6 @@ class MultiTaskAaeAdversarialAndOptimalTransportTrainer(Trainer):
         split_dataset_pipeline: SplitDatasetPipeline,
         target_cell_type: str,
         tensorboard_path: Path,
-        device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discriminator_pretrain_epochs: int = 50,
         autoencoder_pretrain_epochs: int = 50,
@@ -1969,7 +1933,6 @@ class MultiTaskAaeAdversarialAndOptimalTransportTrainer(Trainer):
             train_dataset_2=train_dataset_2,
             val_dataset_2=val_dataset_2,
             tensorboard_path=tensorboard_path,
-            device=device,
             target_cell_type=target_cell_type,
             lr=lr,
             batch_size=batch_size,
@@ -1993,7 +1956,6 @@ class MultiTaskAdversarialTrainer(Trainer[DosagesDataset]):
         val_dataset: DosagesDataset,
         target_cell_type: str,
         tensorboard_path: Path,
-        device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discriminator_pretrain_epochs: int = 50,
         autoencoder_pretrain_epochs: int = 50,
@@ -2011,7 +1973,6 @@ class MultiTaskAdversarialTrainer(Trainer[DosagesDataset]):
             val_dataset=val_dataset,
             train_tensorboard=train_tensorboard,
             val_tensorboard=val_tensorboard,
-            device=device,
             lr=lr,
             batch_size=batch_size,
             target_cell_type=target_cell_type,
@@ -2044,7 +2005,6 @@ class MultiTaskAdversarialTrainer(Trainer[DosagesDataset]):
             val_dataset=val_dataset,
             train_tensorboard=self.writer_train,
             val_tensorboard=self.writer_val,
-            device=self.device,
             epochs=self.autoencoder_epochs,
             lr=self.lr,
             batch_size=self.batch_size,
@@ -2092,7 +2052,6 @@ class MultiTaskAdversarialTrainer(Trainer[DosagesDataset]):
         split_dataset_pipeline: SplitDatasetPipeline,
         target_cell_type: str,
         tensorboard_path: Path,
-        device: str = "cuda",
         coeff_adversarial: float = 0.1,
         discriminator_pretrain_epochs: int = 50,
         autoencoder_pretrain_epochs: int = 50,
@@ -2111,7 +2070,6 @@ class MultiTaskAdversarialTrainer(Trainer[DosagesDataset]):
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             tensorboard_path=tensorboard_path,
-            device=device,
             target_cell_type=target_cell_type,
             lr=lr,
             batch_size=batch_size,
@@ -2411,7 +2369,10 @@ class MultiTaskAutoencoderUtils:
         self.model = model
         self.split_dataset_pipeline = split_dataset_pipeline
         self.target_cell_type = target_cell_type
-        self.device = "cuda"
+        if torch.cuda.is_available():
+            self.device = "cuda"
+        else:
+            self.device = "cpu"
         self.model.to(self.device)
 
     def train(
@@ -2548,7 +2509,8 @@ def run_multi_task_adversarial_aae(
             mask_rate=mask_rate,
             dropout_rate=dropout_rate,
         )
-        model = model.to("cuda")
+        if torch.cuda.is_available():
+            model = model.to("cuda")
     else:
         if model_class == MultiTaskVae:
             model = model_class(
@@ -2586,7 +2548,6 @@ def run_multi_task_adversarial_aae(
             tensorboard_path=tensorboard_path,
             split_dataset_pipeline=dataset_pipeline,
             target_cell_type=target_cell_type,
-            device="cuda",
             coeff_adversarial=coeff_adversarial,
             autoencoder_pretrain_epochs=autoencoder_pretrain_epochs,
             discriminator_pretrain_epochs=discriminator_pretrain_epochs,
@@ -2648,7 +2609,11 @@ def run_multi_task_adversarial_aae(
     )
 
     def umaps(adata: AnnData, title: str = ""):
-        tensor = DosagesDataset.get_gene_expressions(adata).to("cuda")
+        if torch.cuda.is_available():
+            device = "cuda"
+        else:
+            device = "cpu"
+        tensor = DosagesDataset.get_gene_expressions(adata).to(device)
         latent = AnnData(
             X=model.get_latent_representation(tensor), obs=adata.obs.copy()
         )

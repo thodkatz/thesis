@@ -332,7 +332,7 @@ class PbmcSinglePipeline(SingleConditionDatasetPipeline):
         # hack to make dosages based models (e.g. vidr) work with non dosages datasets for single condition experiments
         dose_key = dataset_pipeline.dosage_key
         control.obs[dose_key] = 0.0
-        perturb.obs[dose_key] = -1.0        
+        perturb.obs[dose_key] = -1.0
         
         super().__init__(
             dataset_pipeline=dataset_pipeline,

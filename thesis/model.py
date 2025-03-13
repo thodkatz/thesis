@@ -80,6 +80,7 @@ class ModelPipeline(ABC, Generic[T]):
             cell_type_key=dataset_pipeline.cell_type_key,
             root_path=SAVED_RESULTS_PATH,
         )
+        print("CUDA is available", torch.cuda.is_available())
         print("Model config", self.model_config)
 
         if not SeedSingleton.is_set():
@@ -204,30 +205,28 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         seed: int = 19193,
         debug=False,
     ):
-        self._epoch_pretrain1 = 1 if debug else 100
-        self._epoch_pretrain2 = 1 if debug else 100
-        self._epoch_intergrative = 1 if debug else 200
-        self._num_workers = 0 if debug else 4
-
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
             seed=seed,
         )
+        
+        self._epoch_pretrain1 = 1 if debug else 100
+        self._epoch_pretrain2 = 1 if debug else 100
+        self._epoch_intergrative = 1 if debug else 200
+        self._num_workers = 0 if debug else 4
+        
+        self._control, self._perturb = self._get_control_perturb()
+
 
     def _split_func(self):
         return unpaired_split_dataset_perturb(
             self.dataset_pipeline.control,
             self.dataset_pipeline.perturb,
         )[0]
-
-    def _run(
-        self,
-        batch: int,
-        refresh_training: bool = False,
-        refresh_evaluation: bool = False,
-    ) -> Optional[Predict]:
-        cell_type_key = self.model_config.cell_type_key
+        
+    def _get_control_perturb(self):
+        cell_type_key = self.model_config.cell_type_key        
         control = self.dataset_pipeline.control
         perturb = self.dataset_pipeline.perturb
 
@@ -235,6 +234,15 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         perturb.obs["cell_type"] = perturb.obs[cell_type_key]
         control.obs.index = [str(i) for i in range(control.X.shape[0])]
         perturb.obs.index = [str(i) for i in range(perturb.X.shape[0])]
+        return control, perturb   
+
+    def _run(
+        self,
+        batch: int,
+        refresh_training: bool = False,
+        refresh_evaluation: bool = False,
+    ) -> Optional[Predict]:
+        control, perturb = self._control, self._perturb
 
         id_list = self._split_func()
 
@@ -256,37 +264,9 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         file_path = str(self.model_config.get_batch_path(batch))
         tensorboard_path = self.model_config.get_batch_log_path(batch)
 
-        model = scbutterfly.Model(
-            R_encoder_nlayer=2,
-            A_encoder_nlayer=2,
-            R_decoder_nlayer=2,
-            A_decoder_nlayer=2,
-            R_encoder_dim_list=[RNA_input_dim, 256, 128],
-            A_encoder_dim_list=[ATAC_input_dim, 128, 128],
-            R_decoder_dim_list=[128, 256, RNA_input_dim],
-            A_decoder_dim_list=[128, 128, ATAC_input_dim],
-            R_encoder_act_list=[nn.LeakyReLU(), nn.LeakyReLU()],
-            A_encoder_act_list=[nn.LeakyReLU(), nn.LeakyReLU()],
-            R_decoder_act_list=[nn.LeakyReLU(), nn.LeakyReLU()],
-            A_decoder_act_list=[nn.LeakyReLU(), nn.LeakyReLU()],
-            translator_embed_dim=128,
-            translator_input_dim_r=128,
-            translator_input_dim_a=128,
-            translator_embed_act_list=[nn.LeakyReLU(), nn.LeakyReLU(), nn.LeakyReLU()],
-            discriminator_nlayer=1,
-            discriminator_dim_list_R=[128],
-            discriminator_dim_list_A=[128],
-            discriminator_act_list=[nn.Sigmoid()],
-            dropout_rate=0.1,
-            R_noise_rate=0.5,
-            A_noise_rate=0.5,
-            chrom_list=[],
-            model_config_log_path=str(file_path),
-            RNA_data=control,
-            ATAC_data=perturb,
-            tensorboard_path=tensorboard_path,
-            num_workers=self._num_workers,
-        )
+        model = self.get_model(
+            file_path=file_path,
+            tensorboard_path=tensorboard_path)
 
         if self.model_config.is_finished_batch_training(
             batch=batch, refresh=refresh_training
@@ -337,6 +317,42 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
             test_id_r=test_id_control, test_id_a=test_id_perturb
         )
         return input_test, [ground_truth_test], [predicted_test]
+    
+    
+    def get_model(self, file_path: str, tensorboard_path: Path):
+        RNA_input_dim = self._control.X.shape[1]
+        ATAC_input_dim = self._perturb.X.shape[1]        
+        return scbutterfly.Model(
+            R_encoder_nlayer=2,
+            A_encoder_nlayer=2,
+            R_decoder_nlayer=2,
+            A_decoder_nlayer=2,
+            R_encoder_dim_list=[RNA_input_dim, 256, 128],
+            A_encoder_dim_list=[ATAC_input_dim, 128, 128],
+            R_decoder_dim_list=[128, 256, RNA_input_dim],
+            A_decoder_dim_list=[128, 128, ATAC_input_dim],
+            R_encoder_act_list=[nn.LeakyReLU(), nn.LeakyReLU()],
+            A_encoder_act_list=[nn.LeakyReLU(), nn.LeakyReLU()],
+            R_decoder_act_list=[nn.LeakyReLU(), nn.LeakyReLU()],
+            A_decoder_act_list=[nn.LeakyReLU(), nn.LeakyReLU()],
+            translator_embed_dim=128,
+            translator_input_dim_r=128,
+            translator_input_dim_a=128,
+            translator_embed_act_list=[nn.LeakyReLU(), nn.LeakyReLU(), nn.LeakyReLU()],
+            discriminator_nlayer=1,
+            discriminator_dim_list_R=[128],
+            discriminator_dim_list_A=[128],
+            discriminator_act_list=[nn.Sigmoid()],
+            dropout_rate=0.1,
+            R_noise_rate=0.5,
+            A_noise_rate=0.5,
+            chrom_list=[],
+            model_config_log_path=file_path,
+            RNA_data=self._control,
+            ATAC_data=self._perturb,
+            tensorboard_path=tensorboard_path,
+            num_workers=self._num_workers,
+        )        
 
 
 class ButterflyPipelineNoReusing(ButterflyPipeline):
@@ -398,7 +414,7 @@ class ScPreGanPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         model = scpregan.Model(
             n_features=n_features,
             n_classes=n_classes,
-            use_cuda=True,
+            use_cuda=torch.cuda.is_available(),
             manual_seed=SeedSingleton.get_value(),
         )
 
@@ -459,7 +475,7 @@ class ScPreGanReproduciblePipeline(ScPreGanPipeline):
         target_cell_type = cell_types[batch]
 
         opt = {
-            "cuda": True,
+            "cuda": torch.cuda.is_available(),
             "dataset": dataset,
             "checkpoint_dir": None,
             "condition_key": "condition",
@@ -844,7 +860,6 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
             val_tensorboard=tensorboard_path / "val",
             split_dataset_pipeline=self.dataset_pipeline,
             target_cell_type=target_cell_type,
-            device="cuda",
             epochs=self._epochs,
             lr=self._lr,
             batch_size=self._batch_size,
@@ -880,7 +895,8 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
                 film_factory=film_factory,
                 output_path=output_path,
             )
-            model = model.to("cuda")
+            if torch.cuda.is_available():
+                model = model.to("cuda")
         else:
             model = self._init_model(
                 num_features=num_features,
@@ -955,7 +971,6 @@ class MultiTaskAaeAutoencoderOptimalTransportPipeline(MultiTaskAaeAutoencoderPip
             split_dataset_pipeline=self.dataset_pipeline,
             train_tensorboard=tensorboard_path / "train",
             val_tensorboard=tensorboard_path / "val",
-            device="cuda",
             epochs=self._epochs,
             lr=self._lr,
             batch_size=self._batch_size,
@@ -995,7 +1010,6 @@ class MultiTaskAaeAdversarialPipeline(MultiTaskAaeAutoencoderPipeline):
             model=model,
             split_dataset_pipeline=self.dataset_pipeline,
             tensorboard_path=tensorboard_path,
-            device="cuda",
             autoencoder_pretrain_epochs=self._autoencoder_pretrain_epochs,
             discriminator_pretrain_epochs=self._discriminator_pretrain_epochs,
             adversarial_epochs=self._adversarial_epochs,
@@ -1019,7 +1033,6 @@ class MultiTaskAaeAdversarialGaussianPipeline(MultiTaskAaeAdversarialPipeline):
             model=model,
             split_dataset_pipeline=self.dataset_pipeline,
             tensorboard_path=tensorboard_path,
-            device="cuda",
             autoencoder_pretrain_epochs=self._autoencoder_pretrain_epochs,
             discriminator_pretrain_epochs=self._discriminator_pretrain_epochs,
             adversarial_epochs=self._adversarial_epochs,
@@ -1045,7 +1058,6 @@ class MultiTaskAaeAutoencoderAndOptimalTransportPipeline(
             model=model,
             split_dataset_pipeline=self.dataset_pipeline,
             tensorboard_path=tensorboard_path,
-            device="cuda",
             autoencoder_pretrain_epochs=self._autoencoder_pretrain_epochs,
             discriminator_pretrain_epochs=self._discriminator_pretrain_epochs,
             adversarial_epochs=self._adversarial_epochs,
@@ -1117,7 +1129,6 @@ class MultiTaskVaeAutoencoderPipeline(MultiTaskAaeAutoencoderPipeline):
             target_cell_type=target_cell_type,
             train_tensorboard=tensorboard_path / "train",
             val_tensorboard=tensorboard_path / "val",
-            device="cuda",
             epochs=self._epochs,
             lr=self._lr,
             batch_size=self._batch_size,
@@ -1138,7 +1149,6 @@ class MultiTaskVaeAutoencoderOptimalTransportPipeline(MultiTaskVaeAutoencoderPip
             split_dataset_pipeline=self.dataset_pipeline,
             train_tensorboard=tensorboard_path / "train",
             val_tensorboard=tensorboard_path / "val",
-            device="cuda",
             epochs=self._epochs,
             lr=self._lr,
             batch_size=self._batch_size,
@@ -1181,7 +1191,6 @@ class MultiTaskVaeAutoencoderAndOptimalTransportPipeline(
             model=model,
             split_dataset_pipeline=self.dataset_pipeline,
             tensorboard_path=tensorboard_path,
-            device="cuda",
             autoencoder_pretrain_epochs=self._autoencoder_pretrain_epochs,
             discriminator_pretrain_epochs=self._discriminator_pretrain_epochs,
             adversarial_epochs=self._adversarial_epochs,
