@@ -321,7 +321,9 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
     
     def get_model(self, file_path: str, tensorboard_path: Path):
         RNA_input_dim = self._control.X.shape[1]
-        ATAC_input_dim = self._perturb.X.shape[1]        
+        ATAC_input_dim = self._perturb.X.shape[1]
+        print("RNA_input_dim", RNA_input_dim)
+        print("ATAC_input_dim", ATAC_input_dim)     
         return scbutterfly.Model(
             R_encoder_nlayer=2,
             A_encoder_nlayer=2,
@@ -759,7 +761,8 @@ class VidrSinglePipeline(VidrPipeline[SingleConditionDatasetPipeline]):
 class VidrMultiplePipeline(VidrPipeline[MultipleConditionDatasetPipeline]):
     """
     sources: 
-    - https://github.com/BhattacharyaLab/scVIDR/blob/main/bin/scvidr_predict.py
+    - https://github.        model = MultiTaskAae(
+com/BhattacharyaLab/scVIDR/blob/main/bin/scvidr_predict.py
     """
     def __init__(
         self,
@@ -817,10 +820,15 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
 
     def _load_model(
         self,
-        num_features: int,
-        film_factory: FilmLayerFactory,
         output_path: Path,
     ):
+        num_features = self.dataset_pipeline.get_num_genes()
+        condition_len = len(self.dataset_pipeline.get_dosages_unique())        
+        film_factory = FilmLayerFactory(
+            input_dim=condition_len,
+            hidden_layers=self._hidden_layers_film,
+            dropout_rate=self._dropout_rate,
+        )          
         model = MultiTaskAae.load(
             num_features=num_features,
             hidden_layers_autoencoder=self._hidden_layers_autoencoder,
@@ -833,11 +841,16 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
 
         return model
 
-    def _init_model(
+    def get_model(
         self,
-        num_features: int,
-        film_factory: FilmLayerFactory,
     ):
+        num_features = self.dataset_pipeline.get_num_genes()
+        condition_len = len(self.dataset_pipeline.get_dosages_unique())        
+        film_factory = FilmLayerFactory(
+            input_dim=condition_len,
+            hidden_layers=self._hidden_layers_film,
+            dropout_rate=self._dropout_rate,
+        )        
         model = MultiTaskAae(
             num_features=num_features,
             hidden_layers_autoencoder=self._hidden_layers_autoencoder,
@@ -878,30 +891,15 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
         target_cell_type = cell_types[batch]
         output_path = self.model_config.get_batch_path(batch=batch)
         tensorboard_path = self.model_config.get_batch_log_path(batch=batch)
-        condition_len = len(self.dataset_pipeline.get_dosages_unique())
-        num_features = self.dataset_pipeline.get_num_genes()
-
-        film_factory = FilmLayerFactory(
-            input_dim=condition_len,
-            hidden_layers=self._hidden_layers_film,
-            dropout_rate=self._dropout_rate,
-        )
 
         if self.model_config.is_finished_batch_training(
             batch=batch, refresh=refresh_training
         ):
-            model = self._load_model(
-                num_features=num_features,
-                film_factory=film_factory,
-                output_path=output_path,
-            )
+            model = self._load_model(output_path=output_path)
             if torch.cuda.is_available():
                 model = model.to("cuda")
         else:
-            model = self._init_model(
-                num_features=num_features,
-                film_factory=film_factory,
-            )
+            model = self.get_model()
 
         model_utils = MultiTaskAutoencoderUtils(
             split_dataset_pipeline=self.dataset_pipeline,
@@ -1088,11 +1086,16 @@ class MultiTaskVaeAutoencoderPipeline(MultiTaskAaeAutoencoderPipeline):
         self._lr = 6.62135564829619e-06
         self._batch_size = 32
 
-    def _init_model(
+    def get_model(
         self,
-        num_features: int,
-        film_factory: FilmLayerFactory,
     ):
+        num_features = self.dataset_pipeline.get_num_genes()
+        condition_len = len(self.dataset_pipeline.get_dosages_unique())        
+        film_factory = FilmLayerFactory(
+            input_dim=condition_len,
+            hidden_layers=self._hidden_layers_film,
+            dropout_rate=self._dropout_rate,
+        )           
         return MultiTaskVae(
             num_features=num_features,
             hidden_layers_autoencoder=self._hidden_layers_autoencoder,
@@ -1105,10 +1108,15 @@ class MultiTaskVaeAutoencoderPipeline(MultiTaskAaeAutoencoderPipeline):
 
     def _load_model(
         self,
-        num_features: int,
-        film_factory: FilmLayerFactory,
         output_path: Path,
     ):
+        num_features = self.dataset_pipeline.get_num_genes()
+        condition_len = len(self.dataset_pipeline.get_dosages_unique())        
+        film_factory = FilmLayerFactory(
+            input_dim=condition_len,
+            hidden_layers=self._hidden_layers_film,
+            dropout_rate=self._dropout_rate,
+        )          
         return MultiTaskVae.load(
             num_features=num_features,
             hidden_layers_autoencoder=self._hidden_layers_autoencoder,

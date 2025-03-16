@@ -279,17 +279,21 @@ class NetworkBlockFilm(NetworkBlock):
         )
 
         self.film_layer_factory = film_layer_factory
-
+        
+        # the film layers should be created here
+        
+        self.film_generators = nn.ModuleList()
+        for hidden_layer_dim in self.hidden_layer_dims:
+            self.film_generators.append(film_layer_factory.create_film_generator(hidden_layer_dim))
+        
+        
     def forward(self, x: Tensor, dosages: Tensor) -> Tensor:
         x = self.mask_layer(x)
 
-        for layer, norm, dropout in zip(
-            self.hidden_layers, self.norm_layers, self.dropout_layers
+        for layer, norm, dropout, film_generator in zip(
+            self.hidden_layers, self.norm_layers, self.dropout_layers, self.film_generators
         ):
             x = layer(x)
-            film_generator = self.film_layer_factory.create_film_generator(
-                dim=x.shape[1]
-            )
             gamma, beta = film_generator(dosages)
             film_layer = FilmLayer()
             x = norm(x)
@@ -933,6 +937,9 @@ class Trainer(ABC, Generic[T]):
 
 
 class MultiTaskAutoencoderTrainer(Trainer[T]):
+    """
+    fix: the discriminator of the MultiTaskAae isn't utilized
+    """
     def __init__(
         self,
         model: Union[MultiTaskAae, MultiTaskVae],

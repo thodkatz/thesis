@@ -51,7 +51,7 @@ class DatasetPipeline(ABC):
 
     def get_cell_types(self):
         return sorted(self.dataset.obs[self.cell_type_key].unique().tolist())
-    
+
     def get_num_genes(self):
         return self.dataset.shape[1]
 
@@ -154,7 +154,7 @@ class SplitDatasetPipeline(ABC):
         valid_ilocs = []
         if validation_split == 1.0:
             return adata, None
-        
+
         for cell_type in self.get_cell_types():
             dataset_cell_type = adata[adata.obs[self.cell_type_key] == cell_type]
             for dose in self.get_dosages_unique(dataset_cell_type):
@@ -186,7 +186,7 @@ class SplitDatasetPipeline(ABC):
 
     def get_cell_types(self):
         return self.dataset_pipeline.get_cell_types()
-    
+
     def get_num_genes(self):
         return self.dataset_pipeline.get_num_genes()
 
@@ -198,6 +198,7 @@ class SingleConditionDatasetPipeline(SplitDatasetPipeline):
     """
     This class serves the need to have an interface of data being split to control and perturb used by scbutterfly, scgen, scpregan.
     """
+
     def __init__(
         self,
         dataset_pipeline: DatasetPipeline,
@@ -216,7 +217,7 @@ class SingleConditionDatasetPipeline(SplitDatasetPipeline):
             keys=["control", "stimulated"],
             index_unique=None,
         )
-        self.dataset_pipeline.dataset.var = self.control.var.copy()        
+        self.dataset_pipeline.dataset.var = self.control.var.copy()
         self.perturbation = perturbation
         self.dosages = dosages
 
@@ -239,6 +240,7 @@ class MultipleConditionDatasetPipeline(SplitDatasetPipeline):
     """
     Utility to split dataset based on a subset of dosages
     """
+
     def __init__(
         self,
         dataset_pipeline: DatasetPipeline,
@@ -254,7 +256,9 @@ class MultipleConditionDatasetPipeline(SplitDatasetPipeline):
             dosages_to_filter = deepcopy(dosages)
             dosages_to_filter.append(self.control_dose)
             self.dataset_pipeline.dataset = self.dataset_pipeline.dataset[
-                self.dataset_pipeline.dataset.obs[self.dosage_key].isin(dosages_to_filter)
+                self.dataset_pipeline.dataset.obs[self.dosage_key].isin(
+                    dosages_to_filter
+                )
             ]
         self.dosages = dosages
         self.perturbation = perturbation
@@ -323,17 +327,17 @@ class PbmcSinglePipeline(SingleConditionDatasetPipeline):
         self,
         dataset_pipeline: PbmcPipeline,
         perturbation: str = "ifn-b",
-        dosages: float = -1.0,
+        dosages: float = -1.0,  # fix: not used, just to have a consistent interface with other pipelines
     ) -> None:
         dataset = dataset_pipeline.dataset
         control = dataset[dataset.obs["condition"] == "control"]
         perturb = dataset[dataset.obs["condition"] == "stimulated"]
-        
+
         # hack to make dosages based models (e.g. vidr) work with non dosages datasets for single condition experiments
         dose_key = dataset_pipeline.dosage_key
         control.obs[dose_key] = 0.0
         perturb.obs[dose_key] = -1.0
-        
+
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             control=control,
@@ -341,6 +345,7 @@ class PbmcSinglePipeline(SingleConditionDatasetPipeline):
             dosages=-1.0,
             perturbation=perturbation,
         )
+
 
 class Sciplex3SinglePipeline(SingleConditionDatasetPipeline):
     def __init__(
