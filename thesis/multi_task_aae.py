@@ -221,16 +221,20 @@ class NetworkBlock(nn.Module):
     def create_symmetric_encoder_decoder(
         cls, input_dim: int, hidden_layers: List[int]
     ) -> Tuple[NetworkBlock, NetworkBlock]:
-        reverse_hidden_layers = hidden_layers[::-1]
+        latent_dim = hidden_layers[-1]
+        encoder_hidden = hidden_layers[:-1]
+        decoder_hidden = encoder_hidden[::-1]
+        
         encoder = NetworkBlock(
             input_dim=input_dim,
-            hidden_layer_dims=hidden_layers,
-            output_dim=hidden_layers[-1],
+            hidden_layer_dims=encoder_hidden,
+            output_dim=latent_dim,
             mask_rate=0.5,
         )
+        
         decoder = NetworkBlock(
-            input_dim=reverse_hidden_layers[0],
-            hidden_layer_dims=reverse_hidden_layers,
+            input_dim=latent_dim,
+            hidden_layer_dims=decoder_hidden,
             output_dim=input_dim,
         )
         return encoder, decoder
@@ -311,17 +315,21 @@ class NetworkBlockFilm(NetworkBlock):
         dropout_rate: float = 0.1,
         mask_rate: float = 0.5,
     ):
-        reverse_hidden_layers = hidden_layers[::-1]
+        latent_dim = hidden_layers[-1]
+        encoder_hidden = hidden_layers[:-1]
+        decoder_hidden = encoder_hidden[::-1]
+        
         encoder = NetworkBlock(
             input_dim=input_dim,
-            hidden_layer_dims=hidden_layers,
-            output_dim=hidden_layers[-1],
+            hidden_layer_dims=encoder_hidden,
+            output_dim=latent_dim,
             mask_rate=mask_rate,
             dropout_rate=dropout_rate,
         )
+        
         decoder = NetworkBlockFilm(
-            input_dim=reverse_hidden_layers[0],
-            hidden_layers=reverse_hidden_layers,
+            input_dim=latent_dim,
+            hidden_layers=decoder_hidden,
             output_dim=input_dim,
             film_layer_factory=film_layer_factory,
             dropout_rate=dropout_rate,
@@ -337,18 +345,21 @@ class NetworkBlockFilm(NetworkBlock):
         dropout_rate: float = 0.1,
         mask_rate: float = 0.5,
     ):
-        reverse_hidden_layers = hidden_layers[::-1]
+        latent_dim = hidden_layers[-1]
+        encoder_hidden = hidden_layers[:-1]
+        decoder_hidden = encoder_hidden[::-1]
+        
         encoder = NetworkBlockFilm(
             input_dim=input_dim,
-            hidden_layers=hidden_layers,
-            output_dim=hidden_layers[-1],
+            hidden_layers=encoder_hidden,
+            output_dim=latent_dim,
             film_layer_factory=film_layer_factory,
             dropout_rate=dropout_rate,
             mask_rate=mask_rate,
         )
         decoder = NetworkBlockFilm(
-            input_dim=reverse_hidden_layers[0],
-            hidden_layers=reverse_hidden_layers,
+            input_dim=latent_dim,
+            hidden_layers=decoder_hidden,
             output_dim=input_dim,
             film_layer_factory=film_layer_factory,
             dropout_rate=dropout_rate,
