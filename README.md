@@ -7,7 +7,7 @@ Requirements:
 - make
 
 ```
-git clone git@github.com:thodkatz/thesis.git
+git clone --recurse-submodules git@github.com:thodkatz/thesis.git
 cd thesis
 conda env create -n <env name> -f environment
 conda activate <env name>

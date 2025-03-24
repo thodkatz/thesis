@@ -811,11 +811,11 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
 
         self._epochs = 1 if debug else 400
         self._dropout_rate = 0.5
-        self._mask_rate = 0.1
-        self._hidden_layers_film = []
-        self._hidden_layers_autoencoder = [512, 256, 128]
+        self._mask_rate = 0.2
+        self._hidden_layers_film = [16]
+        self._hidden_layers_autoencoder = [256, 128]
         self._hidden_layers_discriminator = []  # not used
-        self._lr = 2.4590236785521603e-05
+        self._lr = 1e-05
         self._batch_size = 64
 
     def _load_model(

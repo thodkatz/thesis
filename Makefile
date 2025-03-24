@@ -12,7 +12,6 @@ clean:
 	rm -rf $(SLURM_SCRIPTS)
 
 setup_env:
-	#conda env create -n $(ENV_NAME) -f environment.yml
 	conda run -n $(ENV_NAME) pip install -e .
 	conda run -n $(ENV_NAME) pip install -e ./lib/scgen
 	conda run -n $(ENV_NAME) pip install -e ./lib/scButterfly

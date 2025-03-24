@@ -1,4 +1,4 @@
-from thesis.datasets import NaultPipeline, NaultMultiplePipeline
+from thesis.datasets import NaultLiverTissuePipeline, NaultPipeline, NaultMultiplePipeline, NaultSinglePipeline, PbmcPipeline, PbmcSinglePipeline, Sciplex3Pipeline, Sciplex3SinglePipeline
 from thesis.model import (
     MultiTaskAaeAutoencoderPipeline,
     MultiTaskAaeAdversarialPipeline,
@@ -29,6 +29,13 @@ if __name__ == "__main__":
     )
     parser.add_argument("--seed", type=int, default=19193, help="random seed")
     parser.add_argument("--batch", type=int, required=True)
+    parser.add_argument(
+        "--dataset",
+        choices=["pbmc", "nault", "sciplex3", "nault-multi", "nault-liver", "nault-liver-multi"],
+        help="Chooose dataset",
+    )
+    parser.add_argument("--perturbation", type=str, required=True, help="perturbation")
+    parser.add_argument("--dosages", type=float, required=False, help="drug dosage")    
 
     args = parser.parse_args()
 
@@ -42,13 +49,36 @@ if __name__ == "__main__":
         "simple_vae_ot": MultiTaskVaeAutoencoderOptimalTransportPipeline,
         "simple_vae_and_ot": MultiTaskVaeAutoencoderAndOptimalTransportPipeline
     }
+    
+    condition2class = {
+        "pbmc": PbmcSinglePipeline,
+        "nault": NaultSinglePipeline,
+        "sciplex3": Sciplex3SinglePipeline,
+        "nault-multi": NaultMultiplePipeline,
+        "nault-liver": NaultSinglePipeline,
+        "nault-liver-multi": NaultMultiplePipeline
+    }
+
+    dataset2class = {
+        "pbmc": PbmcPipeline,
+        "nault": NaultPipeline,
+        "sciplex3": Sciplex3Pipeline,
+        "nault-multi": NaultPipeline,
+        "nault-liver": NaultLiverTissuePipeline,
+        "nault-liver-multi": NaultLiverTissuePipeline
+    }
+
+    dataset_pipeline = dataset2class[args.dataset]()
+
+    dataset_condition_pipeline = condition2class[args.dataset](
+        dataset_pipeline=dataset_pipeline,
+        perturbation=args.perturbation,
+        dosages=args.dosages,
+    ) 
 
     multitask = model2class[args.model](
-        dataset_pipeline=NaultMultiplePipeline(
-            NaultPipeline(),
-            perturbation="tcdd",
-        ),
-        experiment_name="seed_" + str(args.seed),
+        dataset_pipeline=dataset_condition_pipeline,
+        experiment_name="bugfix_seed_" + str(args.seed),
         debug=False,
         seed=args.seed,
     )

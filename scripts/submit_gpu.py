@@ -14,28 +14,17 @@ def write_slurm_template(script, out_path, env_name,
                          n_threads, gpu_type, n_gpus,
                          mem_limit, time_limit, qos, env_vars):
     slurm_template = ("#!/bin/bash\n"
-                      '#SBATCH -o ./slurm_scripts/%x_%j.out\n'
-                      '#SBATCH -e ./slurm_scripts/%x_%j.err\n'
-                      '#SBATCH --nodelist=gpu[40-43]\n'
-                      "#SBATCH -A kreshuk\n"
-                      "#SBATCH -N 1\n"
-                      f"#SBATCH -c {n_threads}\n"
-                      f"#SBATCH --mem {mem_limit}\n"
-                      f"#SBATCH -t {time_limit}\n"
-                      f"#SBATCH --qos={qos}\n"
-                      f"#SBATCH --mail-type=FAIL\n"
-                      f"#SBATCH --mail-user=theodoros.katzalis@embl.de\n"
-                      "#SBATCH -p gpu-el8\n"
+                      '#SBATCH -o /home/k/katzalis/repos/thesis/slurm_scripts/%x_%j.out\n'
+                      '#SBATCH -e /home/k/katzalis/repos/thesis/slurm_scripts/%x_%j.err\n'
+                      f"#SBATCH --mem={mem_limit}\n"
+                      f"#SBATCH --gpus=1\n"                      
                     #   f"#SBATCH -C 'gpu=3090|gpu=2080Ti'\n"
-                      f"#SBATCH --gres=shard:1\n\n"
-                      "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/g/kreshuk/katzalis/conda/miniforge3/envs/thesis/lib\n"
-                      "module load cuDNN\n"
+                      f"#SBATCH --partition=ampere\n\n"
+                      "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/scratch/k/katzalis/miniforge3/envs/thesis/lib\n"
                       "source ~/.bashrc\n"
-                      "echo Hostname: $HOSTNAME\n"
                       "nvidia-smi\n"
                       f"conda activate {env_name}\n"
                       "\n"
-                      "export TRAIN_ON_CLUSTER=1\n"  # we set this env variable, so that the script knows we're on slurm
                       f"python {script} $@ \n")
     with open(out_path, 'w') as f:
         f.write(slurm_template)
