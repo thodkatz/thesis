@@ -1,8 +1,8 @@
 #!/bin/bash
 
-REPO=/home/k/katzalis/repos/thesis
+REPO=/g/kreshuk/katzalis/repos/thesis
 echo "Repo: "$REPO
-HELPER=$REPO/scripts/submit_gpu.py
+HELPER=$REPO/scripts/submit_gpu_embl.py
 echo "sbatch script path: "$HELPER
 
 ENABLE_DEBUG="false"
@@ -88,7 +88,7 @@ nault_multi_liver() {
 
 
 nault_multi_task() {
-    for seed in 1; do # 1 2 19193
+    for seed in 1 2 19193; do # 1 2 19193
        for dataset in nault-multi; do
             for batch in 0 1 2 3 4 5 6 7 8 9 10; do # 0 1 2 3 4 5 6 7 8 9 10
                 for model in simple adversarial adversarial_gaussian simple_ot simple_and_ot simple_vae simple_vae_ot simple_vae_and_ot; do # simple adversarial adversarial_gaussian simple_ot simple_and_ot simple_vae simple_vae_ot simple_vae_and_ot

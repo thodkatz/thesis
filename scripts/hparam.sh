@@ -1,8 +1,8 @@
 #!/bin/bash
 
-REPO=/g/kreshuk/katzalis/repos/thesis-tmp
+REPO=/g/kreshuk/katzalis/repos/thesis
 echo "Repo: "$REPO
-HELPER=$REPO/scripts/submit_gpu.py
+HELPER=$REPO/scripts/submit_gpu_embl.py
 echo "sbatch script path: "$HELPER
 
 run() {

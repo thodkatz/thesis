@@ -1967,6 +1967,9 @@ class MultiTaskAaeAdversarialAndOptimalTransportTrainer(Trainer):
 
 
 class MultiTaskAdversarialTrainer(Trainer[DosagesDataset]):
+    """
+    if adversarial epochs is zero, it is equivalent with MultiTaskAutoencoderTrainer
+    """
     def __init__(
         self,
         model: Union[MultiTaskAae, MultiTaskVae],
@@ -2598,7 +2601,7 @@ def run_multi_task_adversarial_aae(
             output_path=evaluation_path,
             save_plots=True,
             cell_type_key=dataset_pipeline.cell_type_key,
-            skip_distances=True,
+            skip_distances=False,
         )
         df["dose"] = dosage
         df["experiment"] = experiment_name
@@ -2612,14 +2615,21 @@ def run_multi_task_adversarial_aae(
     overview_df = pd.DataFrame()
     overview_df["experiment"] = [experiment_name]
     overview_df["cell_type_test"] = target_cell_type
-    overview_df["DEGs"] = all_df["DEGs"].mean()
-    overview_df["r2mean_all_boostrap_mean"] = all_df["r2mean_all_boostrap_mean"].mean()
-    overview_df["r2mean_top20_boostrap_mean"] = all_df[
-        "r2mean_top20_boostrap_mean"
-    ].mean()
-    overview_df["r2mean_top100_boostrap_mean"] = all_df[
-        "r2mean_top100_boostrap_mean"
-    ].mean()
+    columns_to_average = [
+        "DEGs",
+        "r2mean_all_boostrap_mean",
+        "r2mean_top20_boostrap_mean",
+        "r2mean_top100_boostrap_mean",
+        "edistance",
+        "wasserstein",
+        "euclidean",
+        "mean_pairwise",
+        "mmd",
+    ]
+
+    for col in columns_to_average:
+        overview_df[col] = all_df[col].mean()
+    
     append_csv(overview_df, ROOT / "analysis" / "multi_task_aae_overview.csv")
 
     train_adata, validation_adata = dataset_pipeline.split_dataset_to_train_validation(
@@ -2658,10 +2668,16 @@ def run_multi_task_adversarial_aae(
     umaps(adata=train_adata, title="train")
     umaps(adata=validation_adata, title="validation")
     umaps(adata=stim_test, title="stim")
+    
 
     return (
         overview_df["DEGs"].tolist()[0],
         overview_df["r2mean_all_boostrap_mean"].tolist()[0],
         overview_df["r2mean_top20_boostrap_mean"].tolist()[0],
         overview_df["r2mean_top100_boostrap_mean"].tolist()[0],
+        overview_df["edistance"].tolist()[0],
+        overview_df["wasserstein"].tolist()[0],
+        overview_df["euclidean"].tolist()[0],
+        overview_df["mean_pairwise"].tolist()[0],
+        overview_df["mmd"].tolist()[0],
     )

@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     multitask = model2class[args.model](
         dataset_pipeline=dataset_condition_pipeline,
-        experiment_name="bugfix_seed_" + str(args.seed),
+        experiment_name="hparam_bugfix_seed_" + str(args.seed),
         debug=False,
         seed=args.seed,
     )

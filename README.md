@@ -67,3 +67,26 @@ pbmc
 ```
 
 This though it will take a lot of time, because we test a lot of models, for all the cell types as a target. Assuming that we have an hpc infrastructure, we can use slurm scripts to assign a job for each one of the above combinations. To accomplish that, there is an opinionated slurm script `./scripts/submit.gpu`, that is leveraged to run all the combinations for the rest of the datasets as well (e.g. `scvidr`) for all the models. The `scripts/all.sh` needs to be modified for your use case.
+
+# Hyperparameter tuning
+
+For hyperparameter tuning we used [optuna](https://github.com/optuna/optuna). To view the results, create a separate environment using pip.
+
+```
+# env and installation
+cd optuna
+virtualenv .venv
+source .venv/bin/activate
+pip install optuna-dashboard
+
+# launch dashboard
+optuna-dashboard sqlite:///db.sqlite3
+# > Listening on http://127.0.0.1:8080
+
+
+# if needed forward the port
+ssh -L 18080:127.0.0.1:8080 username@server
+
+# view the dashboard on localhost:18080
+
+```

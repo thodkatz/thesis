@@ -809,14 +809,14 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
             seed=seed,
         )
 
-        self._epochs = 1 if debug else 400
+        self._epochs = 1 if debug else 500
         self._dropout_rate = 0.5
         self._mask_rate = 0.2
-        self._hidden_layers_film = [16]
-        self._hidden_layers_autoencoder = [256, 128]
+        self._hidden_layers_film = []
+        self._hidden_layers_autoencoder = [512, 256, 128]
         self._hidden_layers_discriminator = []  # not used
-        self._lr = 1e-05
-        self._batch_size = 64
+        self._lr = 5e-05
+        self._batch_size = 128
 
     def _load_model(
         self,
@@ -991,9 +991,9 @@ class MultiTaskAaeAdversarialPipeline(MultiTaskAaeAutoencoderPipeline):
             seed=seed,
         )
 
-        self._autoencoder_pretrain_epochs = 1 if debug else 400
+        self._autoencoder_pretrain_epochs = 1 if debug else 500
         self._adversarial_epochs = 1 if debug else 100
-        self._discriminator_pretrain_epochs = 1 if debug else 400
+        self._discriminator_pretrain_epochs = 1 if debug else 500
         self._hidden_layers_discriminator = [32]
         self._coeff_adversarial = 0.01
 
@@ -1181,7 +1181,7 @@ class MultiTaskVaeAutoencoderAndOptimalTransportPipeline(
             seed=seed,
         )
 
-        self._autoencoder_pretrain_epochs = 1 if debug else 400
+        self._autoencoder_pretrain_epochs = 1 if debug else 500
 
         # not used
         self._adversarial_epochs = 1

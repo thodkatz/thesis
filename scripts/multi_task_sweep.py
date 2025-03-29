@@ -12,7 +12,6 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=19193, help="random seed")
 
     args = parser.parse_args()
-    
 
     multitask = MultiTaskAaeAutoencoderPipeline(
         dataset_pipeline=NaultMultiplePipeline(
@@ -20,7 +19,7 @@ if __name__ == "__main__":
             perturbation="tcdd",
             dosages=args.dosages,
         ),
-        experiment_name=args.experiment,
+        experiment_name=f'bugfix_seed_{args.experiment}',
         debug=args.debug,
         seed=args.seed
     )
