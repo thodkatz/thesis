@@ -638,8 +638,9 @@ class VidrPipeline(ModelPipeline[T]):
             experiment_name=experiment_name,
             seed=seed,
         )
-
-        self._is_scgen_variant = is_scgen_variant
+        
+        # vidr can fall back to the scgen implementation if this is true. Although scgen has been updated, and this may not reflect the latest scgen
+        self._is_scgen_variant = is_scgen_variant 
 
     @abstractmethod
     def predict(self, model, target_cell_type: str) -> Tuple:
@@ -761,8 +762,7 @@ class VidrSinglePipeline(VidrPipeline[SingleConditionDatasetPipeline]):
 class VidrMultiplePipeline(VidrPipeline[MultipleConditionDatasetPipeline]):
     """
     sources: 
-    - https://github.        model = MultiTaskAae(
-com/BhattacharyaLab/scVIDR/blob/main/bin/scvidr_predict.py
+    - https://github.com/BhattacharyaLab/scVIDR/blob/main/bin/scvidr_predict.py
     """
     def __init__(
         self,
