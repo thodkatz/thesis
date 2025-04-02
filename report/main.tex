@@ -42,29 +42,46 @@
 
 \section{Abstract}
 
-With the recent advancements in single cell technology and the large scale perturbation datasets, the field of perturbation modeling \cite{jiMachineLearningPerturbational2021} has created an opportunity for a wide variety of computational methods to be leveraged to harness its potential. An overview of the methods that have been tested can be found on this study (cite the mini review). Multi-task learning is one of the methods that has been left unexplored in this field. In this study we aim to bridge this gap unraveling the potential of multi-task learning in single cell perturbation modeling.
-
-\section{Literature review}
+With the recent advancements in single cell technology and the large scale perturbation datasets, the field of perturbation modeling \cite{jiMachineLearningPerturbational2021} has created an opportunity for a wide variety of computational methods to be leveraged to harness its potential. Multi-task learning is one of the methods that has been left unexplored in this field. In this study we aim to bridge this gap unraveling the potential of multi-task learning in single cell perturbation modeling.
 
 
-Among the tasks within the perturbation modeling, we will focus on the out-of-distribution prediction task. Explain the task.
+\section{Introduction}
 
-%Studying the effect of external stimuli to the cell level, a field named as perturbation modeling, has a significant impact to the biomedicine sector and drug discovery. 
+The complexity of biological systems have imposed a challenge to capture the underlying mechanism of cellular heterogenity. Understanding the effect of external stimuli (perturbations) to the cell level, a field named as perturbation modeling (add citation), has a significant impact to the biomedicine sector and drug discovery. With the recent surge of data generation, machine learning methods have addressed to extrapolate on the perturbation atlas, given a limited number of perturbation experiments. 
 
-A review has been conducted to outline the methods and the datasets. One of the major tasks of perturbation modeling is the out of distribution prediction. 
+An overview of the models on perturbation modeling can be found on this study (cite the mini review). One of its main objectives is to predict the out-of-distribution samples, which is the focal point of our study. The task is about predicting the perturbation response of the transcriptome of a cell type, while having observed the perturbtion responsed of other cell types.
 
-
-UnitedNet has followed a multi task approach in a multi-omics datasets, showed the promising results of the method. scButterfly followed a cross modal architecture has proporsed its potential to perturbation modeling.
-
+One of the key problems of deep learning methods is the data demand. We assume that the utilization of the data of multiple perturbations, under a multi-task context, to be beneficial to mitigate this. UnitedNet, an explainable multi-modal framework,had shown the potential of multi-task learning in a multi-omics dataset. We aim to extend this approach to perturbation modeling.
 
 
-scbutterfly, scgen, scvidr, unitednet
+\section{Baseline}
+
+We have chosed the models of scGen, scButterfly, scPregan, and scVIDR to compare our multi-task model.
+
+scGen is considered a fundamental models to the perturbation community, thus used in our model repertoire. It used a vae that captures the perturbation response using vectors in the perturbation space.
+
+scbutterfly with a vae had shown its potential on the perturbation modeling applied on the pbmc dataset. It is based on vae architecture with these characteristics.
+
+scPreGAN.
+
+scVIDR.
+
+\section{Datasets}
+
+Datasets used along with preprocessing.
 
 \section{Method}
 
+A short intro of multi task and the rejection of a multi-head architecture. Intro to film layers and explanation of the method.
+
 the usage of film layers
 
+
 \section{Results and discussion}
+
+To compare the models, a unified common ground is needed. To our best knowledge, a standatadized benchmarking apporach on perturbation modeling is lacking. We have attempted to review the models in a multi-faceted way, including dimensions metrics, along with the most used ones such as DEGs, and r2 of all and the most highly variable genes.
+
+To address the randomness of the models, we have performed the experiments three times, with thres different seeds 1, 2, 19193, and the metrics have been averaged across experiments.
 
 \section{Conclusions}
 
