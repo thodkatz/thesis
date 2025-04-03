@@ -1,6 +1,6 @@
 % !TEX program = xelatex
 
-\documentclass[12pt, a4paper]{report}
+\documentclass[12pt, a4paper]{article}
 
 \usepackage{fontspec}
 \setmainfont[Ligatures=TeX]{Linux Libertine O}
@@ -25,10 +25,10 @@
 
 \include{cover}
 
-\title{Τίτλος διπλωματικής}
-\author{Όνομα Επίθετο \\
-\href{mailto:empty@auth.gr}{empty@auth.gr}}
-\maketitle
+% \title{Τίτλος διπλωματικής}
+% \author{Όνομα Επίθετο \\
+% \href{mailto:empty@auth.gr}{empty@auth.gr}}
+% \maketitle
 
 {
 \renewcommand*\contentsname{Περιεχόμενα}
@@ -42,23 +42,35 @@
 
 \section{Abstract}
 
-With the recent advancements in single cell technology and the large scale perturbation datasets, the field of perturbation modeling \cite{jiMachineLearningPerturbational2021} has created an opportunity for a wide variety of computational methods to be leveraged to harness its potential. Multi-task learning is one of the methods that has been left unexplored in this field. In this study we aim to bridge this gap unraveling the potential of multi-task learning in single cell perturbation modeling.
+With the recent advancements in single cell technology and the large scale perturbation datasets, the field of perturbation modeling  has created an opportunity for a wide variety of computational methods to be leveraged to harness its potential. Multi-task learning is one of the methods that has been left unexplored in this field. In this study we aim to bridge this gap unraveling the potential of multi-task learning in single cell perturbation modeling.
 
 
 \section{Introduction}
 
-The complexity of biological systems have imposed a challenge to capture the underlying mechanism of cellular heterogenity. Understanding the effect of external stimuli (perturbations) to the cell level, a field named as perturbation modeling (add citation), has a significant impact to the biomedicine sector and drug discovery. With the recent surge of data generation, machine learning methods have addressed to extrapolate on the perturbation atlas, given a limited number of perturbation experiments. 
+The complexity of biological systems have imposed a challenge to capture the underlying mechanism of cellular heterogeneity. Understanding the effect of external stimuli (perturbations) to the cell level, a field named as perturbation modeling \cite{jiMachineLearningPerturbational2021}, has a significant impact in biomedicine and drug discovery. With the recent surge of data generation, machine learning methods aim to understand the effect of perturbations, given a limited number of perturbation experiments. 
 
-An overview of the models on perturbation modeling can be found on this study (cite the mini review). One of its main objectives is to predict the out-of-distribution samples, which is the focal point of our study. The task is about predicting the perturbation response of the transcriptome of a cell type, while having observed the perturbtion responsed of other cell types.
+An overview of the models on perturbation modeling can be found on this study \cite{gavriilidisMinireviewPerturbationModelling2024}. One of the main objectives is the out-of-distribution detection, which is the focal point of our study. The task is about predicting the perturbation response of the omics signature of cells with a specific cell type, while having observed the perturbation response of other cell types.
 
-One of the key problems of deep learning methods is the data demand. We assume that the utilization of the data of multiple perturbations, under a multi-task context, to be beneficial to mitigate this. UnitedNet, an explainable multi-modal framework,had shown the potential of multi-task learning in a multi-omics dataset. We aim to extend this approach to perturbation modeling.
+% One of the key problems of deep learning methods is the data demand. We assume that the utilization of the data of multiple perturbations, under a multi-task context, to be beneficial to mitigate this.
+
+%UnitedNet \cite{tangExplainableMultitaskLearning2023}, an explainable multi-modal framework, had shown the potential of multi-task learning in a multi-omics dataset. We aim to extend this approach to perturbation modeling.
+
+UnitedNet is a multi-task framework that has shown its potential in multi-omics tasks such as cross modal prediction and cell type classification. We aim to extend this approach to perturbation modeling.
 
 
-\section{Baseline}
+\section{Method}
 
-We have chosed the models of scGen, scButterfly, scPregan, and scVIDR to compare our multi-task model.
+A short intro of multi-task and the rejection of a multi-head architecture. Intro to film layers and explanation of the method.
 
-scGen is considered a fundamental models to the perturbation community, thus used in our model repertoire. It used a vae that captures the perturbation response using vectors in the perturbation space.
+the usage of film layers
+
+\section{Results and discussion}
+
+In the literature body, there are several approaches for predicting single cell perturbation responses. To compare our multi-task model, we have chosen the models of scGen, scButterfly, scPregan, and scVIDR.
+
+% write a few sentences for each architecture.
+
+scGen used a vae that captures the perturbation response using vectors in the perturbation space
 
 scbutterfly with a vae had shown its potential on the perturbation modeling applied on the pbmc dataset. It is based on vae architecture with these characteristics.
 
@@ -66,22 +78,14 @@ scPreGAN.
 
 scVIDR.
 
-\section{Datasets}
+To quantify the objective of the task, we have used a multi-faceted benchmarking suite, relying on distance metrics along with the number of differentially expressed genes (DEGs) and the r2 of all genes and the most highly variable genes.
 
-Datasets used along with preprocessing.
+We have tested the models on two datasets, one where human peripheral blood mononuclear cells have been stimulated by IFN-b interferon, and a multi-perturbation dataset, where liver cells have been stimulated by multiple doses of tetrachlorodibenzo-p-dioxin (TCDD) in vivo.
 
-\section{Method}
-
-A short intro of multi task and the rejection of a multi-head architecture. Intro to film layers and explanation of the method.
-
-the usage of film layers
-
-
-\section{Results and discussion}
-
-To compare the models, a unified common ground is needed. To our best knowledge, a standatadized benchmarking apporach on perturbation modeling is lacking. We have attempted to review the models in a multi-faceted way, including dimensions metrics, along with the most used ones such as DEGs, and r2 of all and the most highly variable genes.
+Regarding the single perturbation response models, the scGen, scButterfly, scPreGAN, in the multi-perturbation dataset of ten dosages, we have trained a dedicated model for each dosage.
 
 To address the randomness of the models, we have performed the experiments three times, with thres different seeds 1, 2, 19193, and the metrics have been averaged across experiments.
+
 
 \section{Conclusions}
 
