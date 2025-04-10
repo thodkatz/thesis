@@ -1,7 +1,4 @@
-@misc{google,
-title={Google},
-url={https://www.google.com/},
-urldate={2019-05-01}}
+
 
 @article{jiMachineLearningPerturbational2021,
   title = {Machine Learning for Perturbational Single-Cell Omics},
@@ -37,6 +34,15 @@ urldate={2019-05-01}}
   file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/VTAE3ESF/Gavriilidis et al. - 2024 - A mini-review on perturbation modelling across sin.pdf}
 }
 
+@article{dumoulin2018feature-wise,
+  author = {Dumoulin, Vincent and Perez, Ethan and Schucher, Nathan and Strub, Florian and Vries, Harm de and Courville, Aaron and Bengio, Yoshua},
+  title = {Feature-wise transformations},
+  journal = {Distill},
+  year = {2018},
+  note = {https://distill.pub/2018/feature-wise-transformations},
+  doi = {10.23915/distill.00011}
+}
+
 @article{tangExplainableMultitaskLearning2023,
   title = {Explainable Multi-Task Learning for Multi-Modality Biological Data Analysis},
   author = {Tang, Xin and Zhang, Jiawei and He, Yichun and Zhang, Xinhe and Lin, Zuwan and Partarrieu, Sebastian and Hanna, Emma Bou and Ren, Zhaolin and Shen, Hao and Yang, Yuhong and Wang, Xiao and Li, Na and Ding, Jie and Liu, Jia},
@@ -53,4 +59,92 @@ urldate={2019-05-01}}
   abstract = {Abstract             Current biotechnologies can simultaneously measure multiple high-dimensional modalities (e.g., RNA, DNA accessibility, and protein) from the same cells. A combination of different analytical tasks (e.g., multi-modal integration and cross-modal analysis) is required to comprehensively understand such data, inferring how gene regulation drives biological diversity and functions. However, current analytical methods are designed to perform a single task, only providing a partial picture of the multi-modal data. Here, we present UnitedNet, an explainable multi-task deep neural network capable of integrating different tasks to analyze single-cell multi-modality data. Applied to various multi-modality datasets (e.g., Patch-seq, multiome ATAC\,+\,gene expression, and spatial transcriptomics), UnitedNet demonstrates similar or better accuracy in multi-modal integration and cross-modal prediction compared with state-of-the-art methods. Moreover, by dissecting the trained UnitedNet with the explainable machine learning algorithm, we can directly quantify the relationship between gene expression and other modalities with cell-type specificity. UnitedNet is a comprehensive end-to-end framework that could be broadly applicable to single-cell multi-modality biology. This framework has the potential to facilitate the discovery of cell-type-specific regulation kinetics across transcriptomics and other modalities.},
   langid = {english},
   file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/2H746QBC/Tang et al. - 2023 - Explainable multi-task learning for multi-modality.pdf}
+}
+
+@article{kanaGenerativeModelingSinglecell2023,
+  title = {Generative Modeling of Single-Cell Gene Expression for Dose-Dependent Chemical Perturbations},
+  author = {Kana, Omar and Nault, Rance and Filipovic, David and Marri, Daniel and Zacharewski, Tim and Bhattacharya, Sudin},
+  date = {2023-08},
+  journaltitle = {Patterns},
+  shortjournal = {Patterns},
+  volume = {4},
+  number = {8},
+  pages = {100817},
+  issn = {26663899},
+  doi = {10.1016/j.patter.2023.100817},
+  url = {https://linkinghub.elsevier.com/retrieve/pii/S2666389923001861},
+  urldate = {2024-09-16},
+  abstract = {Single-cell sequencing reveals the heterogeneity of cellular response to chemical perturbations. However, testing all relevant combinations of cell types, chemicals, and doses is a daunting task. A deep generative learning formalism called variational autoencoders (VAEs) has been effective in predicting single-cell gene expression perturbations for single doses. Here, we introduce single-cell variational inference of doseresponse (scVIDR), a VAE-based model that predicts both single-dose and multiple-dose cellular responses better than existing models. We show that scVIDR can predict dose-dependent gene expression across mouse hepatocytes, human blood cells, and cancer cell lines. We biologically interpret the latent space of scVIDR using a regression model and use scVIDR to order individual cells based on their sensitivity to chemical perturbation by assigning each cell a ‘‘pseudo-dose’’ value. We envision that scVIDR can help reduce the need for repeated animal testing across tissues, chemicals, and doses.},
+  langid = {english},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/NSDFFGGB/Kana et al. - 2023 - Generative modeling of single-cell gene expression for dose-dependent chemical perturbations.pdf}
+}
+
+@article{weiScPreGANDeepGenerative2022,
+  title = {{{scPreGAN}}, a Deep Generative Model for Predicting the Response of Single-Cell Expression to Perturbation},
+  author = {Wei, Xiajie and Dong, Jiayi and Wang, Fei},
+  editor = {Robinson, Peter},
+  date = {2022-06-27},
+  journaltitle = {Bioinformatics},
+  volume = {38},
+  number = {13},
+  pages = {3377--3384},
+  issn = {1367-4803, 1367-4811},
+  doi = {10.1093/bioinformatics/btac357},
+  url = {https://academic.oup.com/bioinformatics/article/38/13/3377/6593485},
+  urldate = {2024-09-30},
+  abstract = {Motivation: Rapid developments of single-cell RNA sequencing technologies allow study of responses to external perturbations at individual cell level. However, in many cases, it is hard to collect the perturbed cells, such as knowing the response of a cell type to the drug before actual medication to a patient. Prediction in silicon could alleviate the problem and save cost. Although several tools have been developed, their prediction accuracy leaves much room for improvement.},
+  langid = {english},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/BL4UDLZF/Wei et al. - 2022 - scPreGAN, a deep generative model for predicting the response of single-cell expression to perturbat.pdf}
+}
+
+@article{caoScButterflyVersatileSinglecell2024,
+  title = {{{scButterfly}}: A Versatile Single-Cell Cross-Modality Translation Method via Dual-Aligned Variational Autoencoders},
+  shorttitle = {{{scButterfly}}},
+  author = {Cao, Yichuan and Zhao, Xiamiao and Tang, Songming and Jiang, Qun and Li, Sijie and Li, Siyu and Chen, Shengquan},
+  date = {2024-04-06},
+  journaltitle = {Nature Communications},
+  shortjournal = {Nat Commun},
+  volume = {15},
+  number = {1},
+  pages = {2973},
+  issn = {2041-1723},
+  doi = {10.1038/s41467-024-47418-x},
+  url = {https://www.nature.com/articles/s41467-024-47418-x},
+  urldate = {2024-09-08},
+  abstract = {Abstract             Recent advancements for simultaneously profiling multi-omics modalities within individual cells have enabled the interrogation of cellular heterogeneity and molecular hierarchy. However, technical limitations lead to highly noisy multi-modal data and substantial costs. Although computational methods have been proposed to translate single-cell data across modalities, broad applications of the methods still remain impeded by formidable challenges. Here, we propose scButterfly, a versatile single-cell cross-modality translation method based on dual-aligned variational autoencoders and data augmentation schemes. With comprehensive experiments on multiple datasets, we provide compelling evidence of scButterfly’s superiority over baseline methods in preserving cellular heterogeneity while translating datasets of various contexts and in revealing cell type-specific biological insights. Besides, we demonstrate the extensive applications of scButterfly for integrative multi-omics analysis of single-modality data, data enhancement of poor-quality single-cell multi-omics, and automatic cell type annotation of scATAC-seq data. Moreover, scButterfly can be generalized to unpaired data training, perturbation-response analysis, and consecutive translation.},
+  langid = {english},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/GK8UQTMV/Cao et al. - 2024 - scButterfly a versatile single-cell cross-modality translation method via dual-aligned variational.pdf}
+}
+
+@article{lotfollahiScGenPredictsSinglecell2019,
+  title = {{{scGen}} Predicts Single-Cell Perturbation Responses},
+  author = {Lotfollahi, Mohammad and Wolf, F. Alexander and Theis, Fabian J.},
+  date = {2019-08},
+  journaltitle = {Nature Methods},
+  shortjournal = {Nat Methods},
+  volume = {16},
+  number = {8},
+  pages = {715--721},
+  issn = {1548-7091, 1548-7105},
+  doi = {10.1038/s41592-019-0494-8},
+  url = {https://www.nature.com/articles/s41592-019-0494-8},
+  urldate = {2024-09-08},
+  langid = {english},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/SB32E326/Lotfollahi et al. - 2019 - scGen predicts single-cell perturbation responses.pdf}
+}
+
+@online{zhangSurveyMultiTaskLearning2021,
+  title = {A {{Survey}} on {{Multi-Task Learning}}},
+  author = {Zhang, Yu and Yang, Qiang},
+  date = {2021-03-29},
+  eprint = {1707.08114},
+  eprinttype = {arXiv},
+  eprintclass = {cs},
+  url = {http://arxiv.org/abs/1707.08114},
+  urldate = {2024-07-07},
+  abstract = {Multi-Task Learning (MTL) is a learning paradigm in machine learning and its aim is to leverage useful information contained in multiple related tasks to help improve the generalization performance of all the tasks. In this paper, we give a survey for MTL from the perspective of algorithmic modeling, applications and theoretical analyses. For algorithmic modeling, we give a definition of MTL and then classify different MTL algorithms into five categories, including feature learning approach, low-rank approach, task clustering approach, task relation learning approach and decomposition approach as well as discussing the characteristics of each approach. In order to improve the performance of learning tasks further, MTL can be combined with other learning paradigms including semi-supervised learning, active learning, unsupervised learning, reinforcement learning, multi-view learning and graphical models. When the number of tasks is large or the data dimensionality is high, we review online, parallel and distributed MTL models as well as dimensionality reduction and feature hashing to reveal their computational and storage advantages. Many real-world applications use MTL to boost their performance and we review representative works in this paper. Finally, we present theoretical analyses and discuss several future directions for MTL.},
+  langid = {english},
+  pubstate = {prepublished},
+  keywords = {Computer Science - Artificial Intelligence,Computer Science - Machine Learning},
+  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/SKFEFD2U/Zhang and Yang - 2021 - A Survey on Multi-Task Learning.pdf}
 }
