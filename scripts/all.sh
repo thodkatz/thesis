@@ -15,7 +15,7 @@ else
 fi
 
 pbmc() {
-    for seed in 2; do
+    for seed in 1 2; do
         for batch in {0..6}; do
             for model in vidr-single; do
                 echo "Model: $model, Number: $batch"
@@ -100,11 +100,11 @@ multi_task() {
     done
 }
 
-multi_task
+#multi_task
 
 # nault liver single for multi task ?
 
-# pbmc
+pbmc
 
 # nault
 
