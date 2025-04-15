@@ -92,6 +92,20 @@ class ModelPipeline(ABC, Generic[T]):
     def is_single(self):
         return self.dataset_pipeline.is_single()
 
+    def is_multi_finished(
+        self, dosages_to_test: List[float], batch: int, refresh_evaluation: bool
+    ):
+        assert not self.is_single()
+        multi_finished = True
+        for dose in dosages_to_test:
+            multi_finished = (
+                multi_finished
+                and self.model_config.is_finished_evaluation_multi(
+                    batch=batch, dosage=dose, refresh=refresh_evaluation
+                )
+            )
+        return multi_finished
+
     @abstractmethod
     def _run(
         self,
@@ -210,23 +224,22 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
             experiment_name=experiment_name,
             seed=seed,
         )
-        
+
         self._epoch_pretrain1 = 1 if debug else 100
         self._epoch_pretrain2 = 1 if debug else 100
         self._epoch_intergrative = 1 if debug else 200
         self._num_workers = 0 if debug else 4
-        
-        self._control, self._perturb = self._get_control_perturb()
 
+        self._control, self._perturb = self._get_control_perturb()
 
     def _split_func(self):
         return unpaired_split_dataset_perturb(
             self.dataset_pipeline.control,
             self.dataset_pipeline.perturb,
         )[0]
-        
+
     def _get_control_perturb(self):
-        cell_type_key = self.model_config.cell_type_key        
+        cell_type_key = self.model_config.cell_type_key
         control = self.dataset_pipeline.control
         perturb = self.dataset_pipeline.perturb
 
@@ -234,7 +247,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         perturb.obs["cell_type"] = perturb.obs[cell_type_key]
         control.obs.index = [str(i) for i in range(control.X.shape[0])]
         perturb.obs.index = [str(i) for i in range(perturb.X.shape[0])]
-        return control, perturb   
+        return control, perturb
 
     def _run(
         self,
@@ -264,9 +277,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         file_path = str(self.model_config.get_batch_path(batch))
         tensorboard_path = self.model_config.get_batch_log_path(batch)
 
-        model = self.get_model(
-            file_path=file_path,
-            tensorboard_path=tensorboard_path)
+        model = self.get_model(file_path=file_path, tensorboard_path=tensorboard_path)
 
         if self.model_config.is_finished_batch_training(
             batch=batch, refresh=refresh_training
@@ -317,13 +328,12 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
             test_id_r=test_id_control, test_id_a=test_id_perturb
         )
         return input_test, [ground_truth_test], [predicted_test]
-    
-    
+
     def get_model(self, file_path: str, tensorboard_path: Path):
         RNA_input_dim = self._control.X.shape[1]
         ATAC_input_dim = self._perturb.X.shape[1]
         print("RNA_input_dim", RNA_input_dim)
-        print("ATAC_input_dim", ATAC_input_dim)     
+        print("ATAC_input_dim", ATAC_input_dim)
         return scbutterfly.Model(
             R_encoder_nlayer=2,
             A_encoder_nlayer=2,
@@ -354,7 +364,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
             ATAC_data=self._perturb,
             tensorboard_path=tensorboard_path,
             num_workers=self._num_workers,
-        )        
+        )
 
 
 class ButterflyPipelineNoReusing(ButterflyPipeline):
@@ -459,10 +469,11 @@ class ScPreGanReproduciblePipeline(ScPreGanPipeline):
     ScPreGan had two different repos:
     - https://github.com/JaneJiayiDong/scPreGAN
     - https://github.com/XiajieWei/scPreGAN-reproducibility/tree/master
-    
+
     This model uses the reproducible one, just for sanity check.
     It is aborted in favor of the main one (`ScPreGanPipeline`).
     """
+
     def _run(
         self,
         batch: int,
@@ -623,6 +634,7 @@ class VidrPipeline(ModelPipeline[T]):
     sources:
     - https://github.com/BhattacharyaLab/scVIDR/blob/main/bin/scvidr_train.py
     """
+
     def __init__(
         self,
         experiment_name: str,
@@ -638,9 +650,9 @@ class VidrPipeline(ModelPipeline[T]):
             experiment_name=experiment_name,
             seed=seed,
         )
-        
+
         # vidr can fall back to the scgen implementation if this is true. Although scgen has been updated, and this may not reflect the latest scgen
-        self._is_scgen_variant = is_scgen_variant 
+        self._is_scgen_variant = is_scgen_variant
 
     @abstractmethod
     def predict(self, model, target_cell_type: str) -> Tuple:
@@ -694,16 +706,11 @@ class VidrPipeline(ModelPipeline[T]):
         ):
             return None
 
-        multi_finished = True
-        if not self.is_single():
-            for dose in dosages_to_test:
-                multi_finished = (
-                    multi_finished
-                    and self.model_config.is_finished_evaluation_multi(
-                        batch=batch, dosage=dose, refresh=refresh_evaluation
-                    )
-                )
-        if multi_finished:
+        if not self.is_single() and self.is_multi_finished(
+            dosages_to_test=dosages_to_test,
+            batch=batch,
+            refresh_evaluation=refresh_evaluation,
+        ):
             return None
 
         pred, delta, reg = self.predict(model, target_cell_type)
@@ -728,9 +735,10 @@ class VidrPipeline(ModelPipeline[T]):
 
 class VidrSinglePipeline(VidrPipeline[SingleConditionDatasetPipeline]):
     """
-    sources: 
+    sources:
     - https://github.com/BhattacharyaLab/scVIDR/blob/main/bin/scvidr_predict.py
     """
+
     def __init__(
         self,
         experiment_name: str,
@@ -761,9 +769,10 @@ class VidrSinglePipeline(VidrPipeline[SingleConditionDatasetPipeline]):
 
 class VidrMultiplePipeline(VidrPipeline[MultipleConditionDatasetPipeline]):
     """
-    sources: 
+    sources:
     - https://github.com/BhattacharyaLab/scVIDR/blob/main/bin/scvidr_predict.py
     """
+
     def __init__(
         self,
         experiment_name: str,
@@ -790,7 +799,7 @@ class VidrMultiplePipeline(VidrPipeline[MultipleConditionDatasetPipeline]):
             cell_type_to_predict=target_cell_type,
             regression=not self._is_scgen_variant,
             continuous=True,
-            doses=self.dataset_pipeline.dosages, # excluding control dose
+            doses=self.dataset_pipeline.dosages,  # excluding control dose
         )
         return pred, delta, reg
 
@@ -823,12 +832,12 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
         output_path: Path,
     ):
         num_features = self.dataset_pipeline.get_num_genes()
-        condition_len = len(self.dataset_pipeline.get_dosages_unique())        
+        condition_len = len(self.dataset_pipeline.get_dosages_unique())
         film_factory = FilmLayerFactory(
             input_dim=condition_len,
             hidden_layers=self._hidden_layers_film,
             dropout_rate=self._dropout_rate,
-        )          
+        )
         model = MultiTaskAae.load(
             num_features=num_features,
             hidden_layers_autoencoder=self._hidden_layers_autoencoder,
@@ -845,12 +854,12 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
         self,
     ):
         num_features = self.dataset_pipeline.get_num_genes()
-        condition_len = len(self.dataset_pipeline.get_dosages_unique())        
+        condition_len = len(self.dataset_pipeline.get_dosages_unique())
         film_factory = FilmLayerFactory(
             input_dim=condition_len,
             hidden_layers=self._hidden_layers_film,
             dropout_rate=self._dropout_rate,
-        )        
+        )
         model = MultiTaskAae(
             num_features=num_features,
             hidden_layers_autoencoder=self._hidden_layers_autoencoder,
@@ -931,18 +940,12 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
         ):
             return None
 
-        if not self.is_single():
-            multi_finished = True
-            for dose in dosages_to_test:
-                multi_finished = (
-                    multi_finished
-                    and self.model_config.is_finished_evaluation_multi(
-                        batch=batch, dosage=dose, refresh=refresh_evaluation
-                    )
-                )
-                print("multi_finished", multi_finished)
-            if multi_finished:
-                return None
+        if not self.is_single() and self.is_multi_finished(
+            dosages_to_test=dosages_to_test,
+            batch=batch,
+            refresh_evaluation=refresh_evaluation,
+        ):
+            return None
 
         pred = model_utils.predict()
 
@@ -1090,12 +1093,12 @@ class MultiTaskVaeAutoencoderPipeline(MultiTaskAaeAutoencoderPipeline):
         self,
     ):
         num_features = self.dataset_pipeline.get_num_genes()
-        condition_len = len(self.dataset_pipeline.get_dosages_unique())        
+        condition_len = len(self.dataset_pipeline.get_dosages_unique())
         film_factory = FilmLayerFactory(
             input_dim=condition_len,
             hidden_layers=self._hidden_layers_film,
             dropout_rate=self._dropout_rate,
-        )           
+        )
         return MultiTaskVae(
             num_features=num_features,
             hidden_layers_autoencoder=self._hidden_layers_autoencoder,
@@ -1111,12 +1114,12 @@ class MultiTaskVaeAutoencoderPipeline(MultiTaskAaeAutoencoderPipeline):
         output_path: Path,
     ):
         num_features = self.dataset_pipeline.get_num_genes()
-        condition_len = len(self.dataset_pipeline.get_dosages_unique())        
+        condition_len = len(self.dataset_pipeline.get_dosages_unique())
         film_factory = FilmLayerFactory(
             input_dim=condition_len,
             hidden_layers=self._hidden_layers_film,
             dropout_rate=self._dropout_rate,
-        )          
+        )
         return MultiTaskVae.load(
             num_features=num_features,
             hidden_layers_autoencoder=self._hidden_layers_autoencoder,
