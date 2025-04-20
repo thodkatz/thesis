@@ -151,6 +151,7 @@ class ModelPipeline(ABC, Generic[T]):
             == len(predicted_adata)
             == len(self.model_config.dosages)
         )
+        eval_adatas = []
         for idx, (ground_truth, predicted) in enumerate(
             zip(ground_truth_adata, predicted_adata)
         ):
@@ -166,7 +167,7 @@ class ModelPipeline(ABC, Generic[T]):
             ):
                 continue
 
-            self.evaluation(
+            eval_adata = self.evaluation(
                 control=input_adata,
                 ground_truth=ground_truth,
                 predicted=predicted,
@@ -175,6 +176,8 @@ class ModelPipeline(ABC, Generic[T]):
                 append_metrics=append_metrics,
                 save_plots=save_plots,
             )
+            eval_adatas.append(eval_adata)
+        return eval_adatas
 
     def evaluation(
         self,
@@ -217,7 +220,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         dataset_pipeline: SingleConditionDatasetPipeline,
         experiment_name: str,
         seed: int = 19193,
-        debug=False,
+        debug: bool = False,
     ):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
@@ -236,6 +239,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
         return unpaired_split_dataset_perturb(
             self.dataset_pipeline.control,
             self.dataset_pipeline.perturb,
+            seed=SeedSingleton.get_value(),
         )[0]
 
     def _get_control_perturb(self):
@@ -276,7 +280,6 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
 
         file_path = str(self.model_config.get_batch_path(batch))
         tensorboard_path = self.model_config.get_batch_log_path(batch)
-
         model = self.get_model(file_path=file_path, tensorboard_path=tensorboard_path)
 
         if self.model_config.is_finished_batch_training(
@@ -285,7 +288,7 @@ class ButterflyPipeline(ModelPipeline[SingleConditionDatasetPipeline]):
             load_model = file_path
         else:
             load_model = None
-
+            
         model.train(
             R_encoder_lr=0.001,
             A_encoder_lr=0.001,

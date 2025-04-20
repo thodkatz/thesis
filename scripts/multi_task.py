@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     multitask = model2class[args.model](
         dataset_pipeline=dataset_condition_pipeline,
-        experiment_name="bugfix_seed_" + str(args.seed),
+        experiment_name="no_film_hidden_bugfix_seed_" + str(args.seed),
         debug=False,
         seed=args.seed,
     )
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     multitask(
         batch=args.batch,
         append_metrics=True,
-        save_plots=True,
+        save_plots=False,
         refresh_training=False,
         refresh_evaluation=False,
     )

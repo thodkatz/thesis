@@ -3,7 +3,11 @@ from thesis.model import (
     ButterflyPipelineNoReusing,
     MultiTaskAaeAdversarialGaussianPipeline,
     MultiTaskAaeAdversarialPipeline,
+    MultiTaskAaeAutoencoderAndOptimalTransportPipeline,
+    MultiTaskAaeAutoencoderOptimalTransportPipeline,
     MultiTaskAaeAutoencoderPipeline,
+    MultiTaskVaeAutoencoderAndOptimalTransportPipeline,
+    MultiTaskVaeAutoencoderOptimalTransportPipeline,
     MultiTaskVaeAutoencoderPipeline,
     ScGenPipeline,
     ScPreGanPipeline,
@@ -20,6 +24,10 @@ from thesis.datasets import (
     PbmcSinglePipeline,
     Sciplex3Pipeline,
     Sciplex3SinglePipeline,
+    CrossStudyConditionPipeline,
+    CrossStudyPipeline,
+    CrossSpeciesPipeline,
+    CrossSpeciesConditionPipeline,
 )
 import argparse
 import torch
@@ -38,7 +46,7 @@ if __name__ == "__main__":
     parser.add_argument("--perturbation", type=str, required=True, help="perturbation")
     parser.add_argument("--dosages", type=float, required=False, help="drug dosage")
     parser.add_argument("--batch", type=int, required=True, help="batch id")
-    parser.add_argument("--seed", type=int, default=19193, help="random seed")    
+    parser.add_argument("--seed", type=int, default=19193, help="random seed")
     parser.add_argument(
         "--model",
         choices=[
@@ -49,7 +57,14 @@ if __name__ == "__main__":
             "scpregan-reproducible",
             "vidr-single",
             "vidr-multi",
-            "simple"
+            "simple",
+            "adversarial",
+            "adversarial_gaussian",
+            "simple_ot",
+            "simple_and_ot",
+            "simple_vae",
+            "simple_vae_ot",
+            "simple_vae_and_ot",
         ],
         help="Chooose model",
     )
@@ -61,7 +76,16 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--dataset",
-        choices=["pbmc", "nault", "sciplex3", "nault-multi", "nault-liver", "nault-liver-multi"],
+        choices=[
+            "pbmc",
+            "nault",
+            "sciplex3",
+            "nault-multi",
+            "nault-liver",
+            "nault-liver-multi",
+            "cross-study",
+            "cross-species",
+        ],
         help="Chooose dataset",
     )
     args = parser.parse_args()
@@ -77,9 +101,13 @@ if __name__ == "__main__":
         "vidr-single": VidrSinglePipeline,
         "vidr-multi": VidrMultiplePipeline,
         "simple": MultiTaskAaeAutoencoderPipeline,
-        "simple_vae": MultiTaskVaeAutoencoderPipeline,
         "adversarial": MultiTaskAaeAdversarialPipeline,
         "adversarial_gaussian": MultiTaskAaeAdversarialGaussianPipeline,
+        "simple_ot": MultiTaskAaeAutoencoderOptimalTransportPipeline,
+        "simple_and_ot": MultiTaskAaeAutoencoderAndOptimalTransportPipeline,
+        "simple_vae": MultiTaskVaeAutoencoderPipeline,
+        "simple_vae_ot": MultiTaskVaeAutoencoderOptimalTransportPipeline,
+        "simple_vae_and_ot": MultiTaskVaeAutoencoderAndOptimalTransportPipeline,
     }
 
     preprocessing2class = {
@@ -93,7 +121,9 @@ if __name__ == "__main__":
         "sciplex3": Sciplex3SinglePipeline,
         "nault-multi": NaultMultiplePipeline,
         "nault-liver": NaultSinglePipeline,
-        "nault-liver-multi": NaultMultiplePipeline
+        "nault-liver-multi": NaultMultiplePipeline,
+        "cross-study": CrossStudyConditionPipeline,
+        "cross-species": CrossSpeciesConditionPipeline,
     }
 
     dataset2class = {
@@ -102,7 +132,9 @@ if __name__ == "__main__":
         "sciplex3": Sciplex3Pipeline,
         "nault-multi": NaultPipeline,
         "nault-liver": NaultLiverTissuePipeline,
-        "nault-liver-multi": NaultLiverTissuePipeline
+        "nault-liver-multi": NaultLiverTissuePipeline,
+        "cross-study": CrossStudyPipeline,
+        "cross-species": CrossSpeciesPipeline,
     }
 
     dataset_pipeline = dataset2class[args.dataset](
@@ -119,7 +151,7 @@ if __name__ == "__main__":
         dataset_pipeline=dataset_condition_pipeline,
         experiment_name=args.experiment or "seed_" + str(args.seed),
         debug=args.debug,
-        seed=args.seed
+        seed=args.seed,
     )
 
     model_pipeline(

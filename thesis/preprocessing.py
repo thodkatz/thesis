@@ -19,6 +19,14 @@ class PreprocessingGenericPipeline(PreprocessingPipeline):
         sc.pp.highly_variable_genes(adata, n_top_genes=5000)
         return adata[:,adata.var.highly_variable]
 
+class PreprocessingFilteringPipeline(PreprocessingPipeline):
+    def __call__(self, adata: AnnData) -> AnnData:
+        # parameters for the filtering inspired by CPA's strategy for sciplex2
+        sc.pp.filter_cells(adata, min_counts=500)
+        sc.pp.filter_cells(adata, min_genes=720)
+        sc.pp.filter_genes(adata, min_cells=100)
+        return adata
+
 
 class PreprocessingNoFilteringPipeline(PreprocessingPipeline):
     def __call__(self, adata: AnnData) -> AnnData:

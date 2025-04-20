@@ -4,17 +4,25 @@ from copy import deepcopy
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
+import pandas as pd
 from thesis import DATA_PATH
 import scanpy as sc
 from thesis.preprocessing import (
     PreprocessingGenericPipeline,
     PreprocessingPipeline,
+    PreprocessingFilteringPipeline,
+    PreprocessingNoFilteringPipeline,
 )
 from anndata import AnnData
 import anndata as ad
 
 Train = AnnData
 Validation = AnnData
+
+"""
+TODO:
+- Refactor the classes of the datasets. Classes such as PbmcPipeline, NaultPipeline, and Sciplex3Pipeline should be attained via classmethods of DatasetPipeline.
+"""
 
 
 class DatasetPipeline(ABC):
@@ -57,6 +65,10 @@ class DatasetPipeline(ABC):
 
 
 class PbmcPipeline(DatasetPipeline):
+    """
+    preprocessed data from https://github.com/theislab/scgen-re producibility/blob/master/code/DataDownloader.py (Lotfollahi et al., 2019b)
+    """
+
     def __init__(
         self,
         preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
@@ -74,6 +86,10 @@ class PbmcPipeline(DatasetPipeline):
 
 
 class NaultPipeline(DatasetPipeline):
+    """    
+    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE184506
+    """
+
     def __init__(
         self,
         preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
@@ -84,6 +100,179 @@ class NaultPipeline(DatasetPipeline):
             data_path=nault_data,
             cell_type_key=cell_type_key,
             preprocessing_pipeline=preprocessing_pipeline,
+            dosage_key="Dose",
+        )
+
+class NaultGSE148339Pipeline(DatasetPipeline):
+    """    
+    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE148339
+    """
+
+    def __init__(
+        self,
+        preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
+    ):
+        nault_data = DATA_PATH / "nault2_single"
+        veh62 = sc.read_10x_mtx(
+            nault_data, var_names="gene_symbols", make_unique=True, prefix="GSM4460588_VEH62_"
+        )
+                
+        veh64 = sc.read_10x_mtx(
+            nault_data, var_names="gene_symbols", make_unique=True, prefix="GSM4460589_VEH64_"
+        )
+          
+        tcdd51 = sc.read_10x_mtx(
+            nault_data, var_names="gene_symbols", make_unique=True, prefix="GSM4460590_TCDD51_"
+        )
+          
+        tcdd59 = sc.read_10x_mtx(
+            nault_data, var_names="gene_symbols", make_unique=True, prefix="GSM4460591_TCDD59_"
+        )
+              
+        cell_type_key = "celltype"
+        
+        super().__init__(
+            data_path=nault_data,
+            cell_type_key=cell_type_key,
+            preprocessing_pipeline=preprocessing_pipeline,
+            dosage_key="Dose",
+        )
+
+
+class Nault10xPipeline(DatasetPipeline):
+    """
+    Single-cell transcriptomics shows dose-dependent disruption of hepatic zonation by TCDD in mice
+
+    Notes:
+    - Already log transformed.
+
+    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE184506
+    """
+
+    def __init__(
+        self,
+        preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
+    ):
+        nault_data = DATA_PATH / "nault2"
+        cell_type_key = "celltype"
+        dataset = sc.read_10x_mtx(
+            nault_data, var_names="gene_symbols", make_unique=True
+        )
+        dataset.raw = dataset
+        meta = pd.read_csv(
+            f"{nault_data}/DR-metadata_updated.tsv", sep="\t", index_col=0
+        )
+        dataset.obs = meta.loc[dataset.obs_names]  # match and align
+        super().__init__(
+            data_path=dataset,
+            cell_type_key=cell_type_key,
+            preprocessing_pipeline=None,
+            dosage_key="Dose",
+        )
+
+
+class Nault10xRawPipeline(DatasetPipeline):
+    """
+    Single-cell transcriptomics shows dose-dependent disruption of hepatic zonation by TCDD in mice
+
+    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE184506
+    """
+
+    def __init__(
+        self,
+        preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
+    ):
+        nault_data_raw = DATA_PATH / "nault2raw"
+        nault_data = DATA_PATH / "nault2"
+        cell_type_key = "celltype"
+        read_adata = (nault_data_raw / "nault2raw.h5ad").exists()
+        read_adata = False
+        if read_adata:
+            dataset = sc.read_h5ad(nault_data_raw / "nault2raw.h5ad")
+        else:
+            # Note:
+            # genes.tsv contains only one column with the gene names
+            # the read_10x_mtx requires two columns gene_ids, gene_names
+            # we have bypassed the gene_ids by modifying the source code just for the loading
+            dataset = sc.read_10x_mtx(
+                nault_data_raw, var_names="gene_symbols", make_unique=True
+            )
+            
+            meta = pd.read_csv(
+                f"{nault_data}/DR-metadata_updated.tsv", sep="\t", index_col=0
+            )
+            meta = meta[["dose", "cell_type", "cell_type_treatment", "cell_type_dose"]]
+            
+            ontology_to_celltype = {
+                "CL_0000632": "Stellate Cells",
+                "CL_0019026": "Hepatocytes - portal",
+                "CL_1000398": "Endothelial Cells",
+                "CL_1000488": "Cholangiocytes",
+                "CL_0000235": "Macrophage",
+                "CL_0019029": "Hepatocytes - central",
+                "CL_0000236": "B Cells",
+                "CL_0000084": "T Cells",
+                "CL_0009100": "Portal Fibroblasts",
+                "CL_0000775": "Neutrophils",
+                "CL_2000055": "Subtype 1"
+            }
+            
+            dataset.obs = meta.loc[dataset.obs_names]
+            dataset.obs["dose"] = dataset.obs["dose"].astype(str)
+            dataset.obs["cell_type"] = dataset.obs["cell_type"].astype(str)
+            dataset.obs["cell_type"] = dataset.obs["cell_type"].map(ontology_to_celltype)
+            dataset.obs["cell_type_treatment"] = dataset.obs["cell_type_treatment"].astype(str)
+            dataset.obs["cell_type_dose"] = dataset.obs["cell_type_dose"].astype(str)
+            dataset.obs_names = dataset.obs_names.astype(str)
+            
+            dataset.var["gene_ids"] = dataset.var["gene_ids"].astype(str)
+            dataset.var_names = dataset.var_names.astype(str)
+            
+            dataset.obs["celltype"] = dataset.obs["cell_type"]
+            dataset.obs["Dose"] = dataset.obs["dose"]
+            dataset.obs["Dose"] = dataset.obs["Dose"].astype(float)           
+            
+            dataset.write(nault_data_raw / "nault2raw.h5ad")
+        super().__init__(
+            data_path=dataset,
+            cell_type_key=cell_type_key,
+            preprocessing_pipeline=preprocessing_pipeline,
+            dosage_key="Dose",
+        )
+
+
+class NaultCrossStudyPipeline(DatasetPipeline):
+    """
+    Followed scgen approach when performed cross study analysis with pbmc and zheng
+
+    - Filter the cells from datasets
+    - Log tranform
+    - pick the high variable ones
+    """
+
+    def __init__(
+        self,
+        preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
+    ):
+        dataset_1_pipeline = NaultPipeline(
+            preprocessing_pipeline=PreprocessingFilteringPipeline()
+        )
+        dataset_2_pipeline = Nault10xRawPipeline(
+            preprocessing_pipeline=PreprocessingFilteringPipeline()
+        )
+
+        dataset_1_pipeline.dataset.obs["study"] = "nault1"
+        dataset_2_pipeline.dataset.obs["study"] = "nault2"
+        dataset = ad.concat(
+            [dataset_1_pipeline.dataset, dataset_2_pipeline.dataset],
+            join="outer",
+            index_unique=None,
+        )
+        cell_type_key = "celltype"
+        super().__init__(
+            data_path=dataset,
+            cell_type_key=cell_type_key,
+            preprocessing_pipeline=PreprocessingNoFilteringPipeline(),
             dosage_key="Dose",
         )
 
@@ -122,6 +311,69 @@ class Sciplex3Pipeline(DatasetPipeline):
             preprocessing_pipeline=preprocessing_pipeline,
             dosage_key="Dose",
         )
+
+
+class CrossStudyPipeline(DatasetPipeline):
+    """
+    preprocessed data from https://github.com/theislab/scgen-re producibility/blob/master/code/DataDownloader.py (Lotfollahi et al., 2019b)
+    """
+
+    def __init__(
+        self,
+        preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
+    ):
+        pbmc_data = DATA_PATH / "cross_study" / "cross_study.h5ad"
+        cell_type_key = "cell_type"
+        dose_key = "Dose"
+        super().__init__(
+            data_path=pbmc_data,
+            cell_type_key=cell_type_key,
+            preprocessing_pipeline=None,
+            dosage_key=dose_key,
+        )
+        self.dataset.obs[dose_key] = 0
+
+
+class CrossSpeciesPipeline(DatasetPipeline):
+    """
+    preprocessed data from https://github.com/theislab/scgen-re producibility/blob/master/code/DataDownloader.py (Lotfollahi et al., 2019b)
+    """
+
+    def __init__(
+        self,
+        preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
+    ):
+        pbmc_data = DATA_PATH / "cross_species" / "cross_species.h5ad"
+        cell_type_key = "species"
+        dose_key = "Dose"
+        super().__init__(
+            data_path=pbmc_data,
+            cell_type_key=cell_type_key,
+            preprocessing_pipeline=None,
+            dosage_key=dose_key,
+        )
+        self.dataset.obs[dose_key] = 0
+
+
+class ZhengPipeline(DatasetPipeline):
+    """
+    preprocessed data from https://github.com/theislab/scgen-re producibility/blob/master/code/DataDownloader.py (Lotfollahi et al., 2019b)
+    """
+
+    def __init__(
+        self,
+        preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
+    ):
+        pbmc_data = DATA_PATH / "cross_study" / "train_zheng.h5ad"
+        cell_type_key = "cell_type"
+        dose_key = "Dose"
+        super().__init__(
+            data_path=pbmc_data,
+            cell_type_key=cell_type_key,
+            preprocessing_pipeline=None,
+            dosage_key=dose_key,
+        )
+        self.dataset.obs[dose_key] = 0
 
 
 class SplitDatasetPipeline(ABC):
@@ -208,6 +460,8 @@ class SingleConditionDatasetPipeline(SplitDatasetPipeline):
         perturb: AnnData,
     ) -> None:
         super().__init__(dataset_pipeline)
+        control.obs["condition"] = "control"
+        perturb.obs["condition"] = "stimulated"
         self.control = control
         self.perturb = perturb
         self.dataset_pipeline.dataset = ad.concat(
@@ -300,8 +554,6 @@ class NaultSinglePipeline(SingleConditionDatasetPipeline):
         control = dataset[dataset.obs[dose_key] == 0]
         assert dosages in dataset.obs[dose_key].unique()
         perturb = dataset[dataset.obs[dose_key] == dosages]
-        control.obs["condition"] = "control"
-        perturb.obs["condition"] = "stimulated"
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             control=control,
@@ -325,7 +577,7 @@ class NaultMultiplePipeline(MultipleConditionDatasetPipeline):
 class PbmcSinglePipeline(SingleConditionDatasetPipeline):
     def __init__(
         self,
-        dataset_pipeline: PbmcPipeline,
+        dataset_pipeline: Union[PbmcPipeline, CrossStudyPipeline, CrossSpeciesPipeline],
         perturbation: str = "ifn-b",
         dosages: float = -1.0,  # fix: not used, just to have a consistent interface with other pipelines
     ) -> None:
@@ -345,6 +597,51 @@ class PbmcSinglePipeline(SingleConditionDatasetPipeline):
             dosages=-1.0,
             perturbation=perturbation,
         )
+
+
+class CrossSpeciesConditionPipeline(SingleConditionDatasetPipeline):
+    def __init__(
+        self,
+        dataset_pipeline: CrossSpeciesPipeline,
+        perturbation: str = "lps",
+        dosages: float = -1.0,  # fix: not used, just to have a consistent interface with other pipelines
+    ) -> None:
+        dataset = dataset_pipeline.dataset
+        control = dataset[dataset.obs["condition"] == "unst"]
+        perturb = dataset[dataset.obs["condition"] == "LPS6"]
+
+        # hack to make dosages based models (e.g. vidr) work with non dosages datasets for single condition experiments
+        dose_key = dataset_pipeline.dosage_key
+        control.obs[dose_key] = 0.0
+        perturb.obs[dose_key] = -1.0
+
+        super().__init__(
+            dataset_pipeline=dataset_pipeline,
+            control=control,
+            perturb=perturb,
+            dosages=-1.0,
+            perturbation=perturbation,
+        )
+
+
+class CrossStudyConditionPipeline(PbmcSinglePipeline):
+    def __init__(
+        self,
+        dataset_pipeline: CrossStudyPipeline,
+        perturbation: str = "ifn-b",
+        dosages: float = -1.0,  # fix: not used, just to have a consistent interface with other pipelines
+    ) -> None:
+
+        self._dataset_ctrl_test = ZhengPipeline()
+        super().__init__(
+            dataset_pipeline=dataset_pipeline,
+            dosages=-1.0,
+            perturbation=perturbation,
+        )
+
+    def get_ctrl_test(self, target_cell_type: str) -> AnnData:
+        dataset = self._dataset_ctrl_test.dataset
+        return dataset[dataset.obs["cell_type"] == target_cell_type]
 
 
 class Sciplex3SinglePipeline(SingleConditionDatasetPipeline):
