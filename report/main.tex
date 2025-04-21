@@ -178,8 +178,6 @@ Here, $q_\phi(z|x)$ is the encoder's approximation of the posterior over latent 
 
 %Regarding data splitting, we hold of the stimulated samples of the cell type of interest as a test set. The controlled ones, along with the rest of the cell types in both conditions of control and stimulated, are used for training. The model is evaluated on the unseen cell type, given as input the control gene expression \cref{fig:umap_side_by_side}. The performance is measured by comparing the predicted gene expression with the actual one.
 
-% explain the difference between single and multi, the hold off
-
 We have tested the models on two datasets, one where human peripheral blood mononuclear cells have been stimulated by IFN-b interferon (Kang et al. \cite{kanaGenerativeModelingSinglecell2023}), and a multi-perturbation dataset, where liver cells have been stimulated by multiple doses of tetrachlorodibenzo-p-dioxin (TCDD) in vivo (Nault et al. \cite{nault2021single,nault2022benchmarking}).
 
 The models are evaluated on the unseen cell type, given as input the control gene expression \cref{fig:umap_side_by_side}.
@@ -236,14 +234,30 @@ To rank the models, since there could be conflicting cases between metrics, wher
 %     \label{fig:pbmc_umap}
 % \end{figure}
 
+\clearpage
 
 \section{Results}
 
+Initially, we will benchmark only our multi-task variations to filter out the most promising models \cref{fig:selected_pbmc_baseline,fig:selected_pbmc_distance,fig:selected_nault_cell_type_baseline,fig:selected_nault_cell_type_distance,fig:selected_nault_doses_baseline,fig:selected_nault_doses_distance}.
+As we can see the best performing ones are MTAe, MTAeAdv, and MTAeAdvG. Thus, we will compare them with state-of-the-art literature models such as scButterfly, scVIDR, scPreGAN and scGen.
+
+scVIDR performance drops for DEGs, and distance metrics, but it performs well for the $R^2$ metrics and stays very consistent, along with scGEN. The multi-task models and scButterfly exhibit greater variability across measurements, but better performance on average. The optimal transport variations performed poorly overall, but were among the best for distance metrics for the Nault et al. \cite{nault2021single,nault2022benchmarking} dataset. 
 
 % model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
 
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{pcas.png}
+    \caption{PCA dimensionality reduction of the real unperturbed data, the real perturbed data and the predicted perturbed data.}
+    \label{fig:selected_nault_cell_type_baseline}
+\end{figure}
 
-\begin{table}
+\clearpage
+
+\subsection{Kang et al.}
+
+
+\begin{table}[h!]
     \centering
     \scalebox{0.8}{
     \begin{tabularx}{\textwidth}{lXXXXXXXXX}
@@ -268,7 +282,266 @@ To rank the models, since there could be conflicting cases between metrics, wher
 \end{table}
 
 
-\begin{table}
+
+\begin{table}[h!]
+    \centering
+    \scalebox{0.8}{    
+    \begin{tabular}{lrrr}
+    \toprule
+    model & score & baseline score & distance score \\
+    \midrule
+    MTAeAdv & 0.414099 & 0.188957 & 0.225142 \\
+    MTVae & 0.989313 & 0.381226 & 0.608087 \\
+    vidrSingle & 1.109933 & 1.000000 & 0.109933 \\
+    scButterfly & 1.375249 & 0.968395 & 0.406855 \\
+    MTAe & 3.723979 & 0.546259 & 3.177721 \\
+    MTAeAdvG & 3.762873 & 0.860886 &
+     2.901987 \\
+    scPreGAN & 4.519561 & 2.325642 & 2.193919 \\
+    scGen & 5.559246 & 1.674543 & 3.884703 \\
+    MTVaeOT & 8.552051 & 3.602547 & 4.949504 \\
+    MTAeOT & 8.590746 & 3.688019 & 4.902727 \\
+    MTAePlusOT & 8.598116 & 3.680466 & 4.917650 \\
+    MTVaePlusOT & 8.855812 & 3.855812 & 5.000000 \\
+    \bottomrule
+    \end{tabular}}
+    \caption{Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
+\end{table}
+    
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{multi_task_benchmarking_cell_type_baseline_metrics_pbmc.png}
+    \caption{Baseline metrics of multi-task models for the Kang et al. \cite{kanaGenerativeModelingSinglecell2023} dataset across cell types}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{multi_task_benchmarking_cell_type_distance_metrics_pbmc.png}
+    \caption{Distance metrics of multi-task models for the Kang et al. \cite{kanaGenerativeModelingSinglecell2023} dataset across cell types}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc.png}
+    \caption{Baseline metrics of multi-task and literature models for the Kang et al. \cite{kanaGenerativeModelingSinglecell2023} dataset across cell types}
+    \label{fig:selected_pbmc_baseline}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc.png}
+    \caption{Distance metrics of multi-task and literature models for the Kang et al. \cite{kanaGenerativeModelingSinglecell2023} dataset across cell types}
+    \label{fig:selected_pbmc_distance}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{dotplots_literature_pbmc.png}
+    \caption{}
+    \label{fig:selected_pbmc_distance}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{dotplots_multitask1_pbmc.png}
+    \caption{}
+    \label{fig:selected_pbmc_distance}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{dotplots_multitask2_pbmc.png}
+    \caption{}
+    \label{fig:selected_pbmc_distance}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{violins_pbmc.png}
+    \caption{}
+    \label{fig:selected_pbmc_distance}
+\end{figure}
+
+
+\clearpage
+
+\subsection{Cross-study}
+
+\begin{table}[h!]
+    \centering
+    \scalebox{0.8}{
+    \begin{tabularx}{\textwidth}{lXXXXXXXXX}
+    \toprule
+    model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
+    \midrule
+    MTAe & 0.066 (64.048) & 0.224 (0.902) & 0.369 (0.882) & 0.223 (0.904) & 0.446 (0.344) & 0.733 (0.794) & 0.528 (0.538) & 0.746 (0.876) & 0.446 (0.344) \\
+    MTAeAdv & 0.166 (59.000) & 0.161 (0.922) & 0.277 (0.906) & 0.158 (0.922) & 0.228 (0.210) & 0.383 (0.610) & 0.337 (0.436) & 0.347 (0.773) & 0.228 (0.210) \\
+    MTAeAdvG & 0.230 (55.762) & 0.227 (0.901) & 0.393 (0.876) & 0.217 (0.906) & 0.382 (0.305) & 0.563 (0.704) & 0.476 (0.510) & 0.558 (0.828) & 0.382 (0.305) \\
+    MTAeOT & 0.674 (33.381) & 1.000 (0.658) & 1.000 (0.720) & 1.000 (0.687) & 0.992 (0.683) & 0.964 (0.916) & 1.000 (0.789) & 0.970 (0.934) & 0.992 (0.683) \\
+    MTAePlusOT & 0.893 (22.333) & 0.945 (0.675) & 0.961 (0.730) & 0.946 (0.702) & 1.000 (0.687) & 1.000 (0.935) & 0.996 (0.787) & 1.000 (0.942) & 1.000 (0.687) \\
+    MTVae & 0.194 (57.619) & 0.208 (0.907) & 0.298 (0.901) & 0.154 (0.923) & 0.258 (0.228) & 0.346 (0.590) & 0.383 (0.461) & 0.305 (0.763) & 0.258 (0.228) \\
+    MTVaeOT & 0.737 (30.238) & 0.948 (0.674) & 0.958 (0.731) & 0.935 (0.705) & 0.930 (0.644) & 0.915 (0.890) & 0.960 (0.768) & 0.924 (0.922) & 0.930 (0.644) \\
+    MTVaePlusOT & 0.970 (18.476) & 0.967 (0.668) & 0.977 (0.726) & 0.972 (0.694) & 0.973 (0.670) & 0.960 (0.914) & 0.982 (0.780) & 0.960 (0.932) & 0.973 (0.670) \\
+    scButterfly & 0.000 (67.381) & 0.060 (0.954) & 0.000 (0.977) & 0.037 (0.956) & 0.184 (0.182) & 0.226 (0.527) & 0.273 (0.402) & 0.214 (0.739) & 0.184 (0.182) \\
+    scGen & 0.495 (42.429) & 0.147 (0.927) & 0.317 (0.896) & 0.225 (0.903) & 0.673 (0.485) & 0.729 (0.792) & 0.787 (0.676) & 0.840 (0.901) & 0.673 (0.485) \\
+    scPreGAN & 0.483 (43.000) & 0.602 (0.783) & 0.480 (0.854) & 0.544 (0.814) & 0.667 (0.481) & 0.505 (0.674) & 0.780 (0.672) & 0.597 (0.838) & 0.667 (0.481) \\
+    vidrSingle & 1.000 (16.952) & 0.000 (0.973) & 0.022 (0.971) & 0.000 (0.966) & 0.000 (0.068) & 0.000 (0.408) & 0.000 (0.257) & 0.000 (0.684) & 0.000 (0.068) \\
+    \bottomrule
+    \end{tabularx}}
+    \caption{Cross-study}
+\end{table}
+
+\begin{table}[h!]
+    \centering    
+    \scalebox{0.8}{    
+    \begin{tabular}{lrrr}
+    \toprule
+    model & score & baseline score & distance score \\
+    \midrule
+    vidrSingle & 1.022251 & 1.022251 & 0.000000 \\
+    scButterfly & 1.177201 & 0.097338 & 1.079863 \\
+    MTAeAdv & 2.287284 & 0.763252 & 1.524032 \\
+    MTVae & 2.403579 & 0.853503 & 1.550076 \\
+    MTAeAdvG & 3.430162 & 1.068459 & 2.361703 \\
+    MTAe & 3.780031 & 0.881922 & 2.898110 \\
+    scGen & 4.886600 & 1.184490 & 3.702110 \\
+    scPreGAN & 5.326055 & 2.109282 & 3.216773 \\
+    MTVaeOT & 8.237092 & 3.578456 & 4.658636 \\
+    MTAeOT & 8.593334 & 3.674221 & 4.919113 \\
+    MTVaePlusOT & 8.732940 & 3.885585 & 4.847355 \\
+    MTAePlusOT & 8.741812 & 3.745904 & 4.995908 \\
+    \bottomrule
+    \end{tabular}}
+    \caption{Score Cross-Study}
+\end{table}
+
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{multi_task_benchmarking_cell_type_baseline_metrics_cross_study.png}
+    \caption{Baseline metrics of multi-task models for the cross-study}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{multi_task_benchmarking_cell_type_distance_metrics_cross_study.png}
+    \caption{Distance metrics of multi-task models for the cross-study}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_study.png}
+    \caption{Baseline metrics of multi-task and literature models for the cross-study}
+    \label{}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_study.png}
+    \caption{Distance metrics of multi-task and literature models for the cross-study}
+    \label{}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{violins_cross_study.png}
+    \caption{}
+    \label{}
+\end{figure}
+
+\clearpage
+
+\subsection{Cross-species}
+
+\begin{table}[h!]
+    \centering    
+    \scalebox{0.8}{
+    \begin{tabularx}{\textwidth}{lXXXXXXXXX}
+    \toprule
+    model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
+    \midrule
+    MTAe & 0.000 (16.083) & 0.316 (0.740) & 0.451 (0.559) & 0.519 (0.481) & 0.036 (0.930) & 0.104 (1.008) & 0.055 (0.962) & 0.161 (0.995) & 0.036 (0.930) \\
+    MTAeAdv & 0.547 (11.250) & 0.686 (0.579) & 0.731 (0.465) & 0.790 (0.365) & 0.010 (0.865) & 0.015 (0.919) & 0.016 (0.929) & 0.020 (0.957) & 0.010 (0.865) \\
+    MTAeAdvG & 0.406 (12.500) & 0.391 (0.708) & 0.528 (0.533) & 0.577 (0.456) & 0.032 (0.921) & 0.082 (0.985) & 0.049 (0.958) & 0.132 (0.987) & 0.032 (0.921) \\
+    MTAeOT & 0.972 (7.500) & 0.908 (0.483) & 0.827 (0.432) & 0.934 (0.304) & 0.023 (0.899) & 0.029 (0.932) & 0.038 (0.948) & 0.053 (0.966) & 0.023 (0.899) \\
+    MTAePlusOT & 0.915 (8.000) & 0.915 (0.480) & 0.815 (0.436) & 0.923 (0.309) & 0.014 (0.876) & 0.010 (0.913) & 0.023 (0.936) & 0.017 (0.956) & 0.014 (0.876) \\
+    MTVae & 0.406 (12.500) & 0.518 (0.652) & 0.631 (0.498) & 0.677 (0.413) & 0.000 (0.840) & 0.000 (0.903) & 0.000 (0.916) & 0.000 (0.951) & 0.000 (0.840) \\
+    MTVaeOT & 0.981 (7.417) & 0.917 (0.479) & 0.855 (0.423) & 0.940 (0.302) & 0.022 (0.895) & 0.026 (0.929) & 0.035 (0.946) & 0.046 (0.964) & 0.022 (0.895) \\
+    MTVaePlusOT & 0.934 (7.833) & 0.932 (0.473) & 0.830 (0.431) & 0.942 (0.301) & 0.017 (0.883) & 0.016 (0.919) & 0.028 (0.940) & 0.028 (0.959) & 0.017 (0.883) \\
+    scButterfly & 0.604 (10.750) & 0.700 (0.574) & 0.956 (0.389) & 0.835 (0.346) & 0.023 (0.899) & 0.039 (0.942) & 0.038 (0.948) & 0.074 (0.971) & 0.023 (0.899) \\
+    scGen & 0.962 (7.583) & 0.118 (0.826) & 0.016 (0.705) & 0.100 (0.658) & 0.461 (2.014) & 0.672 (1.576) & 0.529 (1.367) & 0.779 (1.165) & 0.461 (2.014) \\
+    scPreGAN & 1.000 (7.250) & 1.000 (0.443) & 1.000 (0.374) & 1.000 (0.276) & 0.029 (0.914) & 0.042 (0.945) & 0.047 (0.955) & 0.079 (0.973) & 0.029 (0.914) \\
+    vidrSingle & 0.358 (12.917) & 0.000 (0.878) & 0.000 (0.711) & 0.000 (0.701) & 1.000 (3.386) & 1.000 (1.905) & 1.000 (1.769) & 1.000 (1.225) & 1.000 (3.386) \\
+    \bottomrule
+    \end{tabularx}}
+    \caption{Cross-species}
+\end{table}
+
+\begin{table}[h!]
+    \centering    
+    \scalebox{0.8}{    
+    \begin{tabular}{lrrr}
+    \toprule
+    model & score & baseline score & distance score \\
+    \midrule
+    MTAe & 1.676506 & 1.285196 & 0.391310 \\
+    MTAeAdvG & 2.227590 & 1.901575 & 0.326015 \\
+    MTVae & 2.232088 & 2.232088 & 0.000000 \\
+    MTAeAdv & 2.826189 & 2.754406 & 0.071783 \\
+    scButterfly & 3.291590 & 3.094464 & 0.197126 \\
+    MTAePlusOT & 3.646820 & 3.568396 & 0.078425 \\
+    MTVaePlusOT & 3.743715 & 3.637807 & 0.105908 \\
+    MTAeOT & 3.806643 & 3.640329 & 0.166315 \\
+    MTVaeOT & 3.845143 & 3.693929 & 0.151214 \\
+    scGen & 4.098110 & 1.196070 & 2.902040 \\
+    scPreGAN & 4.225735 & 4.000000 & 0.225735 \\
+    vidrSingle & 5.358491 & 0.358491 & 5.000000 \\
+    \bottomrule
+    \end{tabular}}
+    \caption{Score Cross-Species}
+\end{table}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{multi_task_benchmarking_cell_type_baseline_metrics_cross_species.png}
+    \caption{Baseline metrics of multi-task models for the cross-species}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{multi_task_benchmarking_cell_type_distance_metrics_cross_species.png}
+    \caption{Distance metrics of multi-task models for the cross-species}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species.png}
+    \caption{Baseline metrics of multi-task and literature models for the cross-species}
+    \label{}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species.png}
+    \caption{Distance metrics of multi-task and literature models for the cross-species}
+    \label{}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.85\textwidth]{violins_cross_species.png}
+    \caption{}
+    \label{}
+\end{figure}
+
+
+\clearpage
+
+\subsection{Nault et al.}
+    
+
+\begin{table}[h!]
     \centering
     \scalebox{0.8}{
     \begin{tabularx}{\textwidth}{lXXXXXXXXX}
@@ -293,33 +566,9 @@ To rank the models, since there could be conflicting cases between metrics, wher
     \caption{Score of the models for Nault et al. \cite{nault2021single,nault2022benchmarking} along with the actual value in parenthesis}
 \end{table}
 
-
-\begin{table}
+\begin{table}[h!]
     \centering
-    \begin{tabular}{lrrr}
-    \toprule
-    model & score & baseline score & distance score \\
-    \midrule
-    MTAeAdv & 0.414099 & 0.188957 & 0.225142 \\
-    MTVae & 0.989313 & 0.381226 & 0.608087 \\
-    vidrSingle & 1.109933 & 1.000000 & 0.109933 \\
-    scButterfly & 1.375249 & 0.968395 & 0.406855 \\
-    MTAe & 3.723979 & 0.546259 & 3.177721 \\
-    MTAeAdvG & 3.762873 & 0.860886 & 2.901987 \\
-    scPreGAN & 4.519561 & 2.325642 & 2.193919 \\
-    scGen & 5.559246 & 1.674543 & 3.884703 \\
-    MTVaeOT & 8.552051 & 3.602547 & 4.949504 \\
-    MTAeOT & 8.590746 & 3.688019 & 4.902727 \\
-    MTAePlusOT & 8.598116 & 3.680466 & 4.917650 \\
-    MTVaePlusOT & 8.855812 & 3.855812 & 5.000000 \\
-    \bottomrule
-    \end{tabular}
-    \caption{Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
-\end{table}
-    
-    
-\begin{table}
-    \centering
+    \scalebox{0.8}{    
     \begin{tabular}{lrrr}
     \toprule
     model & score & baseline score & distance score \\
@@ -339,21 +588,10 @@ To rank the models, since there could be conflicting cases between metrics, wher
     vidrMult & 6.375357 & 1.375357 & 5.000000 \\
     \bottomrule
     \end{tabular}
+    }
     \caption{Nault et al. \cite{nault2021single,nault2022benchmarking}}
 \end{table}
 
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=.85\textwidth]{multi_task_benchmarking_cell_type_baseline_metrics_pbmc.png}
-    \caption{Baseline metrics of multi-task models for the Kang et al. \cite{kanaGenerativeModelingSinglecell2023} dataset across cell types}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=.85\textwidth]{multi_task_benchmarking_cell_type_distance_metrics_pbmc.png}
-    \caption{Distance metrics of multi-task models for the Kang et al. \cite{kanaGenerativeModelingSinglecell2023} dataset across cell types}
-\end{figure}
 
 
 \begin{figure}[h!]
@@ -380,26 +618,6 @@ To rank the models, since there could be conflicting cases between metrics, wher
     \centering
     \includegraphics[width=.85\textwidth]{multi_task_benchmarking_cell_type_distance_metrics_nault.png}
     \caption{Distance metrics of multi-task models for the Nault et al. \cite{nault2021single,nault2022benchmarking} dataset across cell types}
-\end{figure}
-
-
-Initially, we will benchmark only our multi-task variations to filter out the most promising models \cref{fig:selected_pbmc_baseline,fig:selected_pbmc_distance,fig:selected_nault_cell_type_baseline,fig:selected_nault_cell_type_distance,fig:selected_nault_doses_baseline,fig:selected_nault_doses_distance}.
-As we can see the best performing ones are MTAe, MTAeAdv, and MTAeAdvG. Thus, we will compare them with state-of-the-art literature models such as scButterfly, scVIDR, scPreGAN and scGen.
-
-scVIDR performance drops for DEGs, and distance metrics, but it performs well for the $R^2$ metrics and stays very consistent, along with scGEN. The multi-task models and scButterfly exhibit greater variability across measurements, but better performance on average. The optimal transport variations performed poorly overall, but were among the best for distance metrics for the Nault et al. \cite{nault2021single,nault2022benchmarking} dataset. 
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=.85\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc.png}
-    \caption{Baseline metrics of multi-task and literature models for the Kang et al. \cite{kanaGenerativeModelingSinglecell2023} dataset across cell types}
-    \label{fig:selected_pbmc_baseline}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=.85\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc.png}
-    \caption{Distance metrics of multi-task and literature models for the Kang et al. \cite{kanaGenerativeModelingSinglecell2023} dataset across cell types}
-    \label{fig:selected_pbmc_distance}
 \end{figure}
 
 
