@@ -33,8 +33,24 @@
 % \href{mailto:empty@auth.gr}{empty@auth.gr}}
 % \maketitle
 
+
+% \begin{center}
+% \textbf{\Large Acknowledgements}
+% \end{center}
+
+
+% \clearpage
+
+\begin{center}
+\textbf{\Large Abstract}
+\end{center}
+
+Advanced single-cell technologies have provided new insights on cellular responses to perturbations, with significant potential for translational medicine. However, the inherent complexity of biological systems and the technical limitations of the experimental protocols present challenges for many proposed computational methods to algorithmically capture the perturbation mechanisms. Multi-task learning is one of the methods that have been left unexplored in this field. In this study, we aim to bridge this gap by unraveling its potential in single-cell perturbation modeling. We have developed a multi-task autoencoder achitecture that predicts perturbed transcriptomic profiles for multiple perturbations achieving state-of-the-art performance while exhibiting greater scalabiliy and efficiency compared to existing methods.
+
+\clearpage
+
 {
-\renewcommand*\contentsname{Περιεχόμενα}
+\renewcommand*\contentsname{Contents}
 \hypersetup{linkcolor=black}
 \tableofcontents
 }
@@ -43,39 +59,90 @@
 
 \clearpage
 
-\section{Abstract}
-
-With the recent advancements in single-cell technology and the large scale perturbation datasets, the field of perturbation modeling  has created an opportunity for a wide variety of computational methods to be leveraged to harness its potential. Multi-task learning is one of the methods that has been left unexplored in this field. In this study we aim to bridge this gap unraveling the potential of multi-task learning in single-cell perturbation modeling.
 
 % I have mentioned that scvidr is a multi-task model. Thus, maybe I have to rephrase it since there were some attempts but not fully dedicated to explore the multi-task as a learning paradigm per se.
 
-\section{Introduction}    
+\section{Introduction}
 
-The complexity of biological systems have imposed a challenge to capture the underlying mechanisms of cellular heterogeneity. Deciphering the effect of external stimuli (perturbation) at the cellular level, a field referred to as perturbation modeling \cite{jiMachineLearningPerturbational2021}, 
-%has a significant impact
-plays a crucial role
-in biomedicine and drug discovery. With the recent surge of data 
-generation, machine learning methods aim to understand the effect of perturbations and to extrapolate on unseen events.
+% what is single-cell, what used to be the old bulk data that didn't allow fine grained high dimensional data
 
-An overview of the models on perturbation modeling can be found on this study \cite{gavriilidisMinireviewPerturbationModelling2024}. One of the main objectives is the out-of-distribution detection, which is the focal point of our study. The task is about predicting the perturbation response of the omics signature of cells with a specific cell type, while having observed the perturbation response of other cell types.
+The advent of single-cell technologies has enabled the study of the cellular heterogeneity at the cellular resolution, opening new avenues for understanding the cellular mechanisms and their responses to perturbations.
+However, the perturbation space is vast, and experimentally exploring combinations would be infeasible and costly \cite{heumos2023best, kana2023generative}. This has motivated the development of computational methods to model this space, enabling extrapolation to unseen scenarios through in silico experimentation. The field of deciphering and predicting the effects of external stimuli (gene knockouts, drug dosages, temperature changes, etc.) is referred to as perturbation modeling, and it plays a crucial role in disease mechanism discovery and therapeutic target identification \cite{jiMachineLearningPerturbational2021}.
 
-UnitedNet \cite{tangExplainableMultitaskLearning2023} is a multi-task framework that has shown its potential in multi-omics tasks such as cross modal prediction and cell type classification. We aim to extend this approach to perturbation modeling.
+% intro to the tasks
+
+% I should mention the rest of the tasks
+
+One of the main objectives of perturbation modeling is the out-of-distribution detection (OOD) \cite{gavriilidisMinireviewPerturbationModelling2024}, which is the focal point of our study. The task is about predicting the perturbation response of the omics signature of cells with a specific cell type, while having observed the perturbation response of other cell types.
+
+% dataset limitations
+
+Datasets used for perturbation modelling are often highly noisy and sparse due to the inherent limitations of single-cell technologies. For example, dropout events are likely to occur, leading to many zeros in the expression profiles as a failure of detecting lower expression levels. The data is also high-dimensional, typically consisting of thousands of cells profiled across hundreds or thousands of features (e.g., gene expression levels in transcriptomics), whichm on the other way, enables fine-grained analysis of cellular responses \cite{jiMachineLearningPerturbational2021}. The perturbation response itself is non-linear and complex, depending not only on the nature of the perturbation but also on the cellular context, including cell type, microenvironment, genetic background, and temporal dynamics.
+
+Machine learning methods, particularly deep learning, have shown promise in addressing this complexity by leveraging their generative capacity, made possible by the recent surge in high-throughput single-cell data \cite{gavriilidisMinireviewPerturbationModelling2024}.
+More specifically there is a growing trend toward leveraging large language models (LLMs) in the field. A recent survey by Szalata et al. \cite{szalata2024transformers} highlights this as a promising yet still immature research direction. Key challenges include the lack of standardized evaluation frameworks, model instabilities, insufficiently diverse datasets, and the absence of sequential structure analogous to positional embeddings in natural language processing.
+In contrast, autoencoder architectures and their variants have already demonstrated strong performance, while offering notable advantages in terms of resource efficiency and reduced computational complexity.
+
+
+Based on the core deep learning concept of manifold hypothesis, autoencoder architectures aim to learn a low-dimensional representation of the data, capturing the underlying structure of the perturbation response. This is achieved by the encoder-decoder architecture, where the encoder compresses the input data into a lower-dimensional space, while the decoder attempts to reconstruct the original input. This compression can yield biologically meaningful features, resulting in a more interpretable and efficient representation of the data, which can be useful for downstream tasks such as out-of-distribution detection \cite{gavriilidisMinireviewPerturbationModelling2024}.
+
+
+However, the non-linearity of deep learning models presents another challenge in balancing predictive accuracy with interpretability. This trade-off remains a key milestone in the field, and many recent efforts have aimed to address it through causal machine learning approaches. Additional limitations in the data space—such as batch effects and confounding covariates—also hinder prediction accuracy. To mitigate these issues and improve generalization, recent studies have focused on integrative single-cell omics approaches, including spatial data integration, to provide a more holistic view of cellular responses \cite{gavriilidisMinireviewPerturbationModelling2024}.
+
+% motivation that multi-task has been used in single cell tasks but not in perturbation modeling
+
+UnitedNet \cite{tangExplainableMultitaskLearning2023} is an explainable framework based on an autoencoder architecture that have addressed the aforementioned limitations while showing  the potential of multi-task learning in multi-omics tasks such as cross modal prediction and cell type classification. We aim to extend this approach to perturbation modeling.
 
 
 \section{Current single-cell perturbation modeling methods}
 
-In the literature body, there are several approaches for predicting single-cell perturbation responses. To compare our multi-task method, we have chosen the models of scGen \cite{lotfollahiScGenPredictsSinglecell2019}, scPreGAN \cite{weiScPreGANDeepGenerative2022}, scButterfly \cite{caoScButterflyVersatileSinglecell2024}, and scVIDR \cite{kanaGenerativeModelingSinglecell2023}.
+In the literature body, there are several approaches for predicting single-cell perturbation responses. An overview of the models on perturbation modeling can be found on this study \cite{gavriilidisMinireviewPerturbationModelling2024}. To compare our multi-task method, we have chosen the models of scGen \cite{lotfollahiScGenPredictsSinglecell2019}, scVIDR \cite{kanaGenerativeModelingSinglecell2023}, scPreGAN \cite{weiScPreGANDeepGenerative2022}, and scButterfly \cite{caoScButterflyVersatileSinglecell2024}.
+One of the key tasks for these models is out-of-distribution detection. A typical dataset for this task consists of transcriptomic profiles obtained from single-cell sequencing technologies (scRNA-seq) from multiple cell types in both control and perturbed conditions. The objective is to predict the perturbed gene expression profile of a held-out (unseen) cell type, given its control-state profile. To achieve this, the model must learn the perturbation effect from the remaining cell types in both conditions. The performance of all of these models will serve as a baseline to evaluate our multi-task learning architectures.
 
-scGen projects the gene expression profile to a probabilistic latent space with a VAE. Then, the perturbation effect is modeled with a vector that represents the difference between the control and perturbed gene expression projections in the latent space.
+\subsection{scGen}
 
-scVIDR builds upon scGen by enhancing the architecture with cell type–specific knowledge. It is capable of predicting cellular responses to multiple chemical perturbations in a dose-dependent manner. As a multi-task model, scVIDR leverages data from various perturbations to improve prediction accuracy across conditions.
+scGen's architecture is based on a variational autoencoder (VAE) that learns a probabilistic latent space representation of the gene expression profiles. 
+The perturbation effect is modeled as a vector $\delta$, calculated as the mean of the differences between the latent vectors of the perturbed and control gene expression profiles. Then, the latent perturbed gene expression profile of a held-out cell type, $\hat{z}$,  is generated by adding this perturbation vector, $\delta$, to the latent vector of the control profile, $z$, using $\hat{z} = z + \delta$. Finally, the perturbed gene expression is obtained by decoding the generated latent vector, $\hat{z}$, using the decoder of the VAE. This approach allows for the generation of new perturbed profiles by manipulating the latent space representation using vector arithmetic.
 
-scPreGAN is based on a GAN and autoencoder setup. The study aims to decouple the perturbation effect from the latent space, and to apply it to the decoder stage.
-%This approach could be explored in a multi-task multi-head architecture, where each head will be responsible for a specific perturbationm given a perturbed decoupled latent space. 
+\subsection{scVIDR}
+ 
 
-scButterfly was not originally designed for perturbation modeling. However, its cross-modal architecture, which includes dual aligned VAEs, can be repurposed for perturbation tasks. Rather than predicting one omic modality from another, the model can treat perturbed and control gene expression profiles as distinct modalities.
+A key limitation of scGen is the absence of explicit cell-type-specific modeling, which can reduce its ability to generalize to unseen cell types with distinct perturbation responses.
+scVIDR addresses this by incorporating cell-type-aware perturbation estimation. Rather than computing a single global perturbation vector $\delta$ based only on the condition labels, scVIDR fits a linear regression model that captures how perturbation vectors vary across cell types.
+For each training cell type $i$, the perturbation vector is defined as $\delta_i = \hat{z}_i - z_i$,
+where $z_i$​, and $\hat{z}_i$ are the mean latent representation of the control, and perturbed cells of type $i$ respectively.
+A linear model is then trained to predict $\hat{\delta}_i$​ from $z_i$, i.e., $\hat{\delta}_i = f(z_i)$.
 
-The performance of all of these models will serve as a baseline of our multi-task learning architecture.
+
+Once trained, this model can predict the perturbation vector $\delta_A$​ for an unseen cell type $A$, using only its control-state latent representation $z_A$, i.e., $\hat{\delta}_A = f(z_A)$.
+This cell-type-aware prediction improves generalization by allowing the model to tailor the perturbation response based on the control-state context of each cell type.
+
+scVIDR can also predict the gene expression profile for multiple dosages. Similarly, scVIDR fits a linear regression model to predict the perturbation vector $\hat{\delta}_c$ across cell types, but in this case, the conditions are the lowest and the highest dosage. Intermediate dosages are then calculated by log linearly interpolating on the $\hat{\delta}_c$.
+
+Regarding interpretability, the bottleneck of the non-linear mapping from the latent space to the gene expression space is replaced by a linear one, utilizing a sparse linear regression model. This is approximated by a weight matrix $\hat{W}_{VAE}$, with dimensions $MxG$ where $M$ is the number of latent variables and $G$ is the number of genes. Then this matrix is used to examine the contribution of the latent variables to the gene expression profile, using the following equation:
+
+\[\text{gene score} = \hat{\delta}_c^T \hat{W}_{VAE}\]
+
+A higher gene score indicates a bigger change at the expression level of the gene if the dosage increases.
+
+\subsection{scPreGAN}
+
+scPreGAN integrates an autoencoder with a generative adversarial network (GAN) framework to predict single-cell RNA-seq (scRNA-seq) data under perturbations. The architecture consists of a shared encoder and two generators, one for each condition (control and perturbed). To align the generated distributions with the real data, the model employs two discriminators, each associated with a specific condition.
+
+The encoder, which is shared across both conditions, learns a perturbation-free latent representation that captures high-level biological features common to both states. The generators then incorporate condition-specific perturbation effects to reconstruct the gene expression profiles from the latent space. The discriminators are trained to distinguish between real and generated samples, while the generators are optimized adversarially to produce realistic reconstructions that fool their respective discriminators.
+
+
+\subsection{scButterfly}
+
+
+scButterfly is a generative adversarial model built on a dual-aligned variational autoencoder (VAE) architecture, designed for cross-modal translation in single-cell data. The model has demonstrated strong performance in translating between transcriptomic and chromatin accessibility profiles, as well as between transcriptomic and proteomic data.
+
+Its architecture consists of two VAEs, each pretrained on a specific modality, and a translator component that aligns the latent spaces of the two encoders. The translator is composed of two neural networks, one per modality, each modeling a Gaussian distribution in the latent space. These networks take the encoder's latent representation as input, sample from the modeled distribution, and pass the sample to the decoder of the other modality, enabling cross-modal generation.
+After VAE pretraining, the translator is trained to align the latent spaces such that biologically meaningful translation across modalities can be achieved.
+
+Although scButterfly isn't primarily designed for perturbation modeling, the study has demonstrated its potential, by treating control and perturbed expression profiles as two modalities. One of its limitations is the narrow evaluation scope, as it has been tested only on the case of human peripheral blood mononuclear cells (PBMCs) stimulated by interferon beta (IFN-b) \cite{kanaGenerativeModelingSinglecell2023}.
+
+\clearpage
 
 
 \section{Method}
@@ -85,7 +152,7 @@ The relationship of the tasks determines the positive or negative transfer to ea
 
 Defining as a task the prediction of the gene expression given a perturbation, we will explore designing a model that can predict gene expressions after a perturbation for a set of perturbations.
 
-One of the key problems of deep learning methods is the data demand. Another benefit of multi-task learning is the combination of data from multiple sources of informations, especially in perturbation modeling where the data is limited for a specific number of perturbations. 
+One of the key problems of deep learning methods is the data demand. Another benefit of multi-task learning is the combination of data from multiple sources of information, especially in perturbation modeling where the data is limited for a specific number of perturbations. 
 
 To integrate the tasks, we have explored the application of feature-wise transformations \cite{dumoulin2018feature-wise}. For this kind of transformation, we have:
 
@@ -96,7 +163,7 @@ To integrate the tasks, we have explored the application of feature-wise transfo
 This particular technique is referred to as conditional affine transformation (a combination of multiplicative and additive conditioning) that shifts and scales the input element-wise. It is efficient in terms of scaling and parameters compared to multi-head architectures, where each task has its dedicated network to generate the output of the task.
 
 
-\begin{figure}
+\begin{figure}[h!]
     \centering
     \includegraphics[width=0.5\textwidth]{film_layers.png}
     \caption{Illustration of the feature-wise transformation \cite{dumoulin2018feature-wise}}
@@ -177,6 +244,8 @@ Here, $q_\phi(z|x)$ is the encoder's approximation of the posterior over latent 
 \section{Evaluation}
 
 %Regarding data splitting, we hold of the stimulated samples of the cell type of interest as a test set. The controlled ones, along with the rest of the cell types in both conditions of control and stimulated, are used for training. The model is evaluated on the unseen cell type, given as input the control gene expression \cref{fig:umap_side_by_side}. The performance is measured by comparing the predicted gene expression with the actual one.
+
+% I should mention preprocessing
 
 We have tested the models on two datasets, one where human peripheral blood mononuclear cells have been stimulated by IFN-b interferon (Kang et al. \cite{kanaGenerativeModelingSinglecell2023}), and a multi-perturbation dataset, where liver cells have been stimulated by multiple doses of tetrachlorodibenzo-p-dioxin (TCDD) in vivo (Nault et al. \cite{nault2021single,nault2022benchmarking}).
 
@@ -663,7 +732,6 @@ which tasks and why they are important?
 \subsection{TODO}
 
 \begin{itemize}
-    \item batch effect
     \item interpretability
     \item explainability
     \item integration with multiple omics
@@ -676,14 +744,15 @@ We have validated the potential of scButterfly to perturbation modeling with the
 
 \section{Future work}
 
+\clearpage
 
 %\include{chapter1}
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{plain}
+\bibliography{references.bib}
 
 \appendix
 \include{acronyms}
 
-
-\bibliographystyle{plain}
-\bibliography{references.bib}
 
 \end{document}
