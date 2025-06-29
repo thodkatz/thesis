@@ -1,3 +1,13 @@
+*.acn
+*.acr
+*.alg
+*.glg
+*.glo
+*.gls
+*.glsdefs
+*.ist
+*.lof
+*.lot
 *.aux
 *.log
 *.out
