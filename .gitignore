@@ -1,3 +1,6 @@
+*.fdb_latexmk
+*.fls
+*.xdv
 *.acn
 *.acr
 *.alg
