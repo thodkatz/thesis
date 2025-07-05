@@ -117,6 +117,7 @@ Additional limitations in the data space, such as batch effects and confounding 
 %UnitedNet \cite{tangExplainableMultitaskLearning2023} is an explainable framework based on an autoencoder architecture that have addressed the aforementioned limitations while showing  the potential of multi-task learning in multi-omics tasks such as cross modal prediction and cell type classification. We aim to extend this approach to perturbation modeling.
 
 \subsection{Multi-task learning}
+\label{sec:mlt}
 
 \gls{mlt} is a machine learning paradigm in which a single model is trained to perform multiple related tasks simultaneously. The central idea is that by sharing representations across tasks, the model can generalize better than if each task were learned in isolation. This approach is inspired by human learning and cognition, where analogy plays a central role in transferring knowledge across domains \cite{hofstadter2001analogy, zhangSurveyMultiTaskLearning2021}. From a machine learning perspective, we can view it as a form of inductive bias. It directs the model to prefer the hypothesis that explains more than one tasks, similarly with L1 regularization that leads to a preference for sparse solutions \cite{ruderOverviewMultiTaskLearning2017}. The degree of benefit depends on the relationship between tasks. If tasks are poorly related, negative transfer may occur, where learning one task harms performance on another \cite{standleyWhichTasksShould2020}. Therefore, understanding task relationships and designing appropriate shared architectures are crucial to the success of \gls{mlt}.
 
@@ -194,18 +195,18 @@ The goal of \gls{mlt} is to learn a set of parameters $\theta$ that minimizes th
 
 In the field of perturbation modeling, there are four main objectives that can be outlined \cite{gavriilidisMinireviewPerturbationModelling2024, jiMachineLearningPerturbational2021, heumos2023best}.
 
-The prediction of unseen omics signature and phenotypic changes after a perturbation is applied to a cell line (bulk omics) or a single-cell is considered the primary one, often referred to as \gls{ood}. Regarding the omics signatures, scGen is a well-know model, served as a baseline for perturbed single-cell transcriptomics prediction. Regarding phenotypic changes, this could refer to the cell's viability as a function of drug dosage given with IC50 values. Another example is the DeepDSC, a deep neural network that predicts the drug sensitivity of cancer cell lines based on their gene expression profiles and a compound descriptor \cite{li2019deepdsc}. The last one is represented as Morgan fingerprints\footnote{Morgan fingerprints, also known as extended-connectivity fingerprints (ECFP), are a type of molecular fingerprint used in cheminformatics to represent the structure of molecules in a computer-readable format. They encode the structural features to a binary vector\cite{morgan1965generation}} of the 1d and 2d structure of the compound.
+The prediction of unseen omics signatures and phenotypic changes after a perturbation is applied to either a cell line (bulk omics) or individual cells (single-cell omics) is considered the primary objective, often referred to as Out-of-Distribution (OOD). Regarding omics signatures, scGen is a well-known model that has served as a baseline for perturbed single-cell transcriptomics prediction. For phenotypic changes, this could refer to cell viability as a function of drug dosage, typically quantified by IC50 values. DeepDSC \cite{li2019deepdsc} is another example, a deep neural network that predicts the drug sensitivity of cancer cell lines based on their gene expression profiles and a compound descriptor. This compound descriptor is represented as Morgan fingerprints\footnote{Morgan fingerprints, also known as extended-connectivity fingerprints (ECFP), are a type of molecular fingerprint used in cheminformatics to represent the structure of molecules in a computer-readable format. They encode the structural features into a binary vector \cite{morgan1965generation}}, capturing the 1D and 2D structure of the compound.
 
 %The second objective is related to the prediction of the mode-of-action of the perturbation. This could entail predicting the pathway mechanisms and the target proteins that will be activated or inhibited by the perturbation. Understanding to what kind of proteins a drug can bind to and the cascade events triggered by this interaction is fundamental for drug discovery and repurposing. DeepDTAGen, is a multi-task model, that is able to predict the biding affinity of a drug to a protein, and to generate new drug candidates, represented with SMILES strings \footnote{SMILES stands for Simplified Molecular Input Line Entry System. It's a way to represent a chemical molecule as a text string using ASCII characters. For example, ethanol (CH₃CH₂OH) can be represented as the string "CCO"}, based on a target protein \cite{shah2025deepdtagen}.
 
 
 The second objective concerns the prediction of a perturbation's mode of action. This involves identifying the signaling pathways and specific target proteins that are activated or inhibited in response to a given perturbation. Understanding which proteins a drug interacts with, and the downstream cascade of molecular events it initiates, is fundamental for drug discovery and repurposing.
-DeepDTAGen is a multi-task model designed to address this challenge. It predicts the binding affinity between a drug and a target protein, and also generates novel drug candidates represented as SMILES strings\footnote{SMILES stands for Simplified Molecular Input Line Entry System. It is a text-based representation of molecular structures. For example, ethanol (CH₃CH₂OH) can be represented as the string "CCO" in SMILES format.}, conditioned on a given protein target \cite{shah2025deepdtagen}.
+DeepDTAGen \cite{shah2025deepdtagen} is a multi-task model designed to address this challenge. It predicts the binding affinity between a drug and a target protein, and also generates novel drug candidates represented as SMILES strings\footnote{SMILES stands for Simplified Molecular Input Line Entry System. It is a text-based representation of molecular structures. For example, ethanol (CH₃CH₂OH) can be represented as the string "CCO" in SMILES format.}, conditioned on a given protein target.
 
 Perturbation interaction prediction, that can be highly beneficial for combinatorial treatments, is treated as the third objective. The goal is to predict how different perturbations interact with each other, which is crucial for understanding drug-drug interactions and potential interlinked side effects. This can involve predicting whether two drugs will have synergistic or antagonistic effects when administered together. For example, the DeepSynergy model predicts a synergy score having as inputs the gene expression profiles of a cell line and the chemical descriptors of two drugs \cite{preuer2018deepsynergy}. The synergy score quantifies the deviation of an experimentally observed response surface from one predicted by a theoretical reference model, such as Loewe Additivity \cite{loewe1953problem}, Bliss Independence \cite{bliss1939toxicity}, Highest Single Agent (HSA) \cite{tan2012systematic}, or the more recent Zero Interaction Potency (ZIP) \cite{yadav2015searching}.
 % I could elaborate more on the last ones, what is loewe additivity and such
 
-The fourth objective involves the prediction of chemical properties. For example, the task can be formulated to design de novo chemical compounds that can induce a desired perturbed gene expression profile. PerturbNet \cite{yuPerturbNetPredictsSinglecell2022} is a model capable of addressing this challenge. It first compresses the feature spaces of both transcriptomic profiles and chemical structures using autoencoders. These two modalities are then linked via a conditional invertible neural network (cINN).
+The fourth objective involves the prediction of chemical properties. For instance, the task can be formulated to design de novo chemical compounds that can induce a desired perturbed gene expression profile. PerturbNet \cite{yuPerturbNetPredictsSinglecell2022} is a model capable of addressing this challenge. It first compresses the feature spaces of both transcriptomic profiles and chemical structures using autoencoders. These two modalities are then linked via a conditional invertible neural network (cINN).
 By operating the cINN in reverse, the model enables counterfactual predictions, allowing the exploration of the chemical feature space for perturbations likely to produce a specified gene expression response. In this way, the task serves as a conceptual bridge between biology and chemistry, linking molecular structure to phenotypic effect.
 
 \section{Multi-task learning and perturbation modeling}
@@ -215,9 +216,11 @@ As mentioned by \cite{jiMachineLearningPerturbational2021,gavriilidisMinireviewP
 In addition to the categorization of perturbation modeling objectives, single-cell analysis tasks, such as gene regulatory network (GRN) inference, cell clustering, and multi-modal integration, can be highly beneficial when incorporated into a \gls{mlt} framework. These tasks provide complementary biological context that can enhance the performance and interpretability of perturbation modeling.
 For example, UnitedNet \cite{tangExplainableMultitaskLearning2023} has demonstrated strong performance in cross-modal prediction and cell-type classification by leveraging multi-omics data within an \gls{mlt} architecture. Similarly, ScPreGAN \cite{weiScPreGANDeepGenerative2022} integrates cell type classification as an auxiliary task to improve the generation of perturbed single-cell transcriptomic profiles, illustrating the value of combining single-cell tasks with perturbation modeling objectives.
 
-Solving multiple tasks together can be challenging when they operate on different levels of granularity. For example, prediction of cell's viability or drug sensitivity with IC50 values is considered a population-level task, while the prediction of the single-cell gene expression after a perturbation is a cell-level task. For the first one, available datasets provide information about the gene expression profiles of cell lines, along with the chemical compound and the corresponding IC50 values, while for the perturbation response prediction, only the single-cell gene expression profile is available. Solving these tasks simultaneously would require to bridge bulk with single-cell omics, taking into account the technical variations between the experimental procedures of data acquisition. On the other hand, the task of predicting the bulk-level perturbation responses could be integrated with the population-level tasks such as the cell viability, the drug sensitivity, the synergy prediction, and the target/pathway prediction. Datasets that could provide the required information for this bulk analysis by intersecting the cell lines could be the LINCS L1000 dataset, that consists of 689,831 microarray measurements from 170 different cell lines treated with 20,065 compounds, the Genomics of Drug Sensitivity in Cancer (GDSC) that catalogues genomic profiles of 639 human cancer cell lines and their drug response data to 130 drugs, and the large-scale oncology screen produced by Merck \& Co. \cite{o2016unbiased} that includes 23.062 samples, where each sample consists of two compounds and a cell line.
+Solving multiple tasks together can be challenging when they operate on different levels of granularity. For example, prediction of cell viability or drug sensitivity with IC50 values is considered a population-level task, while prediction of single-cell gene expression after a perturbation is a cell-level task. For the former, available datasets provide information about the gene expression profiles of cell lines, along with the chemical compound and the corresponding IC50 values. However, for single-cell perturbation response prediction, a corresponding population-level phenotype (like IC50) from the same experiment is often not directly available. Solving these tasks simultaneously would require bridging bulk with single-cell omics, taking into account the technical variations between the experimental procedures of data acquisition.
 
-Instead of treating the perturbation objectives as independent tasks, the objectives themselves can be formulated in a \gls{mlt} framework. For example, by defining as a task the prediction of the gene expression for a particular perturbation, then \gls{mlt} is implicitly utilized by models such as scVIDR \cite{kanaGenerativeModelingSinglecell2023} and CODEX \cite{schrod2024codex}. These models aims to perform this task across multiple perturbations using the same model and by encoding the perturbation as a conditional signal. STAMP \cite{gaoSubtaskDecompositionbasedLearning2024} is a multi-task model that predicts the differential effect of a perturbation relative to the control gene expression profile. To achieve this, three tasks have been identified, a) which genes are differentially expressed, b) the magnitude of the differential expression, and c) the direction of the differential expression. The model is trained to predict these three tasks simultaneously, allowing for a more comprehensive understanding of the perturbation effect.
+On the other hand, the task of predicting bulk-level perturbation responses could be integrated with other population-level tasks such as cell viability, drug sensitivity, synergy prediction, and target/pathway prediction. Datasets that could provide the required information for this bulk analysis by intersecting cell lines include the LINCS L1000 \cite{subramanian2017next} dataset, which consists of 689,831 microarray measurements from 170 different cell lines treated with 20,065 compounds; the Genomics of Drug Sensitivity in Cancer (GDSC) \cite{iorio2016landscape}, which catalogues genomic profiles of 639 human cancer cell lines and their drug response data to 130 drugs; and the large-scale oncology screen produced by Merck \& Co. \cite{o2016unbiased}, which includes 23,062 samples, where each sample consists of two compounds and a cell line.
+
+Instead of treating perturbation objectives as independent tasks, the objectives themselves can be formulated within a \gls{mlt} framework. For example, by defining the prediction of gene expression for a particular perturbation as a task, \gls{mlt} is implicitly utilized by models such as scVIDR \cite{kanaGenerativeModelingSinglecell2023} and CODEX \cite{schrod2024codex}. These models aim to perform this task across multiple perturbations using the same model and by encoding the perturbation as a conditional signal. Another example of division of a specific perturbation objective is STAMP \cite{gaoSubtaskDecompositionbasedLearning2024}, a multi-task model that predicts the differential effect of a perturbation relative to the control gene expression profile. To achieve this, three tasks have been identified: a) which genes are differentially expressed, b) the magnitude of the differential expression, and c) the direction of the differential expression. The model is trained to predict these three tasks simultaneously, allowing for a more comprehensive understanding of the perturbation effect.
 
 
 % Aside from this categorization of perturbation modeling objectives, there could be other ways of task definition that can lead to the usage of multi-task learning. For example, single, multiple perturbations.
@@ -230,37 +233,56 @@ Instead of treating the perturbation objectives as independent tasks, the object
 % - scvidr as well
 % - mlt in drug design paper
 % - stamp paper
-
+% should I mention how would be possible to solve simultaneously a task and its reversed task? For example, given an omics signature predict something, and given a perturbed omics signature predict the chemical compound used. Isn't this a class since the prediction of the second is the condition to predict the first? But cinn is something that could work for this.
 
 %sequential, parallel, soft, hard parameter sharing
 
 \section{Method}
 
-Based on the aforementioned analysis of potential integration of perturbation objectives, ephasis has been given to the single-cell 
-use case, as it has been the most explored in the literature due to the recent advancements of single-cell technology. More specifically, as we have mentioned, we define as a task the prediction of the gene expression given a perturbation, and will explore designing a model that can predict gene expressions after a perturbation for a set of perturbations. 
+Based on the previous analysis of potential integration of perturbation objectives, emphasis has been given to the single-cell 
+use case, as it has been the most explored in the literature due to the recent advancements of single-cell technology. More specifically, we define the prediction of the unseen gene expression after a perturbation is applied as a task, and will explore designing a model that can achieve this for a set of perturbations. Similarly to the drug-protein study \cite{allenspach2024neural}, where the prediction of the binding affinity between a drug and a protein corresponds to a different task for each protein, we will treat each perturbation as a separate task. 
 
 % why the perturbation has been integrated not at the input but the decoder? 
+
+% some models are able to predict for unseen perturbation, not only unseen cell, this should mention, and why we followed this approach, the mlt for drug design is the case that the model can for unseen cell and unseen perturbation.
 
 
 %Inspired by the drug-target multi task setup as well.
 
-To integrate the tasks, we have explored the application of feature-wise transformations \cite{dumoulin2018feature-wise}. For this kind of transformation, we have:
+About the conditioning of the task, as we have seen at \cref{sec:mlt}, we have explored the application of conditional affine transformation, a combination of multiplicative and additive conditioning, that shifts and scales the input element-wise. It is efficient in terms of scaling and parameters compared to multi-head architectures, where each task has its dedicated network to generate the output of the task . This approach is named as FiLM, for Feature-wise Linear Modulation \cite{dumoulin2018feature-wise, perez2018film}:
 
 \[ \text{FiLM(x)} = \gamma (z) \odot x + \beta (z) \]
 
-, where $\gamma$, and $\beta$ are learnable parameters generated by a network that represent a condition $z$ (e.g. a vector that indicates the task), and $x$ is the input.
-
-This particular technique is referred to as conditional affine transformation (a combination of multiplicative and additive conditioning) that shifts and scales the input element-wise. It is efficient in terms of scaling and parameters compared to multi-head architectures, where each task has its dedicated network to generate the output of the task.
-
+, where $\gamma$, and $\beta$ are learnable parameters generated by the so called FiLM generator, that takes as input a condition $z$ (e.g. a vector that indicates the task), and $x$ is the input to be transformed. 
+A FiLM layer is the application of the FiLM transformation to the input of a layer, where the parameters $\gamma$ and $\beta$ can be generated by a common or layer-specific FiLM generator.  
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.5\textwidth]{film_layers.png}
-    \caption{Illustration of the feature-wise transformation \cite{dumoulin2018feature-wise}}
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{film_layers.png}
+        \caption{Illustration of the FiLM layer}
+        \label{}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{film_gen.png}
+        \caption{A common FiLM generator used across FiLM layers}
+        \label{}
+    \end{subfigure}
+    \caption{Illustration of the FiLM \cite{dumoulin2018feature-wise}}
     \label{fig:film}
 \end{figure}
 
-In our approach, we aim to decouple the perturbation effect by constructing a perturbation-free latent space, while explicitly modeling the perturbation response through a conditioning vector. Our architecture is built around an autoencoder, where task-specific conditioning — in our case, the type of perturbation — is integrated via FiLM layers fused into the decoder (\verb|MTAe|). The modulation parameters $\gamma$ and $\beta$ are learned independently for each fusion point.
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.5\textwidth]{film_layers.png}
+%     \caption{Illustration of the feature-wise transformation \cite{dumoulin2018feature-wise}}
+%     \label{fig:film}
+% \end{figure}
+
+In our approach, we aim to decouple the perturbation effect by constructing a perturbation-free latent space, while explicitly modeling the perturbation response through a conditioning vector. Our architecture is built around an autoencoder, where task-specific conditioning, which in our case is the type of perturbation, is integrated via FiLM layers fused into the decoder (\verb|MTAe|). The modulation parameters $\gamma$ and $\beta$ are learned independently for each fusion point.
 
 The loss is the reconstruction loss of the autoencoder, which is the mean squared error between the input and the output of the decoder:
 
@@ -888,6 +910,7 @@ We have validated the potential of scButterfly to perturbation modeling with the
 
 Another significant benefit of our model is its lower complexity while scaling to a larger number of perturbations (scalability)\cite{allenspachNeuralMultitaskLearning2024}.
 
+It should be noted that one of the limitations of our methods is the transductive learning with respect to the perturbations. The perturbation signal is one-hot encoded, thus limiting the model to generalize to unseen ones. Thus, future work could include to explore how inductive learning with respect to the perturbations could be integrated to our architecture, enabling extrapolation to unseen perturbations.
 
 \section{Code availability}
 
