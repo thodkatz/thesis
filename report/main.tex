@@ -243,12 +243,18 @@ Instead of treating perturbation objectives as independent tasks, the objectives
 Based on the previous analysis of potential integration of perturbation objectives, emphasis has been given to the single-cell 
 use case, as it has been the most explored in the literature due to the recent advancements of single-cell technology. More specifically, we define the prediction of the unseen single-cell gene expression after a perturbation is applied as a task, and we will explore designing a model that can achieve this for a set of perturbations. Similarly to the drug-protein study \cite{allenspach2024neural}, where the prediction of the binding affinity between a drug and a protein corresponds to a different task for each protein, we will treat each perturbation as a separate task. 
 
+ A typical dataset for this task consists of transcriptomic profiles obtained from
+single-cell sequencing technologies (scRNA-seq) from multiple cell types in both control and
+perturbed conditions. The goal is to predict the perturbed gene expression profile of a
+held-out (unseen) cell type, given its control-state profile and the type of perturbation. To achieve this, the model must learn
+the perturbation effect from the remaining cell types in both conditions. This setup enables the model to generalize to the effect of known perturbations on a new, unseen cell type, and serves the first objective of perturbation modeling, the \gls{ood}.
+
 % why the perturbation has been integrated not at the input but the decoder? 
 
 % some models are able to predict for unseen perturbation, not only unseen cell, this should mention, and why we followed this approach, the mlt for drug design is the case that the model can for unseen cell and unseen perturbation.
 
-
-%Inspired by the drug-target multi task setup as well.
+In our approach, we aim to decouple the perturbation effect by constructing a perturbation-free latent space, while explicitly modeling the perturbation response through a conditioning signal that represents the type of perturbation.
+The perturbation is represented as a one-hot encoded vector, where, for a dataset with N perturbations, the conditioning vector has length N+1, with an extra entry representing the control condition.
 
 \begin{wrapfigure}{r}{0.5\textwidth}
   \begin{center}
@@ -290,19 +296,17 @@ A FiLM layer is the application of the FiLM transformation to the input of a lay
 %     \label{fig:film}
 % \end{figure}
 
-In our approach, we aim to decouple the perturbation effect by constructing a perturbation-free latent space, while explicitly modeling the perturbation response through a conditioning signal that represents the type of perturbation. Our baseline architecture is built around an autoencoder, and this conditioning signal is integrated via FiLM layers fused into the decoder (\verb|MTAe|), named as \verb|MTAe|. The modulation parameters $\gamma$ and $\beta$ are learned independently for each fusion point with a dedicated FiLM generator.
 
+Our baseline architecture is built around an autoencoder, and the conditioning signal is integrated via FiLM layers fused into the decoder (\verb|MTAe|), named as \verb|MTAe|. The modulation parameters $\gamma$ and $\beta$ are learned independently for each fusion point with a dedicated FiLM generator.
 During training, the model learns to reconstruct the perturbed gene expression profiles from the control profiles, while the FiLM layers modulate the decoder's hidden layers based on the perturbation type.
 The loss is the reconstruction loss of the autoencoder, which is the mean squared error between the input and the output of the decoder:
 \[
 \mathcal{L}_{\text{recon}} = \frac{1}{N} \sum_{i=1}^{N} ||x_i - \hat{x}_i||^2 \]
 , where $x_i$ and $\hat{x}_i$ are the input and the reconstructed gene expression profile respectively, and $N$ is the number of samples.
+
 % I could mention why the condition isn't integrated at the first layers?
 
-
-We hold out the stimulated samples of the cell type of interest as the test set. The control samples of that cell type, along with both control and stimulated samples from all other cell types, are used for training. The perturbation is represented as a one-hot encoded vector, where, for a dataset with N perturbations, the conditioning vector has length N+1, with an extra entry representing the control condition. This setup enables the model to generalize to the effect of known perturbations on a new, unseen cell type.
-
-\begin{figure}
+\begin{figure}[h!]
     \centering
     \includegraphics[width=\textwidth]{biorender_film_architecture.png}
     \caption{Illustration of the multi-task architecture. The encoder is shared across all tasks, while the decoder is conditioned by the task-specific FiLM layers. In this example, only two film layers are integrated in the first two hidden layers of the decoder. The FiLM generator takes as input a conditioning representation of the perturbations (e.g. one-hot encoded), and outputs the modulation parameters $\gamma$, and $\beta$ for the FiLM layers. Created in  \url{https://BioRender.com}}
@@ -386,8 +390,8 @@ Here, $q_\phi(z|x)$ is the encoder's approximation of the posterior over latent 
 
 \section{Current single-cell perturbation modeling methods}
 
-In the literature body, there are several approaches for predicting single-cell perturbation responses. An overview of the models on perturbation modeling can be found on this study \cite{gavriilidisMinireviewPerturbationModelling2024}. To compare our multi-task method, we have chosen the models of scGen \cite{lotfollahiScGenPredictsSinglecell2019}, scVIDR \cite{kanaGenerativeModelingSinglecell2023}, scPreGAN \cite{weiScPreGANDeepGenerative2022}, and scButterfly \cite{caoScButterflyVersatileSinglecell2024}.
-One of the key tasks for these models is out-of-distribution detection. A typical dataset for this task consists of transcriptomic profiles obtained from single-cell sequencing technologies (scRNA-seq) from multiple cell types in both control and perturbed conditions. The objective is to predict the perturbed gene expression profile of a held-out (unseen) cell type, given its control-state profile. To achieve this, the model must learn the perturbation effect from the remaining cell types in both conditions. The performance of all of these models will serve as a baseline to evaluate our multi-task learning architectures.
+In the literature body, there are several approaches for predicting single-cell perturbation responses, a key task named as \gls{ood}. An overview of the models on perturbation modeling can be found on this study \cite{gavriilidisMinireviewPerturbationModelling2024}. To compare our multi-task method, we have chosen the models of scGen \cite{lotfollahiScGenPredictsSinglecell2019}, scVIDR \cite{kanaGenerativeModelingSinglecell2023}, scPreGAN \cite{weiScPreGANDeepGenerative2022}, and scButterfly \cite{caoScButterflyVersatileSinglecell2024}.
+The performance of all of these models will serve as a baseline to evaluate our multi-task learning architectures.
 
 \subsection{scGen}
 
@@ -434,26 +438,28 @@ Although scButterfly isn't primarily designed for perturbation modeling, the stu
 
 \section{Evaluation}
 
-%Regarding data splitting, we hold of the stimulated samples of the cell type of interest as a test set. The controlled ones, along with the rest of the cell types in both conditions of control and stimulated, are used for training. The model is evaluated on the unseen cell type, given as input the control gene expression \cref{fig:umap_side_by_side}. The performance is measured by comparing the predicted gene expression with the actual one.
 
 % I should mention preprocessing
 
-We have tested the models on two datasets, one where human peripheral blood mononuclear cells have been stimulated by IFN-b interferon (Kang et al. \cite{kanaGenerativeModelingSinglecell2023}), and a multi-perturbation dataset, where liver cells have been stimulated by multiple doses of tetrachlorodibenzo-p-dioxin (TCDD) in vivo (Nault et al. \cite{nault2021single,nault2022benchmarking}).
 
-The models are evaluated on the unseen cell type, given as input the control gene expression \cref{fig:umap_side_by_side}.
-Regarding the single perturbation response models, the scGen, scButterfly, scPreGAN and scVIDR's single-task version, for the multi-perturbation dataset of ten dosages Nault et.al \cite{nault2021single,nault2022benchmarking}, we have trained a dedicated model for each dosage. In these cases, the dataset is consisted of only two conditions the control and the perturbed one for a particular dosage. The performance is measured by comparing the predicted gene expression with the actual one.
+We evaluated the models on an \gls{ood} prediction task, where the goal is to predict perturbed gene expression profiles across different cell types, studies, and species.
 
-For this comparison, we have used the count of differentially expressed genes (DEGs), the $R^2$ of all the highly variable genes (HVGs), and the top 100 most variable ones. To complement the evaluation, we have calculated a set of five distance metrics (euclidean, edistance, wasserstein, mean pairwise, mmd) to capture the differences between the expected and predicted perturbed gene expressions in a point-wise and distributional manner using pertpy \cite{heumos2024pertpy}.
+To assess performance, we compared the predicted gene expression profiles to the actual perturbed profiles using two categories of evaluation metrics, baseline metrics and distance metrics. The first ones include the count of differentially expressed genes (DEGs), the $R^2$ score computed over all the highly variable genes (HVGs), and the $R^2$ score for the top 100 most variable genes. The distance metrics, designed to capture both point-wise and global differences between the predicted and expected distributions, include: a) euclidean, b) edistance, c) wasserstein, d) mean pairwise, e) mmd. These metrics were computed using the pertpy \cite{heumos2024pertpy} library.
+To account for model variability, we repeated each experiment three times using different random seeds (1, 2, and 19193), and report the average performance across runs.
 
-To address the randomness of the models, we have performed the experiments three times, with three different seeds 1, 2, 19193, and the metrics have been averaged across experiments.
+\subsection{Single perturbation response prediction}
 
-To rank the models, since there could be conflicting cases between metrics, where one model could be better than the other, per model's metric we averaged them across all the experiments. Then we scaled them to the range of 0-1 with the following formula:
+We have assessed the performance of the models of interest on human peripheral blood mononuclear cells that have been stimulated by IFN-b interferon (Kang et al. \cite{kanaGenerativeModelingSinglecell2023}). For this dataset, there is only one type of perturbation, and the conditioning signal of our multi-task architectures is a one-hot encoded vector with two entries, one for the control condition and one for the perturbed condition.
+%How the data was preprocessed? Number of samples?
 
-\[\frac{\text{current} - \text{best}}{\text{worst} - \text{best}}\]
+\subsection{Multiple perturbations response prediction}
 
-% it could be reversed if highest is better
+\subsection{Cross-species}
 
-, that can track how a metric deviates from the best one. Then we summed all the metrics, giving a score (penalty) to each model. The model with the lowest score is considered the best one.
+\subsection{Cross-study}
+
+
+\subsection{Overview}
 
 \begin{figure}[h!]
     \centering
@@ -933,6 +939,9 @@ which tasks and why they are important?
 
 
 \section{Conclusion and future work}
+
+%We have tested the models on the \gls{ood} task across cell types, studies, and species. 
+
 
 We have validated the potential of scButterfly to perturbation modeling with the multi-dosage dataset of Nault et al. \cite{nault2021single,nault2022benchmarking}, an addition of the author's study that is based only on the dataset of Kang et al. \cite{kanaGenerativeModelingSinglecell2023}. We have proposed multi-task architectures that can be used for perturbation modeling, and we have benchmarked them against the state-of-the-art models in the field. The results show that our models outperform or are comparable to the state-of-the-art models in the field.
 
