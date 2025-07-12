@@ -460,7 +460,7 @@ We have evaluated the models on human \gls{pbmc} that have been stimulated by IF
 
 We have tested the models across all the available cell types, training a model from scratch for each use case. To test each one this models, we held-out the perturbed gene expressions of the cell type of interest, and we use the rest to train the model. 
 
-By averaging the results across all the cell types, we can see that one of our multi-task versions, \verb|MTAe|, achieved the highest DEGs, while achieving comparable $R^2$ scores to the scVIDR, and scButterfly, as the best performing ones. The distance metrics, however, show the last ones perform better than our multi-task models, indicating a more representative global structure of the perturbed gene expression profiles. As shown in \cref{fig:eval_pbmc}, we have selected ISG15, a marker gene of IFN-b, as an example gene to visualize the distribution of the predicted and expected gene expression profiles across cell types. However, none of the models seem to capture the expected distribution of the gene expression profile.
+By averaging the results across all the cell types, we can see that one of our multi-task versions, \verb|MTAe|, achieved the highest DEGs of $\small{\sim} 75$, while achieving comparable $R^2$ scores to the scVIDR, and scButterfly, as the best performing ones. The distance metrics, however, show the last ones perform better than our multi-task models, indicating a more representative global structure of the perturbed gene expression profiles. As shown in \cref{fig:eval_pbmc}, we have selected ISG15, a marker gene of IFN-b, as an example gene to visualize the distribution of the predicted and expected gene expression profiles across cell types. However, none of the models seem to capture the expected distribution of the gene expression profile.
 
 
 % \begin{figure}
@@ -470,16 +470,41 @@ By averaging the results across all the cell types, we can see that one of our m
 %     \label{fig:pbmc_umap}
 % \end{figure}
 
+
+\begin{table}[h!]
+    \centering
+    \scalebox{0.8}{
+    \begin{tabularx}{\textwidth}{lXXXXXXXXX}
+    \toprule
+    model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
+    \midrule
+    MTAe & \textbf{75.714} & 0.946 & 0.871 & 0.917 & 0.488 & 0.892 & 0.651 & 0.949 & 0.488 \\
+    MTAeAdv & 72.381 & 0.961 & 0.955 & 0.948 & 0.202 & 0.604 & 0.429 & 0.800 & 0.202 \\
+    MTAeAdvG & 65.905 & 0.917 & 0.878 & 0.901 & 0.504 & 0.828 & 0.681 & 0.909 & 0.504 \\
+    MTAeOT & 41.190 & 0.657 & 0.668 & 0.648 & 0.811 & 0.947 & 0.883 & 0.963 & 0.811 \\
+    MTAePlusOT & 37.190 & 0.670 & 0.674 & 0.657 & 0.810 & 0.951 & 0.880 & 0.966 & 0.810 \\
+    MTVae & 69.095 & 0.942 & 0.954 & 0.928 & 0.261 & 0.621 & 0.499 & 0.800 & 0.261 \\
+    MTVaeOT & 39.571 & 0.669 & 0.678 & 0.663 & 0.813 & 0.955 & 0.883 & 0.966 & 0.813 \\
+    MTVaePlusOT & 30.619 & 0.661 & 0.670 & 0.655 & 0.821 & 0.958 & 0.888 & 0.968 & 0.821 \\
+    scButterfly & 60.727 & 0.891 & 0.914 & 0.889 & 0.271 & \textbf{0.601} & 0.469 & \textbf{0.779} & 0.271 \\
+    scGen & 32.143 & 0.910 & 0.872 & 0.870 & 0.627 & 0.909 & 0.765 & 0.946 & 0.627 \\
+    scPreGAN & 35.750 & 0.771 & 0.857 & 0.799 & 0.499 & 0.690 & 0.682 & 0.851 & 0.499 \\
+    vidrSingle & 25.536 & \textbf{0.970} & \textbf{0.971} & \textbf{0.961} & \textbf{0.182} & 0.606 & \textbf{0.408} & 0.797 & \textbf{0.182} \\
+    \bottomrule
+    \end{tabularx}}
+    \caption{Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
+\end{table}
+
 \begin{figure}[h!]
     \centering
-    \begin{subfigure}[t]{0.48\textwidth}
+    \begin{subfigure}[t]{0.42\textwidth}
         \centering
         \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc.png}
         \caption{Baseline metrics across cell types}
         \label{}
     \end{subfigure}
     \hfill
-    \begin{subfigure}[t]{0.48\textwidth}
+    \begin{subfigure}[t]{0.42\textwidth}
         \centering
         \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc.png}
         \caption{Distance metrics across cell types}
@@ -493,7 +518,7 @@ By averaging the results across all the cell types, we can see that one of our m
     \end{subfigure}
     \begin{subfigure}[b]{0.48\textwidth}
         \centering
-        \includegraphics[width=.9\textwidth]{violins_pbmc.png}
+        \includegraphics[width=.75\textwidth]{violins_pbmc.png}
         \caption{Violin plots of gene expression distributions for gene ISG15}
         \label{}
     \end{subfigure}     
@@ -505,10 +530,9 @@ By averaging the results across all the cell types, we can see that one of our m
 
 As discussed in \cref{sec:eval_single_perturbation}, our multi-task architectures could not leverage shared information across perturbations in the previous setting, as only a single perturbation was available. To more pragmatically assess their performance, we evaluated the models on the dataset introduced by Nault et al. \cite{nault2021single,nault2022benchmarking}, which includes eleven cell types exposed to eight different dosages of TCDD administered to mice.
 
-The dataset was preprocessed using Scanpy \cite{wolf2018scanpy} by filtering out cells with fewer than 500 total counts and fewer than 720 expressed genes, as well as genes expressed in fewer than 100 cells. The data was log-transformed and the top 5,000 most highly variable genes were selected for training.
+The dataset was preprocessed using Scanpy \cite{wolf2018scanpy} by filtering out cells with fewer than 500 total counts and fewer than 720 expressed genes, as well as genes expressed in fewer than 100 cells. The data was log-transformed, for a smoother training process, and the top 5,000 most highly variable genes were selected.
 
 Each dosage level was treated as a distinct perturbation, with the control condition serving as the baseline. The conditioning signal for our multi-task architectures is a one-hot encoded vector of length nine: one entry for each of the eight dosages, and one for the control condition. For evaluation, we trained a separate model for each cell type, holding out the perturbed gene expression profiles of that cell type for testing. The same model was used to predict responses across all dosages, leveraging the model's ability to condition on perturbation identity.
-
 In contrast, the baseline models, which do not support conditioning on multiple perturbations, required training a separate model for each dosage. An exception is scVIDR, which is designed to handle multiple dosage levels within a single model.
 
 
@@ -555,39 +579,78 @@ In contrast, the baseline models, which do not support conditioning on multiple 
     \label{fig:eval_nault}
 \end{figure}
 
-Our multi-task models, \verb|MTAe|, \verb|MTAeAdvG|, seem to surpass the rest of them in terms of DEGs. scGen, and vidr-mult perform better in terms of $R^2$ scores.
+\begin{table}[h!]
+    \centering
+    \scalebox{0.8}{
+    \begin{tabularx}{\textwidth}{lXXXXXXXXX}
+    \toprule
+    model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
+    \midrule
+    MTAe & \textbf{20.341} & 0.862 & 0.792 & 0.833 & 1.386 & 1.217 & 1.116 & 1.050 & 1.386 \\
+    MTAeAdv & 13.716 & 0.792 & 0.725 & 0.743 & 1.128 & 1.091 & 1.011 & 1.017 & 1.128 \\
+    MTAeAdvG & 18.307 & 0.808 & 0.736 & 0.764 & 1.164 & 1.107 & 1.030 & 1.029 & 1.164 \\
+    MTAeOT & 8.652 & 0.608 & 0.642 & 0.590 & 0.925 & 1.006 & 0.951 & 0.998 & 0.925 \\
+    MTAePlusOT & 8.519 & 0.613 & 0.644 & 0.596 & \textbf{0.917} & \textbf{1.004} & 0.948 & 0.996 & 0.917 \\
+    MTVae & 18.981 & 0.808 & 0.724 & 0.753 & 1.124 & 1.100 & 1.005 & 1.016 & 1.124 \\
+    MTVaeOT & 8.163 & 0.614 & 0.642 & 0.593 & 0.929 & 1.009 & 0.952 & 0.998 & 0.929 \\
+    MTVaePlusOT & 8.701 & 0.615 & 0.645 & 0.597 & 0.919 & 1.006 & 0.948 & 0.997 & \textbf{0.919} \\
+    scButterfly & 16.818 & 0.740 & 0.694 & 0.696 & 0.984 & 1.014 & \textbf{0.944} & \textbf{0.990} & 0.984 \\
+    scGen & 6.288 & \textbf{0.915} & \textbf{0.863} & \textbf{0.897} & 2.408 & 1.229 & 1.387 & 1.041 & 2.408 \\
+    scPreGAN & 14.511 & 0.599 & 0.596 & 0.562 & 0.972 & 1.019 & 0.969 & 1.000 & 0.972 \\
+    vidrMult & 2.352 & 0.870 & 0.837 & 0.852 & 9.295 & 1.358 & 2.425 & 1.054 & 9.295 \\
+    vidrSingle & 3.795 & 0.855 & 0.797 & 0.824 & 1.431 & 1.174 & 1.118 & 1.025 & 1.431 \\
+    \bottomrule
+    \end{tabularx}}
+    \caption{Nault et al. \cite{nault2021single,nault2022benchmarking}}
+\end{table}
+
+We have averaged the results across all the cell types, and dosages, and similarly with the case of the \cref{sec:eval_single_perturbation}, our multi-task model, \verb|MTAe|, achieved the highest DEGs of $\small{\sim} 20$. scGen achieved the highest $R^2$ scores, but with a very low number of DEGs, and scButterfly's performance remained competitive across all metrics. Our optimal transport variations, performed well on the distance metrics, but poorly on the baseline ones.
+
+
+% \subsection{Cross-study}
+
+% Robustness against batch effects is a critical aspect of generalization. To evaluate this, we assessed model performance across multiple studies, each potentially introducing technical variation due to differences in experimental protocols, platforms, or sample processing. This cross-study evaluation serves to test the ability of the models to generalize perturbation response predictions beyond dataset-specific biases. To implement this, similarly with the scGen's study, By holding out the perturbed profiles of a given study during training and evaluating the model on that study, we simulate an \gls{ood} setting with respect to study-level batch effects, thereby assessing the robustness and transferability of each approach across independently generated datasets.
 
 \subsection{Cross-species}
 
-\subsection{Cross-study}
+
 
 
 \subsection{Overview}
 
 \begin{figure}[h!]
     \centering
-    \begin{subfigure}[t]{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/nault_umap_split_multiple.png}
-        \caption{Nault et al. \cite{nault2021single,nault2022benchmarking}}
-        \label{fig:nault_umap}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/pbmc_split.png}
-        \caption{Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
-        \label{fig:pbmc_umap}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/nault_umap_split_30.png}
-        \caption{Example of single dose split of Nault et al. \cite{kanaGenerativeModelingSinglecell2023} for the dosage $30 \mu g/kg$}
-        \label{fig:pbmc_umap}
-    \end{subfigure}    
-    \caption{UMAP representations of data split}
-    \label{fig:umap_side_by_side}
+    \includegraphics[width=\textwidth]{pcas.png}
+    \caption{PCA dimensionality reduction of the real unperturbed data, the real perturbed data and the predicted perturbed data.}
+    \label{fig:selected_nault_cell_type_baseline}
 \end{figure}
+
+scVIDR performance drops for DEGs, and distance metrics, but it performs well for the $R^2$ metrics and stays very consistent, along with scGEN. The multi-task models and scButterfly exhibit greater variability across measurements, but better performance on average. The optimal transport variations performed poorly overall, but were among the best for distance metrics for the Nault et al. \cite{nault2021single,nault2022benchmarking} dataset. 
+
+% \begin{figure}[h!]
+%     \centering
+%     \begin{subfigure}[t]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{figures/nault_umap_split_multiple.png}
+%         \caption{Nault et al. \cite{nault2021single,nault2022benchmarking}}
+%         \label{fig:nault_umap}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}[t]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{figures/pbmc_split.png}
+%         \caption{Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
+%         \label{fig:pbmc_umap}
+%     \end{subfigure}
+%     \begin{subfigure}[b]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{figures/nault_umap_split_30.png}
+%         \caption{Example of single dose split of Nault et al. \cite{kanaGenerativeModelingSinglecell2023} for the dosage $30 \mu g/kg$}
+%         \label{fig:pbmc_umap}
+%     \end{subfigure}    
+%     \caption{UMAP representations of data split}
+%     \label{fig:umap_side_by_side}
+% \end{figure}
 
 % \begin{figure}[h!]
 %     \centering
@@ -607,19 +670,14 @@ Our multi-task models, \verb|MTAe|, \verb|MTAeAdvG|, seem to surpass the rest of
 
 \section{Results}
 
-Initially, we will benchmark only our multi-task variations to filter out the most promising models \cref{fig:selected_pbmc_baseline,fig:selected_pbmc_distance,fig:selected_nault_cell_type_baseline,fig:selected_nault_cell_type_distance,fig:selected_nault_doses_baseline,fig:selected_nault_doses_distance}.
-As we can see the best performing ones are MTAe, MTAeAdv, and MTAeAdvG. Thus, we will compare them with state-of-the-art literature models such as scButterfly, scVIDR, scPreGAN and scGen.
+% Initially, we will benchmark only our multi-task variations to filter out the most promising models \cref{fig:selected_pbmc_baseline,fig:selected_pbmc_distance,fig:selected_nault_cell_type_baseline,fig:selected_nault_cell_type_distance,fig:selected_nault_doses_baseline,fig:selected_nault_doses_distance}.
+% As we can see the best performing ones are MTAe, MTAeAdv, and MTAeAdvG. Thus, we will compare them with state-of-the-art literature models such as scButterfly, scVIDR, scPreGAN and scGen.
 
-scVIDR performance drops for DEGs, and distance metrics, but it performs well for the $R^2$ metrics and stays very consistent, along with scGEN. The multi-task models and scButterfly exhibit greater variability across measurements, but better performance on average. The optimal transport variations performed poorly overall, but were among the best for distance metrics for the Nault et al. \cite{nault2021single,nault2022benchmarking} dataset. 
+
 
 % model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
 
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=\textwidth]{pcas.png}
-    \caption{PCA dimensionality reduction of the real unperturbed data, the real perturbed data and the predicted perturbed data.}
-    \label{fig:selected_nault_cell_type_baseline}
-\end{figure}
+
 
 \clearpage
 
@@ -910,30 +968,7 @@ scVIDR performance drops for DEGs, and distance metrics, but it performs well fo
 \subsection{Nault et al.}
     
 
-\begin{table}[h!]
-    \centering
-    \scalebox{0.8}{
-    \begin{tabularx}{\textwidth}{lXXXXXXXXX}
-    \toprule
-    model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
-    \midrule
-    MTAe & \textbf{0.000 (20.341)} & 0.167 (0.862) & 0.267 (0.792) & 0.189 (0.833) & 0.056 (1.386) & 0.603 (1.217) & 0.116 (1.116) & 0.945 (1.050) & 0.056 (1.386) \\
-    MTAeAdv & 0.368 (13.716) & 0.388 (0.792) & 0.518 (0.725) & 0.458 (0.743) & 0.025 (1.128) & 0.246 (1.091) & 0.045 (1.011) & 0.426 (1.017) & 0.025 (1.128) \\
-    MTAeAdvG & 0.113 (18.307) & 0.339 (0.808) & 0.477 (0.736) & 0.396 (0.764) & 0.029 (1.164) & 0.293 (1.107) & 0.058 (1.030) & 0.607 (1.029) & 0.029 (1.164) \\
-    MTAeOT & 0.650 (8.652) & 0.969 (0.608) & 0.829 (0.642) & 0.916 (0.590) & 0.001 (0.925) & 0.008 (1.006) & 0.005 (0.951) & 0.122 (0.998) & 0.001 (0.925) \\
-    MTAePlusOT & 0.657 (8.519) & 0.956 (0.613) & 0.822 (0.644) & 0.897 (0.596) & \textbf{0.000 (0.917)} & \textbf{0.000 (1.004)} & 0.002 (0.948) & 0.099 (0.996) & 0.000 (0917) \\
-    MTVae & 0.076 (18.981) & 0.339 (0.808) & 0.523 (0.724) & 0.428 (0.753) & 0.025 (1.124) & 0.273 (1.100) & 0.041 (1.005) & 0.413 (1.016) & 0.025 (1.124) \\
-    MTVaeOT & 0.677 (8.163) & 0.953 (0.614) & 0.830 (0.642) & 0.906 (0.593) & 0.001 (0.929) & 0.016 (1.009) & 0.006 (0.952) & 0.132 (0.998) & 0.001 (0.929) \\
-    MTVaePlusOT & 0.647 (8.701) & 0.948 (0.615) & 0.816 (0.645) & 0.894 (0.597) & 0.000 (0.919) & 0.008 (1.006) & 0.003 (0.948) & 0.112 (0.997) & \textbf{0.000 (0.919)} \\
-    scButterfly & 0.196 (16.818) & 0.553 (0.740) & 0.633 (0.694) & 0.600 (0.696) & 0.008 (0.984) & 0.029 (1.014) & \textbf{0.000 (0.944)} & \textbf{0.000 (0.990)} & 0.008 (0.984) \\
-    scGen & 0.781 (6.288) & \textbf{0.000 (0.915)} & \textbf{0.000 (0.863)} & \textbf{0.000 (0.897)} & 0.178 (2.408) & 0.637 (1.229) & 0.299 (1.387) & 0.805 (1.041) & 0.178 (2.408) \\
-    scPreGAN & 0.324 (14.511) & 1.000 (0.599) & 1.000 (0.596) & 1.000 (0.562) & 0.007 (0.972) & 0.042 (1.019) & 0.017 (0.969) & 0.163 (1.000) & 0.007 (0.972) \\
-    vidrMult & 1.000 (2.352) & 0.143 (0.870) & 0.099 (0.837) & 0.133 (0.852) & 1.000 (9.295) & 1.000 (1.358) & 1.000 (2.425) & 1.000 (1.054) & 1.000 (9.295) \\
-    vidrSingle & 0.920 (3.795) & 0.191 (0.855) & 0.247 (0.797) & 0.216 (0.824) & 0.061 (1.431) & 0.480 (1.174) & 0.117 (1.118) & 0.544 (1.025) & 0.061 (1.431) \\
-    \bottomrule
-    \end{tabularx}}
-    \caption{Score of the models for Nault et al. \cite{nault2021single,nault2022benchmarking} along with the actual value in parenthesis}
-\end{table}
+
 
 \begin{table}[h!]
     \centering
