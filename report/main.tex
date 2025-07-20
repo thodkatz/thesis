@@ -26,6 +26,7 @@
 \usepackage[acronym]{glossaries}
 \makeglossaries
 
+\newcommand{\crefwithname}[1]{\cref{#1}: \nameref{#1}}
 
 \graphicspath{{assets/}}
 
@@ -145,7 +146,7 @@ Regarding the architecture choise of \gls{mlt}, we need to consider how to proce
         \caption{Soft parameter sharing}
         \label{fig:soft}
     \end{subfigure}
-    \caption{\cite{ruderOverviewMultiTaskLearning2017}}
+    \caption{Task conditioning \cite{ruderOverviewMultiTaskLearning2017}}
     \label{}
 \end{figure}
 
@@ -173,7 +174,7 @@ Another approach of conditioning the tasks is the family of feature-wise transfo
         \caption{Multiplication}
         \label{}
     \end{subfigure}    
-    \caption{Methods of integrating conditioning representation \cite{ruderOverviewMultiTaskLearning2017}}
+    \caption{Feature-wise transformations \cite{ruderOverviewMultiTaskLearning2017}}
     \label{}
 \end{figure}
 
@@ -215,7 +216,7 @@ By operating the cINN in reverse, the model enables counterfactual predictions, 
 As mentioned by \cite{jiMachineLearningPerturbational2021,gavriilidisMinireviewPerturbationModelling2024}, \gls{mlt} can be considered a powerful ML/DL approach that can be promising to be applied for perturbation modeling. It is worth mentioning that for the NCI-DREAM challenge \cite{costello2014community}, addressing the drug sensitivity of unseen cell lines, a Bayesian \gls{mlt} approach was considered to perform the best \cite{schrod2024codex}. 
 
 In addition to the categorization of perturbation modeling objectives, single-cell analysis tasks, such as gene regulatory network (GRN) inference, cell clustering, and multi-modal integration, can be highly beneficial when incorporated into a \gls{mlt} framework. These tasks provide complementary biological context that can enhance the performance and interpretability of perturbation modeling.
-For example, UnitedNet \cite{tangExplainableMultitaskLearning2023} has demonstrated strong performance in cross-modal prediction and cell-type classification by leveraging multi-omics data within an \gls{mlt} architecture. Similarly, ScPreGAN \cite{weiScPreGANDeepGenerative2022} integrates cell type classification as an auxiliary task to improve the generation of perturbed single-cell transcriptomic profiles, illustrating the value of combining single-cell tasks with perturbation modeling objectives.
+For example, UnitedNet \cite{tangExplainableMultitaskLearning2023} has demonstrated strong performance in cross-modal prediction and cell-type classification by leveraging multi-omics data within an \gls{mlt} architecture. Similarly, scPreGAN \cite{weiScPreGANDeepGenerative2022} integrates cell type classification as an auxiliary task to improve the generation of perturbed single-cell transcriptomic profiles, illustrating the value of combining single-cell tasks with perturbation modeling objectives.
 
 Solving multiple tasks together can be challenging when they operate on different levels of granularity. For example, prediction of cell viability or drug sensitivity with IC50 values is considered a population-level task, while prediction of single-cell gene expression after a perturbation is a cell-level task. For the former, available datasets provide information about the gene expression profiles of cell lines, along with the chemical compound and the corresponding IC50 values. However, for single-cell perturbation response prediction, a corresponding population-level phenotype (like IC50) from the same experiment is often not directly available. Solving these tasks simultaneously would require bridging bulk with single-cell omics, taking into account the technical variations between the experimental procedures of data acquisition.
 
@@ -261,7 +262,7 @@ The perturbation is represented as a one-hot encoded vector, where, for a datase
   \caption{FiLM \cite{dumoulin2018feature-wise}}
 \end{wrapfigure}
 
-About the conditioning of the task, as we have seen at \cref{sec:mlt}, we have explored the application of conditional affine transformation, a combination of multiplicative and additive conditioning, that shifts and scales the input element-wise. It is efficient in terms of scaling and parameters compared to multi-head architectures, where each task has its dedicated network to generate the output of the task . This approach is named as FiLM, for Feature-wise Linear Modulation \cite{dumoulin2018feature-wise, perez2018film}:
+About the conditioning of the task, as we have seen at \crefwithname{sec:mlt}, we have explored the application of conditional affine transformation, a combination of multiplicative and additive conditioning, that shifts and scales the input element-wise. It is efficient in terms of scaling and parameters compared to multi-head architectures, where each task has its dedicated network to generate the output of the task . This approach is named as FiLM, for Feature-wise Linear Modulation \cite{dumoulin2018feature-wise, perez2018film}:
 
 \[ \text{FiLM(x)} = \gamma (z) \odot x + \beta (z) \]
 
@@ -442,15 +443,19 @@ Although scButterfly isn't primarily designed for perturbation modeling, the stu
 % I should mention preprocessing
 
 
-The models described in \cref{sec:benchmark_models} serve as baselines for evaluating our multi-task learning architectures on the \gls{ood} prediction task.
+The models described in \crefwithname{sec:benchmark_models} serve as baselines for evaluating our multi-task learning architectures on the \gls{ood} prediction task.
 In contrast to our proposed method, these baseline models are typically designed to predict perturbed gene expression for a single, fixed type of perturbation, and lack the ability to condition on varying perturbation types. An exception is scVIDR, which can condition on different dosages of a given drug. This allows a single scVIDR model to predict responses across multiple perturbations
-(we refer to the dosage-aware version of the model as \verb|vidr-mult|, and the single-perturbation version as \verb|vidr-single|).
+(we refer to the dosage-aware version of the model as \verb|vidrMult|, and the single-perturbation version as \verb|vidrSingle|).
 
 Our objective is to explore whether explicitly conditioning on the perturbation type, thus enabling multi-perturbation response prediction, within a multi-task learning framework can lead to improved performance on the \gls{ood} prediction task.
-We extend this evaluation across multiple biological contexts, including cell types, studies, and species, to assess the robustness and generalization capabilities of our approach.
+We extend this evaluation across multiple biological contexts, including cell types, and species, to assess the robustness and generalization capabilities of our approach.
 
-We have used two categories of evaluation metrics to compare the predicted gene expression profiles to the actual perturbed ones: a) baseline metrics, and b) distance metrics. The first ones include the count of differentially expressed genes (DEGs), the $R^2$ score computed over all the highly variable genes (HVGs), and the $R^2$ score for the top 100 most variable genes. The distance metrics, designed to capture both point-wise and global differences between the predicted and expected distributions, include: a) euclidean, b) edistance, c) wasserstein, d) mean pairwise, e) mmd. These metrics were computed using the pertpy \cite{heumos2024pertpy} library.
+We have used two categories of evaluation metrics to compare the predicted gene expression profiles to the actual perturbed ones: a) baseline metrics, and b) distance metrics. The baseline metrics include the count of common \gls{degs}, the squared Pearson correlation $R^2$ for mean gene expression levels computed over all the \gls{hvg}, and the $R^2$ score for the top 100 \gls{hvg}. A differentially expressed gene is defined as a gene whose expression distribution differs significantly between the control and perturbed conditions. We have used Scanpy \cite{wolf2018scanpy} to identify \gls{degs}, which applies statistical tests to rank genes based on their test scores. To count common \gls{degs}, we compute the top 100 ranked \gls{degs} for both the predicted and the expected profiles, and then take the intersection of these sets.
+The distance metrics capture both point-wise and distributional differences between predicted and actual profiles. These include: (a) Euclidean distance, (b) E-distance, (c) Wasserstein distance, (d) mean pairwise distance, and (e) maximum mean discrepancy (MMD).
+The baseline metrics were computed using Scanpy, while the distance metrics were computed with the Pertpy library \cite{heumos2024pertpy}.
 To account for model variability, we repeated each experiment three times using different random seeds (1, 2, and 19193), and report the average performance across runs.
+
+For the following analysis, we have selected some of our most promising multi-task architectures, namely \verb|MTAe|, \verb|MTAeAdv|, \verb|MTAeAdvG|, \verb|MTVae| to be visually represented by the evaluation results. For a full comparison of all the models, refer to the supplementary material \crefwithname{sec:appendix_evaluation}. 
 
 \subsection{Single perturbation response prediction}
 \label{sec:eval_single_perturbation}
@@ -460,7 +465,8 @@ We have evaluated the models on human \gls{pbmc} that have been stimulated by IF
 
 We have tested the models across all the available cell types, training a model from scratch for each use case. To test each one this models, we held-out the perturbed gene expressions of the cell type of interest, and we use the rest to train the model. 
 
-By averaging the results across all the cell types, we can see that one of our multi-task versions, \verb|MTAe|, achieved the highest DEGs of $\small{\sim} 75$, while achieving comparable $R^2$ scores to the scVIDR, and scButterfly, as the best performing ones. The distance metrics, however, show the last ones perform better than our multi-task models, indicating a more representative global structure of the perturbed gene expression profiles. As shown in \cref{fig:eval_pbmc}, we have selected ISG15, a marker gene of IFN-b, as an example gene to visualize the distribution of the predicted and expected gene expression profiles across cell types. However, none of the models seem to capture the expected distribution of the gene expression profile.
+By averaging the results across all the cell types (see \cref{tab:eval_pbmc}), we can see that one of our multi-task versions, \verb|MTAe|, achieved the highest DEGs of $\small{\sim} 75$, while achieving comparable $R^2$ scores to the scVIDR, and scButterfly, as the best performing ones.  The distance metrics show the last ones perform better than \verb|MTAe|, indicating a more representative global structure of the perturbed gene expression profiles. However, \verb|MTAeAdv|, and \verb|MTVae|, seemed to be on par with the best performing models across all metrics, while the optimal transport variations, \verb|MTAeOT|, \verb|MTAePlusOT|, \verb|MTVaeOT|, and \verb|MTVaePlusOT|, performed significantly worse than the rest of the models.
+As shown in \cref{fig:eval_pbmc}, we have selected ISG15, a marker gene of IFN-b, as an example gene to visualize the distribution of the predicted and expected gene expression profiles across cell types. However, none of the models seem to capture the expected distribution of the gene expression profile.
 
 
 % \begin{figure}
@@ -469,31 +475,6 @@ By averaging the results across all the cell types, we can see that one of our m
 %     \caption{Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
 %     \label{fig:pbmc_umap}
 % \end{figure}
-
-
-\begin{table}[h!]
-    \centering
-    \scalebox{0.8}{
-    \begin{tabularx}{\textwidth}{lXXXXXXXXX}
-    \toprule
-    model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
-    \midrule
-    MTAe & \textbf{75.714} & 0.946 & 0.871 & 0.917 & 0.488 & 0.892 & 0.651 & 0.949 & 0.488 \\
-    MTAeAdv & 72.381 & 0.961 & 0.955 & 0.948 & 0.202 & 0.604 & 0.429 & 0.800 & 0.202 \\
-    MTAeAdvG & 65.905 & 0.917 & 0.878 & 0.901 & 0.504 & 0.828 & 0.681 & 0.909 & 0.504 \\
-    MTAeOT & 41.190 & 0.657 & 0.668 & 0.648 & 0.811 & 0.947 & 0.883 & 0.963 & 0.811 \\
-    MTAePlusOT & 37.190 & 0.670 & 0.674 & 0.657 & 0.810 & 0.951 & 0.880 & 0.966 & 0.810 \\
-    MTVae & 69.095 & 0.942 & 0.954 & 0.928 & 0.261 & 0.621 & 0.499 & 0.800 & 0.261 \\
-    MTVaeOT & 39.571 & 0.669 & 0.678 & 0.663 & 0.813 & 0.955 & 0.883 & 0.966 & 0.813 \\
-    MTVaePlusOT & 30.619 & 0.661 & 0.670 & 0.655 & 0.821 & 0.958 & 0.888 & 0.968 & 0.821 \\
-    scButterfly & 60.727 & 0.891 & 0.914 & 0.889 & 0.271 & \textbf{0.601} & 0.469 & \textbf{0.779} & 0.271 \\
-    scGen & 32.143 & 0.910 & 0.872 & 0.870 & 0.627 & 0.909 & 0.765 & 0.946 & 0.627 \\
-    scPreGAN & 35.750 & 0.771 & 0.857 & 0.799 & 0.499 & 0.690 & 0.682 & 0.851 & 0.499 \\
-    vidrSingle & 25.536 & \textbf{0.970} & \textbf{0.971} & \textbf{0.961} & \textbf{0.182} & 0.606 & \textbf{0.408} & 0.797 & \textbf{0.182} \\
-    \bottomrule
-    \end{tabularx}}
-    \caption{Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
-\end{table}
 
 \begin{figure}[h!]
     \centering
@@ -526,16 +507,46 @@ By averaging the results across all the cell types, we can see that one of our m
     \label{fig:eval_pbmc}
 \end{figure}
 
+\begin{table}[h!]
+    \centering
+    \scalebox{0.75}{
+    \begin{tabularx}{\textwidth}{lXXXXXXXXX}
+    \toprule
+    model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
+    \midrule
+    MTAe & \textbf{75.714} & 0.946 & 0.871 & 0.917 & 0.488 & 0.892 & 0.651 & 0.949 & 0.488 \\
+    MTAeAdv & 72.381 & 0.961 & 0.955 & 0.948 & 0.202 & 0.604 & 0.429 & 0.800 & 0.202 \\
+    MTAeAdvG & 65.905 & 0.917 & 0.878 & 0.901 & 0.504 & 0.828 & 0.681 & 0.909 & 0.504 \\
+    MTAeOT & 41.190 & 0.657 & 0.668 & 0.648 & 0.811 & 0.947 & 0.883 & 0.963 & 0.811 \\
+    MTAePlusOT & 37.190 & 0.670 & 0.674 & 0.657 & 0.810 & 0.951 & 0.880 & 0.966 & 0.810 \\
+    MTVae & 69.095 & 0.942 & 0.954 & 0.928 & 0.261 & 0.621 & 0.499 & 0.800 & 0.261 \\
+    MTVaeOT & 39.571 & 0.669 & 0.678 & 0.663 & 0.813 & 0.955 & 0.883 & 0.966 & 0.813 \\
+    MTVaePlusOT & 30.619 & 0.661 & 0.670 & 0.655 & 0.821 & 0.958 & 0.888 & 0.968 & 0.821 \\
+    scButterfly & 60.727 & 0.891 & 0.914 & 0.889 & 0.271 & \textbf{0.601} & 0.469 & \textbf{0.779} & 0.271 \\
+    scGen & 32.143 & 0.910 & 0.872 & 0.870 & 0.627 & 0.909 & 0.765 & 0.946 & 0.627 \\
+    scPreGAN & 35.750 & 0.771 & 0.857 & 0.799 & 0.499 & 0.690 & 0.682 & 0.851 & 0.499 \\
+    vidrSingle & 25.536 & \textbf{0.970} & \textbf{0.971} & \textbf{0.961} & \textbf{0.182} & 0.606 & \textbf{0.408} & 0.797 & \textbf{0.182} \\
+    \bottomrule
+    \end{tabularx}}
+    \caption{Averaged across all cell types in Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
+    \label{tab:eval_pbmc}
+\end{table}
+
+
+
 \subsection{Multiple perturbations response prediction}
 \label{sec:eval_multiple_perturbations}
 
-As discussed in \cref{sec:eval_single_perturbation}, our multi-task architectures could not leverage shared information across perturbations in the previous setting, as only a single perturbation was available. To more pragmatically assess their performance, we evaluated the models on the dataset introduced by Nault et al. \cite{nault2021single,nault2022benchmarking}, which includes eleven cell types exposed to eight different dosages of TCDD administered to mice.
+As discussed in \crefwithname{sec:eval_single_perturbation}, our multi-task architectures could not leverage shared information across perturbations in the previous setting, as only a single perturbation was available. To more pragmatically assess their performance, we evaluated the models on the dataset introduced by Nault et al. \cite{nault2021single,nault2022benchmarking}, which includes eleven cell types exposed to eight different dosages of TCDD administered to mice.
 
-The dataset was preprocessed using Scanpy \cite{wolf2018scanpy} by filtering out cells with fewer than 500 total counts and fewer than 720 expressed genes, as well as genes expressed in fewer than 100 cells. The data was log-transformed, for a smoother training process, and the top 5,000 most highly variable genes were selected.
+The dataset was preprocessed using Scanpy \cite{wolf2018scanpy} by filtering out cells with fewer than 500 total counts and fewer than 720 expressed genes, as well as genes expressed in fewer than 100 cells. The data was log-transformed, for a smoother training process, and the top 5,000 \gls{hvg} were selected.
 
 Each dosage level was treated as a distinct perturbation, with the control condition serving as the baseline. The conditioning signal for our multi-task architectures is a one-hot encoded vector of length nine: one entry for each of the eight dosages, and one for the control condition. For evaluation, we trained a separate model for each cell type, holding out the perturbed gene expression profiles of that cell type for testing. The same model was used to predict responses across all dosages, leveraging the model's ability to condition on perturbation identity.
 In contrast, the baseline models, which do not support conditioning on multiple perturbations, required training a separate model for each dosage. An exception is scVIDR, which is designed to handle multiple dosage levels within a single model.
 
+We have averaged the results across all the cell types, and dosages (see \cref{tab:eval_nault}), and similarly with the case of the \crefwithname{sec:eval_single_perturbation}, our multi-task model, \verb|MTAe|, achieved the highest DEGs of $\small{\sim} 20$. scGen achieved the highest $R^2$ scores, but with a very low number of DEGs, and scButterfly's performance remained competitive across all metrics. Our optimal transport variations, performed well on the distance metrics, but poorly on the baseline ones.
+
+\clearpage
 
 \begin{figure}[h!]
     \centering
@@ -576,13 +587,15 @@ In contrast, the baseline models, which do not support conditioning on multiple 
         \caption{UMAP representation of data splitting for the dosage $30 \mu g/kg$}
         \label{}
     \end{subfigure}       
-    \caption{Nault et al. \cite{nault2021single,nault2022benchmarking}}
+    \caption{Averaged results across all cell types and dosages in Nault et al. \cite{nault2021single,nault2022benchmarking}}
     \label{fig:eval_nault}
 \end{figure}
 
+\clearpage
+
 \begin{table}[h!]
     \centering
-    \scalebox{0.8}{
+    \scalebox{0.75}{
     \begin{tabularx}{\textwidth}{lXXXXXXXXX}
     \toprule
     model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
@@ -603,30 +616,29 @@ In contrast, the baseline models, which do not support conditioning on multiple 
     \bottomrule
     \end{tabularx}}
     \caption{Nault et al. \cite{nault2021single,nault2022benchmarking}}
+    \label{tab:eval_nault}
 \end{table}
 
-We have averaged the results across all the cell types, and dosages, and similarly with the case of the \cref{sec:eval_single_perturbation}, our multi-task model, \verb|MTAe|, achieved the highest DEGs of $\small{\sim} 20$. scGen achieved the highest $R^2$ scores, but with a very low number of DEGs, and scButterfly's performance remained competitive across all metrics. Our optimal transport variations, performed well on the distance metrics, but poorly on the baseline ones.
 
 
 % \subsection{Cross-study}
 
 % Robustness against batch effects is a critical aspect of generalization. To evaluate this, we assessed model performance across multiple studies, each potentially introducing technical variation due to differences in experimental protocols, platforms, or sample processing. This cross-study evaluation serves to test the ability of the models to generalize perturbation response predictions beyond dataset-specific biases. To implement this, similarly with the scGen's study, By holding out the perturbed profiles of a given study during training and evaluating the model on that study, we simulate an \gls{ood} setting with respect to study-level batch effects, thereby assessing the robustness and transferability of each approach across independently generated datasets.
 
-\clearpage
-
 \subsection{Cross-species}
+\label{sec:eval_cross_species}
 
 
 Until now, the primary axis of variation along which we evaluated model performance was the condition i.e., control versus perturbed states. To further assess the robustness and generalization of our multi-task architectures, we introduced an additional axis of variation, the species.
 Similar to the evaluation performed in the scGen study, we used the dataset from Hagel et al. \cite{hagai2018gene}, which comprises \gls{sc} profiles of bone marrow-derived mononuclear phagocytes from four species, mouse, rat, rabbit, and pig, all perturbed with lipopolysaccharide (LPS) for six hours.
 
-The dataset was obtained preprocessed from the scGen study. To evaluate the models, we followed the same approach as in the \cref{sec:eval_single_perturbation}, but instead of holding out the perturbed gene expression profiles of a cell type, we held out the perturbed gene expression profiles of a species.
+The dataset was obtained preprocessed from the scGen study. To evaluate the models, we followed the same approach as in the \crefwithname{sec:eval_single_perturbation}, but instead of holding out the perturbed gene expression profiles of a cell type, we held out the perturbed gene expression profiles of a species.
 
-By averaging the result across all the species, \verb|MTAe|, achieved the highest DEGs of $\small{\sim} 16$. scGen, and scVIDR achieved the highest $R^2$ scores, but performed poorly on the distance metrics. \verb|MTVae| achieved the best performance on the distance metrics, relatively high number of DEGs $12.5$, but low $R^2$ scores. The optimal transport variations performed well on the distance metrics, but poorly on the baseline ones, similarly to the case of \cref{sec:eval_multiple_perturbations}.
+By averaging the result across all the species (see \cref{tab:eval_cross_species}), \verb|MTAe|, achieved the highest DEGs of $\small{\sim} 16$. scGen, and scVIDR achieved the highest $R^2$ scores, same as the case of \crefwithname{sec:eval_single_perturbation}, but performed poorly on the distance metrics. \verb|MTVae| achieved the best performance on the distance metrics, relatively high number of DEGs $12.5$, but low $R^2$ scores. The optimal transport variations performed well on the distance metrics, but poorly on the baseline ones, similarly to the case of \crefwithname{sec:eval_multiple_perturbations}.
 
 \begin{table}[h!]
     \centering    
-    \scalebox{0.8}{
+    \scalebox{0.75}{
     \begin{tabularx}{\textwidth}{lXXXXXXXXX}
     \toprule
     model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
@@ -646,18 +658,20 @@ By averaging the result across all the species, \verb|MTAe|, achieved the highes
     \bottomrule
     \end{tabularx}}
     \caption{Hagel et al. \cite{hagai2018gene}}
+    \label{tab:eval_cross_species}
 \end{table}
+
 
 \begin{figure}[h!]
     \centering
-    \begin{subfigure}[t]{0.45\textwidth}
+    \begin{subfigure}[t]{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species.png}
         \caption{Baseline metrics across species}
         \label{}
     \end{subfigure}
     \hfill
-    \begin{subfigure}[t]{0.45\textwidth}
+    \begin{subfigure}[t]{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species.png}
         \caption{Distance metrics across species}
@@ -669,11 +683,10 @@ By averaging the result across all the species, \verb|MTAe|, achieved the highes
     %     \caption{Violin plots of gene expression distributions for gene Sod2}
     %     \label{}
     % \end{subfigure}     
-    \caption{Hagel et al. \cite{hagai2018gene}}
+    \caption{Averaged results across all species in Hagel et al. \cite{hagai2018gene}}
     \label{fig:eval_cross_species}
 \end{figure}
 
-\clearpage
 
 % \subsection{Overview}
 
@@ -693,12 +706,13 @@ By averaging the result across all the species, \verb|MTAe|, achieved the highes
 
 %We have tested the models on the \gls{ood} task across cell types, studies, and species. 
 
+In this work, we proposed a multi-task architecture for perturbation modeling in \gls{sc}, capable of conditioning on the perturbation type. This design allows the model to leverage shared information across different perturbations, leading to improved performance on the \gls{ood} prediction task. We benchmarked our models against state-of-the-art methods, including scGen, scVIDR, scPreGAN, and scButterfly.
 
-We have validated the potential of scButterfly to perturbation modeling with the multi-dosage dataset of Nault et al. \cite{nault2021single,nault2022benchmarking}, an addition of the author's study that is based only on the dataset of Kang et al. \cite{kanaGenerativeModelingSinglecell2023}. We have proposed multi-task architectures that can be used for perturbation modeling, and we have benchmarked them against the state-of-the-art models in the field. The results show that our models outperform or are comparable to the state-of-the-art models in the field.
+We also validated the potential of scButterfly in perturbation modeling on the multi-dosage dataset of Nault et al. \cite{nault2021single,nault2022benchmarking}, extending beyond the Kang et al. dataset \cite{kanaGenerativeModelingSinglecell2023}, which was the primary dataset in the original authors' study.
 
-Another significant benefit of our model is its lower complexity while scaling to a larger number of perturbations (scalability)\cite{allenspachNeuralMultitaskLearning2024}.
+Our base model, \verb|MTAe|, achieved the highest number of \gls{degs} across all experiments (\crefwithname{sec:eval_single_perturbation}, \crefwithname{sec:eval_multiple_perturbations}, and \crefwithname{sec:eval_cross_species}). While no single model consistently outperforms across all metrics, a significant advantage of our multi-task approach is its lower complexity and scalability. It requires training only one model per cell type, rather than one model per perturbation as in the baseline models \cite{allenspachNeuralMultitaskLearning2024}. This makes our approach particularly advantageous for large datasets with many perturbations, as it reduces both computational cost and training time. Future work could further validate this parameter efficiency by applying our approach to larger, more diverse datasets.
 
-It should be noted that one of the limitations of our methods is the transductive learning with respect to the perturbations. The perturbation signal is one-hot encoded, thus limiting the model to generalize to unseen ones. Thus, future work could include to explore how inductive learning with respect to the perturbations could be integrated to our architecture, enabling extrapolation to unseen perturbations.
+A current limitation of our method is its transductive learning with respect to perturbations. Since the perturbation signal is one-hot encoded, the model cannot generalize to unseen perturbations. Future work should explore how inductive representations of perturbations could be integrated into our architecture to enable extrapolation to unseen perturbations.
 
 \section{Code availability}
 
@@ -712,8 +726,62 @@ The code for the models and the experiments is available at \url{https://github.
 \bibliographystyle{plain}
 \bibliography{references.bib}
 
+\clearpage
 
 \appendix
 
+\section{Evaluation of multi-task architectures on the \gls{ood} task}
+\label{sec:appendix_evaluation}
+
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{multi_task_benchmarking_cell_type_baseline_metrics_pbmc.png}
+        \caption{Baseline metrics across cell types}
+        \label{}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{multi_task_benchmarking_cell_type_distance_metrics_pbmc.png}
+        \caption{Distance metrics across cell types}
+        \label{}
+    \end{subfigure}
+    \caption{Evaluation of multi-task architectures on the Kang et al. \cite{kang2018multiplexed}}
+    \label{fig:all_multi_task_kang}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{multi_task_benchmarking_cell_type_baseline_metrics_nault.png}
+        \caption{Baseline metrics across cell types}
+        \label{}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{multi_task_benchmarking_cell_type_distance_metrics_nault.png}
+        \caption{Distance metrics across cell types}
+        \label{}
+    \end{subfigure}
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{multi_task_benchmarking_doses_baseline_metrics_nault.png}
+        \caption{Baseline metrics across doses}
+        \label{}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{multi_task_benchmarking_doses_distance_metrics_nault.png}
+        \caption{Distance metrics across doses}
+        \label{}
+    \end{subfigure}    
+    \caption{Evaluation of multi-task architectures on the Nault et al. \cite{nault2021single,nault2022benchmarking}}
+    \label{fig:all_multi_task_nault}
+\end{figure}
 
 \end{document}
