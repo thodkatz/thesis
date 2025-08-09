@@ -1,17 +1,34 @@
 # Multi-task learning in perturbation modeling
 
+**Abstract**
+
+Advanced single-cell technologies have provided new insights on cellular responses to
+perturbations, with significant potential for translational medicine. However, the inherent
+complexity of biological systems and the technical limitations of the experimental protocols
+present challenges for many proposed computational methods to algorithmically capture the
+perturbation mechanisms. Multi-task learning is one of the methods that have been left un-
+explored in this field. In this study, we aim to bridge this gap by unraveling its potential in
+single-cell perturbation modeling. We have developed a multi-task autoencoder architecture
+that predicts perturbed single-cell transcriptomic profiles for multiple perturbations achiev-
+ing state-of-the-art performance while exhibiting greater scalability and efficiency compared
+to existing methods.
+
+The report can be found at `report/main.pdf`.
+
 # Setup
 
 Requirements:
 - conda
 - make
+- Linux
+- NVIDIA gpu
 
 ```
 git clone --recurse-submodules git@github.com:thodkatz/thesis.git
 cd thesis
-conda env create -n <env name> -f environment
+conda env create -n <env name> -f environment.yml
 conda activate <env name>
-make setup_env ENV_NAME=<env name>
+make setup_env
 ```
 
 This will install the necessarry dependencies and it will create two directories. The `data`, and the `saved_results`. In the first one we will store the datasets, and in the second one all the artifacts (e.g. pytorch state dict from the models, benchmarking results) from our experiments.

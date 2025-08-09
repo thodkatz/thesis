@@ -12,12 +12,12 @@ clean:
 	rm -rf $(SLURM_SCRIPTS)
 
 setup_env:
-	conda run -n $(ENV_NAME) pip install -e .
-	conda run -n $(ENV_NAME) pip install -e ./lib/scgen
-	conda run -n $(ENV_NAME) pip install -e ./lib/scButterfly
-	conda run -n $(ENV_NAME) pip install -e ./lib/UnitedNet
-	conda run -n $(ENV_NAME) pip install -e ./lib/scPreGAN
-	conda run -n $(ENV_NAME) pip install -e ./lib/scVIDR
+	pip install -e .
+	pip install -e ./lib/scgen
+	pip install -e ./lib/scButterfly
+	pip install -e ./lib/UnitedNet
+	pip install -e ./lib/scPreGAN
+	pip install -e ./lib/scVIDR
 	mkdir -p data
 	mkdir -p saved_results
 

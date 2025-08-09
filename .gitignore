@@ -21,6 +21,21 @@
 *_minted*
 *.pyg
 
+*main.fdb_latexmk
+*main.fls
+*main.glg
+*main.glo
+*main.gls
+*main.glsdefs
+*main.acn
+*main.acr
+*main.ist
+*main.lof
+*main.lot
+*main.xdv
+*main.alg
+
+
 runs
 
 # src
