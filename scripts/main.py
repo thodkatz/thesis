@@ -109,6 +109,18 @@ if __name__ == "__main__":
         "simple_vae_ot": MultiTaskVaeAutoencoderOptimalTransportPipeline,
         "simple_vae_and_ot": MultiTaskVaeAutoencoderAndOptimalTransportPipeline,
     }
+    
+    def is_multi_task(model_name):
+        return model_name in [
+            "simple",
+            "adversarial",
+            "adversarial_gaussian",
+            "simple_ot",
+            "simple_and_ot",
+            "simple_vae",
+            "simple_vae_ot",
+            "simple_vae_and_ot",
+        ]
 
     preprocessing2class = {
         "default": PreprocessingGenericPipeline,
@@ -147,16 +159,30 @@ if __name__ == "__main__":
         dosages=args.dosages,
     )
 
-    model_pipeline = model2class[args.model](
-        dataset_pipeline=dataset_condition_pipeline,
-        experiment_name=args.experiment or "seed_" + str(args.seed),
-        debug=args.debug,
-        seed=args.seed,
-    )
+    
+    model_pipeline_class = model2class[args.model]
+
+    if (
+        is_multi_task(args.model)
+        and args.dataset in ["nault-multi", "nault-liver-multi"]
+   ):
+        model_pipeline = model2class[args.model].get_multiple_condition(
+            dataset_pipeline=dataset_condition_pipeline,
+            experiment_name=args.experiment or "seed_" + str(args.seed),
+            debug=args.debug,
+            seed=args.seed,
+        )
+    else:
+        model_pipeline = model_pipeline_class(
+            dataset_pipeline=dataset_condition_pipeline,
+            experiment_name=args.experiment or "seed_" + str(args.seed),
+            debug=args.debug,
+            seed=args.seed,
+        )
 
     model_pipeline(
         batch=args.batch,
-        append_metrics=True,
+        append_metrics=False,
         save_plots=False,
         refresh_training=False,
         refresh_evaluation=False,

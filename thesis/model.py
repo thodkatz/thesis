@@ -812,6 +812,8 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
         self,
         experiment_name: str,
         dataset_pipeline: SplitDatasetPipeline,
+        hidden_layers_film: Optional[List[int]] = None,
+        hidden_layers_autoencoder: Optional[List[int]] = None,
         debug: bool = False,
         seed: int = 19193,
     ):
@@ -824,11 +826,29 @@ class MultiTaskAaeAutoencoderPipeline(ModelPipeline):
         self._epochs = 1 if debug else 400
         self._dropout_rate = 0.5
         self._mask_rate = 0.2
-        self._hidden_layers_film = []
-        self._hidden_layers_autoencoder = [256, 128]
+        self._hidden_layers_film = [] if hidden_layers_film is None else hidden_layers_film
+        self._hidden_layers_autoencoder = [256, 128] if hidden_layers_autoencoder is None else hidden_layers_autoencoder
         self._hidden_layers_discriminator = []  # not used
         self._lr = 1e-05
         self._batch_size = 64
+        
+    @classmethod
+    def get_multiple_condition(cls,
+        experiment_name: str,
+        dataset_pipeline: SplitDatasetPipeline,
+        debug: bool = False,
+        seed: int = 19193,
+    ):
+        """
+        A more complicated network for multiple conditions.
+        """
+        return cls(
+            experiment_name=experiment_name,
+            dataset_pipeline=dataset_pipeline,
+            hidden_layers_film=[16],
+            debug=debug,
+            seed=seed,
+        )
 
     def _load_model(
         self,
@@ -988,13 +1008,18 @@ class MultiTaskAaeAdversarialPipeline(MultiTaskAaeAutoencoderPipeline):
         self,
         experiment_name: str,
         dataset_pipeline: SplitDatasetPipeline,
+        hidden_layers_film: Optional[List[int]] = None,
+        hidden_layers_autoencoder: Optional[List[int]] = None,        
         debug: bool = False,
         seed: int = 19193,
     ):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
+            hidden_layers_film=hidden_layers_film,
+            hidden_layers_autoencoder=hidden_layers_autoencoder,            
             seed=seed,
+            debug=debug
         )
 
         self._autoencoder_pretrain_epochs = 1 if debug else 400
@@ -1078,14 +1103,18 @@ class MultiTaskVaeAutoencoderPipeline(MultiTaskAaeAutoencoderPipeline):
         self,
         experiment_name: str,
         dataset_pipeline: SplitDatasetPipeline,
+        hidden_layers_film: Optional[List[int]] = None,
+        hidden_layers_autoencoder: Optional[List[int]] = None,        
         debug: bool = False,
         seed: int = 19193,
     ):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
+            hidden_layers_film=hidden_layers_film,
+            hidden_layers_autoencoder=hidden_layers_autoencoder,            
             seed=seed,
-            debug=debug,
+            debug=debug
         )
 
         self._beta = 0.004
@@ -1178,13 +1207,18 @@ class MultiTaskVaeAutoencoderAndOptimalTransportPipeline(
         self,
         experiment_name: str,
         dataset_pipeline: SplitDatasetPipeline,
+        hidden_layers_film: Optional[List[int]] = None,
+        hidden_layers_autoencoder: Optional[List[int]] = None,
         debug: bool = False,
         seed: int = 19193,
     ):
         super().__init__(
             dataset_pipeline=dataset_pipeline,
             experiment_name=experiment_name,
+            hidden_layers_film=hidden_layers_film,
+            hidden_layers_autoencoder=hidden_layers_autoencoder,            
             seed=seed,
+            debug=debug
         )
 
         self._autoencoder_pretrain_epochs = 1 if debug else 400

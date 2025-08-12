@@ -322,11 +322,11 @@ class CrossStudyPipeline(DatasetPipeline):
         self,
         preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
     ):
-        pbmc_data = DATA_PATH / "cross_study" / "cross_study.h5ad"
+        cross_study_data = DATA_PATH / "cross_study" / "cross_study.h5ad"
         cell_type_key = "cell_type"
         dose_key = "Dose"
         super().__init__(
-            data_path=pbmc_data,
+            data_path=cross_study_data,
             cell_type_key=cell_type_key,
             preprocessing_pipeline=None,
             dosage_key=dose_key,
@@ -343,11 +343,11 @@ class CrossSpeciesPipeline(DatasetPipeline):
         self,
         preprocessing_pipeline: PreprocessingPipeline = PreprocessingGenericPipeline(),
     ):
-        pbmc_data = DATA_PATH / "cross_species" / "cross_species.h5ad"
+        cross_species_data = DATA_PATH / "cross_species" / "cross_species.h5ad"
         cell_type_key = "species"
         dose_key = "Dose"
         super().__init__(
-            data_path=pbmc_data,
+            data_path=cross_species_data,
             cell_type_key=cell_type_key,
             preprocessing_pipeline=None,
             dosage_key=dose_key,

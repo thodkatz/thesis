@@ -116,7 +116,7 @@ multi_task() {
             for batch in {0..10}; do # 0 1 2 3 4 5 6 7 8 9 10
                 for model in simple adversarial adversarial_gaussian simple_ot simple_and_ot simple_vae simple_vae_ot simple_vae_and_ot; do # simple adversarial adversarial_gaussian simple_ot simple_and_ot simple_vae simple_vae_ot simple_vae_and_ot
                     echo "Batch: $batch"
-                    $HELPER $REPO/scripts/multi_task.py --batch $batch --model $model --seed $seed --dataset $dataset --perturbation tcdd
+                    $HELPER $REPO/scripts/main.py --batch $batch --model $model --seed $seed --dataset $dataset --perturbation tcdd
                 done
             done
         done

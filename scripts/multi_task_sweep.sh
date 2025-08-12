@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This script is used to run multi-task sweeps with different dosages for the nault dataset. The goal is to investigate the knowledge transfer among dosages anddiscover the best combination of dosages for the multi-task models.
+
 REPO=/g/kreshuk/katzalis/repos/thesis-tmp
 echo "Repo: "$REPO
 HELPER=$REPO/scripts/submit_gpu.py

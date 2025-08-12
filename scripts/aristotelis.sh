@@ -11,4 +11,4 @@ source ~/.bashrc
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/scratch/k/katzalis/miniforge3/envs/thesis/lib
 
 conda activate thesis
-python /home/k/katzalis/repos/thesis/scripts/multi_task.py --model simple --seed 1 --batch 4 --dataset nault-multi --perturbation tcdd
+python /home/k/katzalis/repos/thesis/scripts/main.py --model simple --seed 1 --batch 4 --dataset nault-multi --perturbation tcdd
