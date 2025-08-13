@@ -107,7 +107,7 @@ More specifically there is a growing trend toward leveraging \gls{llm} in the fi
 In contrast, autoencoder architectures and their variants have already demonstrated strong performance outperforming transformers \cite{szalata2024transformers}, while offering notable advantages in terms of resource efficiency and reduced computational complexity.
 
 
-Based on the core deep learning concept of manifold hypothesis, autoencoder architectures aim to learn a low-dimensional representation of the data, capturing the underlying structure of the perturbation response. This is achieved by the encoder-decoder architecture, where the encoder compresses the input data into a lower-dimensional space, while the decoder attempts to reconstruct the original input. This compression can yield biologically meaningful features, resulting in a more interpretable and efficient representation of the data, which can be useful for downstream tasks such as out-of-distribution detection \cite{gavriilidisMinireviewPerturbationModelling2024}.
+Based on the core deep learning concept of manifold hypothesis, autoencoder architectures aim to learn a low-dimensional representation of the data, capturing the underlying structure of the perturbation response. This is achieved by the encoder-decoder architecture, where the encoder compresses the input data into a lower-dimensional space, while the decoder attempts to reconstruct the original input. This compression can yield biologically meaningful features, resulting in a more interpretable and efficient representation of the data, which can be useful for downstream tasks such as \gls{ood} \cite{gavriilidisMinireviewPerturbationModelling2024}.
 
 
 However, the non-linearity of deep learning models presents another challenge in balancing predictive accuracy with interpretability \cite{kana2023generative}. This trade-off remains a key milestone in the field, and many recent efforts have aimed to address it through causal machine learning approaches such as the GRouNdGAN, sVAE+, and graphVCI \cite{gavriilidisMinireviewPerturbationModelling2024}. Other interpretable approaches include the usage of SHAP values by UnitedNet \cite{tangExplainableMultitaskLearning2023}, integrative gradients by PerturbNet \cite{yuPerturbNetPredictsSinglecell2022},  and the approximation of the function of the uninterpretable non-linear decoder with sparse ridge regression as demonstrated by scVIDR \cite{kanaGenerativeModelingSinglecell2023}.
@@ -129,7 +129,7 @@ One of the early-stage motives of \gls{mlt} is the implicit data augmentation by
 
 Other advantages of \gls{mlt} include the prevention of overfitting while mitigating the data-dependent noise of each task. Noisy data can obscure the underlying patterns, making it difficult for the model to learn meaningful representations. Combining data from multiple tasks provides additional evidence, so the model can distinguish relevant features from irrelevant ones, leading to more robust features \cite{ruderOverviewMultiTaskLearning2017}. This is particularly important in single-cell perturbation modeling, where the data is often noisy and sparse due to dropout events and other technical limitations. 
 
-Regarding the architecture choise of \gls{mlt}, we need to consider how to process the interplay of the tasks, a concept referred as conditioning \cite{dumoulin2018feature-wise}. In the context of deep learning, the most prominent approaches are the hard and soft parameter sharing. In hard parameter sharing, the model shares a common set of parameters across all tasks, while keeping a dedicated head for each one (\cref{fig:hard}). It is the most common approach and often preferred when tasks are closely related, as it allows for more efficient learning, reducing the risk of overfitting. In soft parameter sharing, each task has its own set of parameters, but they are encouraged to be similar through regularization (\cref{fig:soft}). It is more suitable for tasks that are less related, as it allows for more flexibility in task-specific representations, while being less prone to negative transfer \cite{ruderOverviewMultiTaskLearning2017}.
+Regarding the architecture choice of \gls{mlt}, we need to consider how to process the interplay of the tasks, a concept referred as conditioning \cite{dumoulin2018feature-wise}. In the context of deep learning, the most prominent approaches are the hard and soft parameter sharing. In hard parameter sharing, the model shares a common set of parameters across all tasks, while keeping a dedicated head for each one (\cref{fig:hard}). It is the most common approach and often preferred when tasks are closely related, as it allows for more efficient learning, reducing the risk of overfitting. In soft parameter sharing, each task has its own set of parameters, but they are encouraged to be similar through regularization (\cref{fig:soft}). It is more suitable for tasks that are less related, as it allows for more flexibility in task-specific representations, while being less prone to negative transfer \cite{ruderOverviewMultiTaskLearning2017}.
 
 \begin{figure}[h!]
     \centering
@@ -179,7 +179,7 @@ Another approach of conditioning the tasks is the family of feature-wise transfo
 \end{figure}
 
 Broadly speaking, \gls{mlt} methods can be categorized along several dimensions, including the learning paradigm (e.g., supervised or unsupervised), the type of tasks (e.g., classification or regression), and the nature of the input space. In this work, we focus primarily on supervised tasks, which also represent the most widely studied setting in the \gls{mlt} literature \cite{zhangSurveyMultiTaskLearning2021}.
-As we will explore in the next section, our primary task of interest is the prediction of gene expression profiles following a perturbation, which can be formulated as a regression problem. The input consists of a cell’s baseline (or "vehicle") gene expression profile, and the output corresponds to the gene expression profile after the perturbation is applied. The perturbation itself is represented by a condition vector, typically implemented as a one-hot encoding that specifies the type of perturbation administered to the cell.
+As we will explore in the \crefwithname{sec:method}, our primary task of interest is the prediction of gene expression profiles following a perturbation, which can be formulated as a regression problem. The input consists of a cell’s baseline (or "vehicle") gene expression profile, and the output corresponds to the gene expression profile after the perturbation is applied. The perturbation itself is represented by a condition vector, that could be simply implemented as a one-hot encoding that specifies the type of perturbation administered to the cell.
 
 Formally speaking, for supervised tasks with the same input space, we can define $m$ learning tasks $\{T_{i}\}_{i=1}^m$, and $\mathcal{D}_i$ as the accompanying dataset for the $i$th task, consisting of $n_i$ samples, i.e., $\mathcal{D}_i = \left\{(x_j^i, y_j^i)\right\}_{j=1}^{n_i}$, where $x_j^i$ is the $j$th input sample and $y_j^i$ is its corresponding label.
 The loss for the $i$th task can be formulated as $\mathcal{L}_i(\{\theta_i, \theta_{sp}\}, \mathcal{D}_i)$, where $\theta_i$ are the task-specific parameters and $\theta_{sp}$ are the shared parameters.
@@ -240,6 +240,7 @@ Instead of treating perturbation objectives as independent tasks, the objectives
 %sequential, parallel, soft, hard parameter sharing
 
 \section{Method}
+\label{sec:method}
 
 Based on the previous analysis of potential integration of perturbation objectives, emphasis has been given to the single-cell 
 use case, as it has been the most explored in the literature due to the recent advancements of single-cell technology. More specifically, we define the prediction of the unseen single-cell gene expression after a perturbation is applied as a task, and we will explore designing a model that can achieve this for a set of perturbations. Similarly to the drug-protein study \cite{allenspach2024neural}, where the prediction of the binding affinity between a drug and a protein corresponds to a different task for each protein, we will treat each perturbation as a separate task. 
@@ -266,7 +267,7 @@ About the conditioning of the task, as we have seen at \crefwithname{sec:mlt}, w
 
 \[ \text{FiLM(x)} = \gamma (z) \odot x + \beta (z) \]
 
-, where $\gamma$, and $\beta$ are learnable parameters generated by the so called FiLM generator, that takes as input a condition $z$ (e.g. a vector that indicates the task), and $x$ is the input to be transformed. 
+, where $\gamma$, and $\beta$ are learnable parameters generated by the so called FiLM generator, that takes as input a condition $z$, and $x$ is the input to be transformed. 
 A FiLM layer is the application of the FiLM transformation to the input of a layer, where the parameters $\gamma$ and $\beta$ can be generated by a common or layer-specific FiLM generator.   Then the result of the transformation is propagated to the rest of the network.
 
 
@@ -307,9 +308,8 @@ The loss is the reconstruction loss of the autoencoder, which is the mean square
 % I could mention why the condition isn't integrated at the first layers?
 
 \begin{figure}[h!]
-    \centering
     \includegraphics[width=\textwidth]{biorender_film_architecture.png}
-    \caption{Illustration of the multi-task architecture. The encoder is shared across all tasks, while the decoder is conditioned by the task-specific FiLM layers. In this example, only two film layers are integrated in the first two hidden layers of the decoder. The FiLM generator takes as input a conditioning representation of the perturbations (e.g. one-hot encoded), and outputs the modulation parameters $\gamma$, and $\beta$ for the FiLM layers. Created in  \url{https://BioRender.com}}
+    \caption{Illustration of the multi-task architecture (created in  \url{https://BioRender.com}}). The encoder is shared across all tasks, while the decoder is conditioned by the task-specific FiLM layers. In this example, only two film layers are integrated in the first two hidden layers of the decoder. The FiLM gener ator takes as input a conditioning representation of the perturbations (e.g. one-hot encoding), and outputs the modulation parameters $\gamma$, and $\beta$ for the FiLM layers. 
 \end{figure}
 % I have to document the losses
 

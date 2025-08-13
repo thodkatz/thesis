@@ -20,21 +20,82 @@ For example, let's suppose that we have two cell types and two conditions for ea
 |B cells   |control   |
 |B cells   |stimulated   |
 
-If our target is the cell type of `Hepatocytes - portal`, then we hold-out the stimulated profiles of this cell type, and we can use the rest for training. Then, using its control profile as input, we aim to predict its stimulated expression.
+If our target is the cell type of `Hepatocytes - portal`, then we hold out its stimulated profiles, and we can use the rest for training. Then, using its control profile as input, we aim to predict its stimulated expression.
 
 We have tested our model for three case studies. For the first one, we evaluated it on human peripheral blood mononuclear cells (PBMCs) stimulated by interferon-beta (IFN-b), where only one perturbation is observed. The second one includes multiple perturbations represented as different dosages of the TCDD drug administered to mice. The third case, like the first, involves a single perturbation, but applied across different species, aiming to predict the perturbed transcriptomic profile for an unseen species instead of an unseen cell type. These case studies are referred as `pbmc`, `nault`, and `cross-species` correspondingly.
 
 ## Directory structure
 
+```
+├── analysis
+│   ├── analysis_literature_models.ipynb
+│   ├── analysis_multi_task_aae.ipynb
+│   ├── datasets.ipynb
+│   ├── distance_metrics.ipynb
+│   ├── metrics2.csv
+│   ├── metrics.csv
+│   ├── multi_task_aae.csv
+│   ├── multi_task_aae_overview.csv
+│   └── train_test_counts.ipynb
+├── data
+├── environment.yml
+├── experiments
+│   ├── butterfly.py
+│   ├── count_parameters.py
+│   ├── evaluation.ipynb
+│   ├── multi_task_aae_cli.py
+│   ├── multi_task_aae_hparam.py
+│   ├── playground.ipynb
+│   ├── scbutterfly-perturbation.ipynb
+│   └── unifly-pbmc.ipynb
+├── lib
+│   ├── codex
+│   ├── scButterfly
+│   ├── scgen
+│   ├── scPreGAN
+│   ├── scVIDR
+│   └── UnitedNet
+├── Makefile
+├── optuna
+│   └── db.sqlite3
+├── README.md
+├── report
+├── saved_results
+├── scripts
+│   ├── all.sh
+│   ├── aristotelis.sh
+│   ├── diagnostics.sh
+│   ├── hparam.sh
+│   ├── main.py
+│   ├── multi_task_sweep.py
+│   ├── multi_task_sweep.sh
+│   ├── submit_gpu_aristotelis.py
+│   └── submit_gpu_embl.py
+├── setup.py
+├── thesis
+    ├── datasets.py
+    ├── evaluation.py
+    ├── model.py
+    ├── multi_task_aae.py
+    ├── preprocessing.py
+    └── utils.py
+```
+
+- The `lib` directory contains the repositories of the literature models used for experimentation and benchmarking. These are fetched via git submodules as mentioned in [Setup](#setup).
+- Under `report` we can find all the relevant files to generate our main report of this work (`report/main.pdf`).
+- The `analysis` directory is used to create the plots of the evaluation data saved at `analysis/metrics.csv`.
+- The core implementation of our multi-task models can be found at `thesis/multi_task_aae.py`.
+- A common interface to benchmark all of these different models is implemented named as `ModelPipeline` in `thesis/model.py`.
+- The `scripts` directory is used to automate the benchmarking of all the models across all case studies running on a cluster. More in [Scripts - HPC](#scripts)
 
 
-## Setup
+## <a name="setup"></a> Setup
 
 Requirements:
 - conda
 - make
 - Linux
-- NVIDIA gpu
+- cuda
 
 ```
 git clone --recurse-submodules git@github.com:thodkatz/thesis.git
@@ -44,8 +105,8 @@ conda activate <env name>
 make setup_env
 ```
 
-This will install the necessarry dependencies and it will create two directories. The `data`, and the `saved_results`.
-Under the `data` dir, we should download the datasets from [here](https://drive.google.com/drive/folders/1zcTdTAmcDprXYFJ8EGLado6AP0-H9fX-?usp=sharing). The file paths should be:
+This will install the necessary dependencies and it will create two directories. The `data`, and the `saved_results`.
+Under the `data` directory, we should download the datasets from [here](https://drive.google.com/drive/folders/1zcTdTAmcDprXYFJ8EGLado6AP0-H9fX-?usp=sharing). The file paths should be:
 ```
 ./data/pbmc/pbmc.h5ad
 ./data/scvidr/nault2021_multiDose.h5ad
@@ -123,7 +184,7 @@ For the last one, there are several examples under `experiments/playground.ipynb
 
 
 
-## Scripts - HPC
+## <a name="scripts"></a> Scripts - HPC
 
 Let's assume that we want to benchmark all the models having each possible cell type as a target for the `pbmc` case study, which consists of seven cell types. We could have a script such as:
 
@@ -143,7 +204,7 @@ pbmc
 
 ```
 
-However, the above script is very time-consuming. Assuming that we have a High-Performance Computing (HPC) infrastructure, we can use slurm scripts to assign a job for each one of the above combinations. For our use case, we have relied on the cluster of the European Molecular Biology Laborary (EMBL). We have a cluster-specific script `scripts/submit_gpu_embl.py` used by the `scripts/all.sh` to benchmark our models for all the case studies.
+However, the above script is very time-consuming. Assuming that we have a High-Performance Computing (HPC) infrastructure, we can use slurm scripts to assign a job for each one of the above combinations. For our use case, we have relied on the cluster of the European Molecular Biology Laboratory (EMBL). We have a cluster-specific script `scripts/submit_gpu_embl.py` used by the `scripts/all.sh` to benchmark our models for all the case studies.
 
 ## Hyperparameter tuning
 
