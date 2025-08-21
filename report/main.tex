@@ -242,11 +242,8 @@ Instead of treating perturbation objectives as independent tasks, the objectives
 \section{Method}
 \label{sec:method}
 
-Based on the previous analysis of potential integration of perturbation objectives, emphasis has been given to the single-cell 
-use case, as it has been the most explored in the literature due to the recent advancements of single-cell technology. More specifically, we define the prediction of the unseen single-cell gene expression after a perturbation is applied as a task, and we will explore designing a model that can achieve this for a set of perturbations. Similarly to the drug-protein study \cite{allenspach2024neural}, where the prediction of the binding affinity between a drug and a protein corresponds to a different task for each protein, we will treat each perturbation as a separate task. 
-
-A typical dataset for this task consists of transcriptomic profiles obtained from \gls{sc} across multiple biological contexts, such as different cell types, perturbations, dosages, studies, or species, under both control and perturbed conditions. The objective is to predict the perturbed gene expression profile of a held-out context, given its control-state profile and the kind of perturbation.
-To accomplish this, the model learns the effect of perturbations from the remaining (seen) contexts and generalizes this knowledge to unseen ones. This setting enables the evaluation of a model's ability to extrapolate known perturbation effects to new biological or experimental domains and represents the primary objective of perturbation modeling, the \gls{ood}.
+Based on the previous analysis of potential integration of perturbation objectives, emphasis has been given to the single-cell use case, as it has been the most explored in the literature due to the recent advancements of single-cell technology. 
+To facilitate a multi-task learning approach, we define as a task the prediction of the single-cell perturbed gene expression profile of a held-out context, having as inputs its control-state profile and the kind of perturbation. To accomplish this, the model learns the effect of perturbations from the remaining (seen) contexts and generalizes this knowledge to unseen ones. This setting enables the evaluation of a model's ability to extrapolate known perturbation effects to new biological or experimental domains and represents the primary objective of perturbation modeling, the \gls{ood}. A typical dataset for this task consists of transcriptomic profiles from \gls{sc} across multiple biological contexts, such as different cell types, perturbation, dosages, studies, or species under both control and perturbed conditions. Similarly to the drug-protein study \cite{allenspachNeuralMultitaskLearning2024}, where the prediction of the binding affinity between a drug and a protein corresponds to a different for each protein, we will treat each perturbation as a separate task.
 
 % why the perturbation has been integrated not at the input but the decoder? 
 
@@ -258,7 +255,7 @@ The perturbation is represented as a one-hot encoded vector, where, for a datase
 
 \begin{wrapfigure}{r}{0.45\textwidth}
   \begin{center}
-    \includegraphics[width=.4\textwidth]{film_layers.png}
+    \includegraphics[width=.45\textwidth]{film_layers.png}
   \end{center}
   \caption{FiLM \cite{dumoulin2018feature-wise}}
 \end{wrapfigure}
@@ -463,7 +460,7 @@ For the following analysis, we have selected some of our most promising multi-ta
 We have evaluated the models on human \gls{pbmc} that have been stimulated by IFN-b interferon (Kang et al. \cite{kanaGenerativeModelingSinglecell2023}). For this dataset, there is only one type of perturbation, and the conditioning signal of our multi-task architectures is a one-hot encoded vector with two entries, one for the control condition and one for the perturbed condition. We have used the provided preprocessed data from scGen study \cite{lotfollahiScGenPredictsSinglecell2019}, which consists of 18.868 cells, and the most highly variable 6.998 genes.
 %How the data was preprocessed? Number of samples?
 
-We have tested the models across all the available cell types, training a model from scratch for each use case. To test each one this models, we held-out the perturbed gene expressions of the cell type of interest, and we use the rest to train the model. 
+We have tested the models across all the available cell types, training a model from scratch for each use case. To test each model, we held out the perturbed gene expression of the cell type of interest and used the rest to train.
 
 By averaging the results across all the cell types (see \cref{tab:eval_pbmc}), we can see that one of our multi-task versions, \verb|MTAe|, achieved the highest DEGs of $\small{\sim} 75$, while achieving comparable $R^2$ scores to the scVIDR, and scButterfly, as the best performing ones.  The distance metrics show the last ones perform better than \verb|MTAe|, indicating a more representative global structure of the perturbed gene expression profiles. However, \verb|MTAeAdv|, and \verb|MTVae|, seemed to be on par with the best performing models across all metrics, while the optimal transport variations, \verb|MTAeOT|, \verb|MTAePlusOT|, \verb|MTVaeOT|, and \verb|MTVaePlusOT|, performed significantly worse than the rest of the models.
 As shown in \cref{fig:eval_pbmc}, we have selected ISG15, a marker gene of IFN-b, as an example gene to visualize the distribution of the predicted and expected gene expression profiles across cell types. However, none of the models seem to capture the expected distribution of the gene expression profile.
@@ -542,7 +539,7 @@ As discussed in \crefwithname{sec:eval_single_perturbation}, our multi-task arch
 The dataset was preprocessed using Scanpy \cite{wolf2018scanpy} by filtering out cells with fewer than 500 total counts and fewer than 720 expressed genes, as well as genes expressed in fewer than 100 cells. The data was log-transformed, for a smoother training process, and the top 5,000 \gls{hvg} were selected.
 
 Each dosage level was treated as a distinct perturbation, with the control condition serving as the baseline. The conditioning signal for our multi-task architectures is a one-hot encoded vector of length nine: one entry for each of the eight dosages, and one for the control condition. For evaluation, we trained a separate model for each cell type, holding out the perturbed gene expression profiles of that cell type for testing. The same model was used to predict responses across all dosages, leveraging the model's ability to condition on perturbation identity.
-In contrast, the baseline models, which do not support conditioning on multiple perturbations, required training a separate model for each dosage. An exception is scVIDR, which is designed to handle multiple dosage levels within a single model.
+In contrast, the baseline models, which do not support conditioning on multiple perturbations, required to train a separate model for each dosage. An exception is scVIDR, which is designed to handle multiple dosage levels within a single model.
 
 We have averaged the results across all the cell types, and dosages (see \cref{tab:eval_nault}), and similarly with the case of the \crefwithname{sec:eval_single_perturbation}, our multi-task model, \verb|MTAe|, achieved the highest DEGs of $\small{\sim} 20$. scGen achieved the highest $R^2$ scores, but with a very low number of DEGs, and scButterfly's performance remained competitive across all metrics. Our optimal transport variations, performed well on the distance metrics, but poorly on the baseline ones.
 
