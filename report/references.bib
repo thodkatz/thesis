@@ -1,38 +1,24 @@
-
-
 @article{jiMachineLearningPerturbational2021,
-  title = {Machine Learning for Perturbational Single-Cell Omics},
-  author = {Ji, Yuge and Lotfollahi, Mohammad and Wolf, F. Alexander and Theis, Fabian J.},
-  year = {2021},
-  month = jun,
-  journal = {Cell Systems},
-  volume = {12},
-  number = {6},
-  pages = {522--537},
-  issn = {24054712},
-  doi = {10.1016/j.cels.2021.05.016},
-  urldate = {2024-07-08},
-  abstract = {Cell biology is fundamentally limited in its ability to collect complete data on cellular phenotypes and the wide range of responses to perturbation. Areas such as computer vision and speech recognition have addressed this problem of characterizing unseen or unlabeled conditions with the combined advances of big data, deep learning, and computing resources in the past 5 years. Similarly, recent advances in machine learning approaches enabled by single-cell data start to address prediction tasks in perturbation response modeling. We first define objectives in learning perturbation response in single-cell omics; survey existing approaches, resources, and datasets (https://github.com/theislab/sc-pert); and discuss how a perturbation atlas can enable deep learning models to construct an informative perturbation latent space. We then examine future avenues toward more powerful and explainable modeling using deep neural networks, which enable the integration of disparate information sources and an understanding of heterogeneous, complex, and unseen systems.},
-  langid = {english},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/VRD5SW5G/Ji et al. - 2021 - Machine learning for perturbational single-cell om.pdf}
+  title={Machine learning for perturbational single-cell omics},
+  author={Ji, Yuge and Lotfollahi, Mohammad and Wolf, F Alexander and Theis, Fabian J},
+  journal={Cell Systems},
+  volume={12},
+  number={6},
+  pages={522--537},
+  year={2021},
+  publisher={Elsevier}
 }
 
-@article{gavriilidisMinireviewPerturbationModelling2024,
-  title = {A Mini-Review on Perturbation Modelling across Single-Cell Omic Modalities},
-  author = {Gavriilidis, George I. and Vasileiou, Vasileios and Orfanou, Aspasia and Ishaque, Naveed and Psomopoulos, Fotis},
-  date = {2024-12},
-  journaltitle = {Computational and Structural Biotechnology Journal},
-  shortjournal = {Computational and Structural Biotechnology Journal},
-  volume = {23},
-  pages = {1886--1896},
-  issn = {20010370},
-  doi = {10.1016/j.csbj.2024.04.058},
-  url = {https://linkinghub.elsevier.com/retrieve/pii/S2001037024001417},
-  urldate = {2024-07-07},
-  abstract = {Recent advances in single-cell omics technology have transformed the landscape of cellular and molecular research, enriching the scope and intricacy of cellular characterisation. Perturbation modelling seeks to comprehensively grasp the effects of external influences like disease onset or molecular knock-outs or external stimulants on cellular physiology, specifically on transcription factors, signal transducers, biological pathways, and dynamic cell states. Machine and deep learning tools transform complex perturbational phenomena in algorithmically tractable tasks to formulate predictions based on various types of single-cell datasets. However, the recent surge in tools and datasets makes it challenging for experimental biologists and computational sci­ entists to keep track of the recent advances in this rapidly expanding filed of single-cell modelling. Here, we recapitulate the main objectives of perturbation modelling and summarise novel single-cell perturbation tech­ nologies based on genetic manipulation like CRISPR or compounds, spanning across omic modalities. We then concisely review a burgeoning group of computational methods extending from classical statistical inference methodologies to various machine and deep learning architectures like shallow models or autoencoders, to biologically informed approaches based on gene regulatory networks, and to combinatorial efforts reminiscent of ensemble learning. We also discuss the rising trend of large foundational models in single-cell perturbation modelling inspired by large language models. Lastly, we critically assess the challenges that underline single-cell perturbation modelling while pointing towards relevant future perspectives like perturbation atlases, multiomics and spatial datasets, causal machine learning for interpretability, multi-task learning for performance and explainability as well as prospects for solving interoperability and benchmarking pitfalls.},
-  langid = {english},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/VTAE3ESF/Gavriilidis et al. - 2024 - A mini-review on perturbation modelling across sin.pdf}
+
+@article{gavriilidis2024mini,
+  title={A mini-review on perturbation modelling across single-cell omic modalities},
+  author={Gavriilidis, George I and Vasileiou, Vasileios and Orfanou, Aspasia and Ishaque, Naveed and Psomopoulos, Fotis},
+  journal={Computational and Structural Biotechnology Journal},
+  volume={23},
+  pages={1886},
+  year={2024}
 }
+
 
 @article{dumoulin2018feature-wise,
   author = {Dumoulin, Vincent and Perez, Ethan and Schucher, Nathan and Strub, Florian and Vries, Harm de and Courville, Aaron and Bengio, Yoshua},
@@ -43,111 +29,79 @@
   doi = {10.23915/distill.00011}
 }
 
+
 @article{tangExplainableMultitaskLearning2023,
-  title = {Explainable Multi-Task Learning for Multi-Modality Biological Data Analysis},
-  author = {Tang, Xin and Zhang, Jiawei and He, Yichun and Zhang, Xinhe and Lin, Zuwan and Partarrieu, Sebastian and Hanna, Emma Bou and Ren, Zhaolin and Shen, Hao and Yang, Yuhong and Wang, Xiao and Li, Na and Ding, Jie and Liu, Jia},
-  date = {2023-05-03},
-  journaltitle = {Nature Communications},
-  shortjournal = {Nat Commun},
-  volume = {14},
-  number = {1},
-  pages = {2546},
-  issn = {2041-1723},
-  doi = {10.1038/s41467-023-37477-x},
-  url = {https://www.nature.com/articles/s41467-023-37477-x},
-  urldate = {2024-07-07},
-  abstract = {Abstract             Current biotechnologies can simultaneously measure multiple high-dimensional modalities (e.g., RNA, DNA accessibility, and protein) from the same cells. A combination of different analytical tasks (e.g., multi-modal integration and cross-modal analysis) is required to comprehensively understand such data, inferring how gene regulation drives biological diversity and functions. However, current analytical methods are designed to perform a single task, only providing a partial picture of the multi-modal data. Here, we present UnitedNet, an explainable multi-task deep neural network capable of integrating different tasks to analyze single-cell multi-modality data. Applied to various multi-modality datasets (e.g., Patch-seq, multiome ATAC\,+\,gene expression, and spatial transcriptomics), UnitedNet demonstrates similar or better accuracy in multi-modal integration and cross-modal prediction compared with state-of-the-art methods. Moreover, by dissecting the trained UnitedNet with the explainable machine learning algorithm, we can directly quantify the relationship between gene expression and other modalities with cell-type specificity. UnitedNet is a comprehensive end-to-end framework that could be broadly applicable to single-cell multi-modality biology. This framework has the potential to facilitate the discovery of cell-type-specific regulation kinetics across transcriptomics and other modalities.},
-  langid = {english},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/2H746QBC/Tang et al. - 2023 - Explainable multi-task learning for multi-modality.pdf}
+  title={Explainable multi-task learning for multi-modality biological data analysis},
+  author={Tang, Xin and Zhang, Jiawei and He, Yichun and Zhang, Xinhe and Lin, Zuwan and Partarrieu, Sebastian and Hanna, Emma Bou and Ren, Zhaolin and Shen, Hao and Yang, Yuhong and others},
+  journal={Nature communications},
+  volume={14},
+  number={1},
+  pages={2546},
+  year={2023},
+  publisher={Nature Publishing Group UK London}
 }
+
 
 @article{kanaGenerativeModelingSinglecell2023,
-  title = {Generative Modeling of Single-Cell Gene Expression for Dose-Dependent Chemical Perturbations},
-  author = {Kana, Omar and Nault, Rance and Filipovic, David and Marri, Daniel and Zacharewski, Tim and Bhattacharya, Sudin},
-  date = {2023-08},
-  journaltitle = {Patterns},
-  shortjournal = {Patterns},
-  volume = {4},
-  number = {8},
-  pages = {100817},
-  issn = {26663899},
-  doi = {10.1016/j.patter.2023.100817},
-  url = {https://linkinghub.elsevier.com/retrieve/pii/S2666389923001861},
-  urldate = {2024-09-16},
-  abstract = {Single-cell sequencing reveals the heterogeneity of cellular response to chemical perturbations. However, testing all relevant combinations of cell types, chemicals, and doses is a daunting task. A deep generative learning formalism called variational autoencoders (VAEs) has been effective in predicting single-cell gene expression perturbations for single doses. Here, we introduce single-cell variational inference of doseresponse (scVIDR), a VAE-based model that predicts both single-dose and multiple-dose cellular responses better than existing models. We show that scVIDR can predict dose-dependent gene expression across mouse hepatocytes, human blood cells, and cancer cell lines. We biologically interpret the latent space of scVIDR using a regression model and use scVIDR to order individual cells based on their sensitivity to chemical perturbation by assigning each cell a ‘‘pseudo-dose’’ value. We envision that scVIDR can help reduce the need for repeated animal testing across tissues, chemicals, and doses.},
-  langid = {english},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/NSDFFGGB/Kana et al. - 2023 - Generative modeling of single-cell gene expression for dose-dependent chemical perturbations.pdf}
+  title={Generative modeling of single-cell gene expression for dose-dependent chemical perturbations},
+  author={Kana, Omar and Nault, Rance and Filipovic, David and Marri, Daniel and Zacharewski, Tim and Bhattacharya, Sudin},
+  journal={Patterns},
+  volume={4},
+  number={8},
+  year={2023},
+  publisher={Elsevier}
 }
+
+
 
 @article{weiScPreGANDeepGenerative2022,
-  title = {{{scPreGAN}}, a Deep Generative Model for Predicting the Response of Single-Cell Expression to Perturbation},
-  author = {Wei, Xiajie and Dong, Jiayi and Wang, Fei},
-  editor = {Robinson, Peter},
-  date = {2022-06-27},
-  journaltitle = {Bioinformatics},
-  volume = {38},
-  number = {13},
-  pages = {3377--3384},
-  issn = {1367-4803, 1367-4811},
-  doi = {10.1093/bioinformatics/btac357},
-  url = {https://academic.oup.com/bioinformatics/article/38/13/3377/6593485},
-  urldate = {2024-09-30},
-  abstract = {Motivation: Rapid developments of single-cell RNA sequencing technologies allow study of responses to external perturbations at individual cell level. However, in many cases, it is hard to collect the perturbed cells, such as knowing the response of a cell type to the drug before actual medication to a patient. Prediction in silicon could alleviate the problem and save cost. Although several tools have been developed, their prediction accuracy leaves much room for improvement.},
-  langid = {english},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/BL4UDLZF/Wei et al. - 2022 - scPreGAN, a deep generative model for predicting the response of single-cell expression to perturbat.pdf}
+  title={scPreGAN, a deep generative model for predicting the response of single-cell expression to perturbation},
+  author={Wei, Xiajie and Dong, Jiayi and Wang, Fei},
+  journal={Bioinformatics},
+  volume={38},
+  number={13},
+  pages={3377--3384},
+  year={2022},
+  publisher={Oxford University Press}
 }
+
 
 @article{caoScButterflyVersatileSinglecell2024,
-  title = {{{scButterfly}}: A Versatile Single-Cell Cross-Modality Translation Method via Dual-Aligned Variational Autoencoders},
-  shorttitle = {{{scButterfly}}},
-  author = {Cao, Yichuan and Zhao, Xiamiao and Tang, Songming and Jiang, Qun and Li, Sijie and Li, Siyu and Chen, Shengquan},
-  date = {2024-04-06},
-  journaltitle = {Nature Communications},
-  shortjournal = {Nat Commun},
-  volume = {15},
-  number = {1},
-  pages = {2973},
-  issn = {2041-1723},
-  doi = {10.1038/s41467-024-47418-x},
-  url = {https://www.nature.com/articles/s41467-024-47418-x},
-  urldate = {2024-09-08},
-  abstract = {Abstract             Recent advancements for simultaneously profiling multi-omics modalities within individual cells have enabled the interrogation of cellular heterogeneity and molecular hierarchy. However, technical limitations lead to highly noisy multi-modal data and substantial costs. Although computational methods have been proposed to translate single-cell data across modalities, broad applications of the methods still remain impeded by formidable challenges. Here, we propose scButterfly, a versatile single-cell cross-modality translation method based on dual-aligned variational autoencoders and data augmentation schemes. With comprehensive experiments on multiple datasets, we provide compelling evidence of scButterfly’s superiority over baseline methods in preserving cellular heterogeneity while translating datasets of various contexts and in revealing cell type-specific biological insights. Besides, we demonstrate the extensive applications of scButterfly for integrative multi-omics analysis of single-modality data, data enhancement of poor-quality single-cell multi-omics, and automatic cell type annotation of scATAC-seq data. Moreover, scButterfly can be generalized to unpaired data training, perturbation-response analysis, and consecutive translation.},
-  langid = {english},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/GK8UQTMV/Cao et al. - 2024 - scButterfly a versatile single-cell cross-modality translation method via dual-aligned variational.pdf}
+  title={scButterfly: a versatile single-cell cross-modality translation method via dual-aligned variational autoencoders},
+  author={Cao, Yichuan and Zhao, Xiamiao and Tang, Songming and Jiang, Qun and Li, Sijie and Li, Siyu and Chen, Shengquan},
+  journal={Nature Communications},
+  volume={15},
+  number={1},
+  pages={2973},
+  year={2024},
+  publisher={Nature Publishing Group UK London}
 }
+
 
 @article{lotfollahiScGenPredictsSinglecell2019,
-  title = {{{scGen}} Predicts Single-Cell Perturbation Responses},
-  author = {Lotfollahi, Mohammad and Wolf, F. Alexander and Theis, Fabian J.},
-  date = {2019-08},
-  journaltitle = {Nature Methods},
-  shortjournal = {Nat Methods},
-  volume = {16},
-  number = {8},
-  pages = {715--721},
-  issn = {1548-7091, 1548-7105},
-  doi = {10.1038/s41592-019-0494-8},
-  url = {https://www.nature.com/articles/s41592-019-0494-8},
-  urldate = {2024-09-08},
-  langid = {english},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/SB32E326/Lotfollahi et al. - 2019 - scGen predicts single-cell perturbation responses.pdf}
+  title={scGen predicts single-cell perturbation responses},
+  author={Lotfollahi, Mohammad and Wolf, F Alexander and Theis, Fabian J},
+  journal={Nature methods},
+  volume={16},
+  number={8},
+  pages={715--721},
+  year={2019},
+  publisher={Nature Publishing Group US New York}
 }
 
-@online{zhangSurveyMultiTaskLearning2021,
-  title = {A {{Survey}} on {{Multi-Task Learning}}},
-  author = {Zhang, Yu and Yang, Qiang},
-  date = {2021-03-29},
-  eprint = {1707.08114},
-  eprinttype = {arXiv},
-  eprintclass = {cs},
-  url = {http://arxiv.org/abs/1707.08114},
-  urldate = {2024-07-07},
-  abstract = {Multi-Task Learning (MTL) is a learning paradigm in machine learning and its aim is to leverage useful information contained in multiple related tasks to help improve the generalization performance of all the tasks. In this paper, we give a survey for MTL from the perspective of algorithmic modeling, applications and theoretical analyses. For algorithmic modeling, we give a definition of MTL and then classify different MTL algorithms into five categories, including feature learning approach, low-rank approach, task clustering approach, task relation learning approach and decomposition approach as well as discussing the characteristics of each approach. In order to improve the performance of learning tasks further, MTL can be combined with other learning paradigms including semi-supervised learning, active learning, unsupervised learning, reinforcement learning, multi-view learning and graphical models. When the number of tasks is large or the data dimensionality is high, we review online, parallel and distributed MTL models as well as dimensionality reduction and feature hashing to reveal their computational and storage advantages. Many real-world applications use MTL to boost their performance and we review representative works in this paper. Finally, we present theoretical analyses and discuss several future directions for MTL.},
-  langid = {english},
-  pubstate = {prepublished},
-  keywords = {Computer Science - Artificial Intelligence,Computer Science - Machine Learning},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/SKFEFD2U/Zhang and Yang - 2021 - A Survey on Multi-Task Learning.pdf}
+
+
+@article{zhangSurveyMultiTaskLearning2021,
+  title={A survey on multi-task learning},
+  author={Zhang, Yu and Yang, Qiang},
+  journal={IEEE transactions on knowledge and data engineering},
+  volume={34},
+  number={12},
+  pages={5586--5609},
+  year={2021},
+  publisher={IEEE}
 }
+
 
 @article{heumos2024pertpy,
   title={Pertpy: an end-to-end framework for perturbation analysis},
@@ -223,35 +177,28 @@
   publisher={Elsevier}
 }
 
-@online{yuPerturbNetPredictsSinglecell2022,
-  title = {{{PerturbNet}} Predicts Single-Cell Responses to Unseen Chemical and Genetic Perturbations},
-  author = {Yu, Hengshi and Welch, Joshua D.},
-  date = {2022-07-21},
-  eprinttype = {Bioinformatics},
-  doi = {10.1101/2022.07.20.500854},
-  url = {http://biorxiv.org/lookup/doi/10.1101/2022.07.20.500854},
-  urldate = {2025-06-17},
-  abstract = {Abstract           Small molecule treatment and gene knockout or overexpression induce complex changes in the molecular states of cells, and the space of possible perturbations is too large to measure exhaustively. We present PerturbNet, a deep generative model for predicting the distribution of cell states induced by unseen chemical or genetic perturbations. Our key innovation is to use high-throughput perturbation response data such as Perturb-Seq to learn a continuous mapping between the space of possible perturbations and the space of possible cell states.           Using Sci-Plex and LINCS datasets, PerturbNet can accurately predict the distribution of gene expression changes induced by unseen small molecules given only their chemical structures. PerturbNet also accurately predicts gene expression changes induced by shRNA, CRISPRi, or CRISPRa perturbations using a perturbation network trained on gene functional annotations. Furthermore, self-supervised sequence embeddings allow PerturbNet to predict gene expression changes induced by missense mutations. We also use PerturbNet to attribute cell state shifts to specific perturbation features, including atoms and functional gene annotations. Finally, we leverage PerturbNet to design perturbations that achieve a desired cell state distribution. PerturbNet holds great promise for understanding perturbation responses and ultimately designing novel chemical and genetic interventions.},
-  langid = {english},
-  pubstate = {prepublished},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/WYF5WJUP/Yu and Welch - 2022 - PerturbNet predicts single-cell responses to unseen chemical and genetic perturbations.pdf}
+@article{yuPerturbNetPredictsSinglecell2022,
+  title={Perturbnet predicts single-cell responses to unseen chemical and genetic perturbations},
+  author={Yu, Hengshi and Qian, Weizhou and Song, Yuxuan and Welch, Joshua D},
+  journal={Molecular Systems Biology},
+  volume={21},
+  number={8},
+  pages={960--982},
+  year={2025},
+  publisher={Nature Publishing Group UK London}
 }
 
-@online{standleyWhichTasksShould2020,
-  title = {Which {{Tasks Should Be Learned Together}} in {{Multi-task Learning}}?},
-  author = {Standley, Trevor and Zamir, Amir R. and Chen, Dawn and Guibas, Leonidas and Malik, Jitendra and Savarese, Silvio},
-  date = {2020-09-02},
-  eprint = {1905.07553},
-  eprinttype = {arXiv},
-  eprintclass = {cs},
-  url = {http://arxiv.org/abs/1905.07553},
-  urldate = {2024-07-07},
-  abstract = {Many computer vision applications require solving multiple tasks in real-time. A neural network can be trained to solve multiple tasks simultaneously using multi-task learning. This can save computation at inference time as only a single network needs to be evaluated. Unfortunately, this often leads to inferior overall performance as task objectives can compete, which consequently poses the question: which tasks should and should not be learned together in one network when employing multi-task learning? We study task cooperation and competition in several different learning settings and propose a framework for assigning tasks to a few neural networks such that cooperating tasks are computed by the same neural network, while competing tasks are computed by different networks. Our framework offers a time-accuracy trade-off and can produce better accuracy using less inference time than not only a single large multi-task neural network but also many single-task networks.},
-  langid = {english},
-  pubstate = {prepublished},
-  keywords = {Computer Science - Computer Vision and Pattern Recognition},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/Z4PQVQCH/Standley et al. - 2020 - Which Tasks Should Be Learned Together in Multi-ta.07553}
+
+
+@inproceedings{standleyWhichTasksShould2020,
+  title={Which tasks should be learned together in multi-task learning?},
+  author={Standley, Trevor and Zamir, Amir and Chen, Dawn and Guibas, Leonidas and Malik, Jitendra and Savarese, Silvio},
+  booktitle={International conference on machine learning},
+  pages={9120--9132},
+  year={2020},
+  organization={PMLR}
 }
+
 
 @article{hofstadter2001analogy,
   title={Analogy as the core of cognition},
@@ -261,39 +208,15 @@
   year={2001}
 }
 
-@online{ruderOverviewMultiTaskLearning2017,
-  title = {An {{Overview}} of {{Multi-Task Learning}} in {{Deep Neural Networks}}},
-  author = {Ruder, Sebastian},
-  date = {2017-06-15},
-  eprint = {1706.05098},
-  eprinttype = {arXiv},
-  eprintclass = {cs},
-  doi = {10.48550/arXiv.1706.05098},
-  url = {http://arxiv.org/abs/1706.05098},
-  urldate = {2025-06-27},
-  abstract = {Multi-task learning (MTL) has led to successes in many applications of machine learning, from natural language processing and speech recognition to computer vision and drug discovery. This article aims to give a general overview of MTL, particularly in deep neural networks. It introduces the two most common methods for MTL in Deep Learning, gives an overview of the literature, and discusses recent advances. In particular, it seeks to help ML practitioners apply MTL by shedding light on how MTL works and providing guidelines for choosing appropriate auxiliary tasks.},
-  langid = {english},
-  pubstate = {prepublished},
-  keywords = {Computer Science - Artificial Intelligence,Computer Science - Machine Learning,Statistics - Machine Learning},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/Z77FEBZJ/Ruder - 2017 - An Overview of Multi-Task Learning in Deep Neural Networks.pdf}
+
+@article{ruderOverviewMultiTaskLearning2017,
+  title={An overview of multi-task learning in deep neural networks},
+  author={Ruder, Sebastian},
+  journal={arXiv preprint arXiv:1706.05098},
+  year={2017}
 }
 
-@article{allenspachNeuralMultitaskLearning2024,
-  title = {Neural Multi-Task Learning in Drug Design},
-  author = {Allenspach, Stephan and Hiss, Jan A. and Schneider, Gisbert},
-  date = {2024-02-20},
-  journaltitle = {Nature Machine Intelligence},
-  shortjournal = {Nat Mach Intell},
-  volume = {6},
-  number = {2},
-  pages = {124--137},
-  issn = {2522-5839},
-  doi = {10.1038/s42256-023-00785-4},
-  url = {https://www.nature.com/articles/s42256-023-00785-4},
-  urldate = {2025-06-17},
-  langid = {english},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/8QZFSTKJ/Allenspach et al. - 2024 - Neural multi-task learning in drug design.pdf}
-}
+
 
 @article{li2019deepdsc,
   title={DeepDSC: a deep learning method to predict drug sensitivity of cancer cell lines},
@@ -404,18 +327,15 @@
   publisher={Nature Publishing Group US New York}
 }
 
-@online{gaoSubtaskDecompositionbasedLearning2024,
-  title = {Toward Subtask Decomposition-Based Learning and Benchmarking for Genetic Perturbation Outcome Prediction and Beyond},
-  author = {Gao, Yicheng and Wei, Zhiting and Dong, Kejing and Yang, Jingya and Chuai, Guohui and Liu, Qi},
-  date = {2024-01-20},
-  doi = {10.1101/2024.01.17.576034},
-  url = {http://biorxiv.org/lookup/doi/10.1101/2024.01.17.576034},
-  urldate = {2024-07-03},
-  abstract = {Abstract                        Deciphering cellular responses to genetic perturbations is fundamental for a wide array of biomedical applications, ranging from uncovering gene roles and interactions to unraveling effective therapeutics. Accurately predicting the transcriptional outcomes of genetic perturbations is indispensable for optimizing experimental perturbations and deciphering cellular response mechanisms; however, three scenarios present principal challenges, i.e., predicting single genetic perturbation outcomes, predicting multiple genetic perturbation outcomes and predicting genetic outcomes across cell lines. In this study, we introduce             S             ub             TA             sk decomposition             M             odeling for genetic             P             erturbation prediction (STAMP), a conceptually novel computational strategy for genetic perturbation outcome prediction and downstream applications. STAMP innovatively formulates genetic perturbation prediction as a subtask decomposition (STD) problem by resolving three progressive subtasks in a divide-and-conquer manner, i.e., identifying differentially expressed gene (DEG) postperturbations, determining the regulatory directions of DEGs and finally estimating the magnitudes of gene expression changes. In addition to facilitating perturbation prediction, STAMP also serves as a robust and generalizable benchmark guide for evaluating various genetic perturbation prediction models. As a result, STAMP exhibits a substantial improvement in terms of its genetic perturbation prediction ability over the existing approaches on three subtasks and beyond, including revealing the ability to identify key regulatory genes and pathways on small samples and to reveal precise genetic interactions. Overall, STAMP serves as a fundamentally novel and effective prediction and generalizable benchmarking strategy that can facilitate genetic perturbation prediction, guide the design of perturbation experiments, and broaden the understanding of perturbation mechanisms.},
-  langid = {english},
-  pubstate = {prepublished},
-  file = {/home/thodkatz/MEGA/obsidian/resources/Zotero/storage/I8FB92RY/Gao et al. - 2024 - Toward subtask decomposition-based learning and be.pdf}
+@article{gaoSubtaskDecompositionbasedLearning2024,
+  title={Toward subtask decomposition-based learning and benchmarking for genetic perturbation outcome prediction and beyond},
+  author={Gao, Yicheng and Wei, Zhiting and Dong, Kejing and Yang, Jingya and Chuai, Guohui and Liu, Qi},
+  journal={bioRxiv},
+  pages={2024--01},
+  year={2024},
+  publisher={Cold Spring Harbor Laboratory}
 }
+
 
 @article{o2016unbiased,
   title={An unbiased oncology compound screen to identify novel combination strategies},
@@ -548,4 +468,12 @@
   pages={307--392},
   year={2019},
   publisher={Now Publishers, Inc.}
+}
+
+@article{sener2018multi,
+  title={Multi-task learning as multi-objective optimization},
+  author={Sener, Ozan and Koltun, Vladlen},
+  journal={Advances in neural information processing systems},
+  volume={31},
+  year={2018}
 }
