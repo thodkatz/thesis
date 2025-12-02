@@ -100,11 +100,29 @@
 
 
 \clearpage
+
+
+\begin{center}
+\begin{Large}
+    \noindent
+    Diploma Thesis
+    
+    \textbf{Multi-task learning in perturbation modeling}
+
+    \textbf{with application to single-cell data}  
+\end{Large}    
+\end{center}
+    
+
+
+\vspace{50pt}
+
 \phantomsection
 \addcontentsline{toc}{subsection}{Abstract}
 \noindent
 \textbf{\Large Abstract}
 \newline
+
 
 \noindent
 Advanced single-cell technologies have provided new insights for the comprehension and utilization of cellular responses to perturbations, with significant potential for biomedicine. However, the inherent complexity of biological systems and the technical limitations of the experimental protocols present challenges for many proposed computational methods to algorithmically capture the perturbation mechanisms. Multi-task learning is one of the methods that have been left unexplored in this field. In this study, we aim to bridge this gap by unraveling its potential in single-cell perturbation modeling. We have developed a multi-task autoencoder architecture that predicts perturbed single-cell transcriptomic profiles for multiple perturbations. This method achieves state-of-the-art performance while exhibiting greater scalability and efficiency compared to existing methods. Further investigation and refinement of this architecture as a theoretical and abstract model for simultaneously solving multiple related problems in perturbation modeling and broader bioinformatics would be of particular interest.
@@ -116,6 +134,29 @@ Advanced single-cell technologies have provided new insights for the comprehensi
 
 \noindent
 Single-cell technology, perturbation, perturbation modeling, multi-task learning, autoencoder, deep learning
+
+
+\vspace{60pt}
+
+
+\begin{center}
+    \begin{large}
+    Theodoros Katzalis
+    \end{large}
+
+    thodkatz@gmail.com
+
+    \vspace{\baselineskip}
+
+    Department of Electrical and Computer Engineering
+    
+    Aristotle University of Thessaloniki, 54124 Thessaloniki, Greece
+
+    \vspace{\fill}
+
+    Thessaloniki, December 2025
+
+\end{center}
 
 
 \clearpage
@@ -541,7 +582,7 @@ H \gls{multitasklearning} (\gls{mlt}) είναι μία τεχνική μηχα�
 \[\mathcal{L}_{\text{Adv}} = (1 - \lambda) \mathcal{L}_{\text{recon}} +  \lambda \mathcal{L}_{\text{adv}}\]
 όπου $\lambda$ είναι ένας υπερπαράγοντας που ελέγχει την ισορροπία μεταξύ ανακατασκευής και αντιπαραθετικής απώλειας, και $\mathcal{L}_{\text{adv}}$ μπορεί να οριστεί ως η δυαδική διασταυρούμενη εντροπία (binary cross-entropy) μεταξύ των προβλέψεων του διακριτή και των αληθινών ετικετών (1 για πραγματικά δείγματα, 0 για παραγόμενα):
 \[\mathcal{L}_{\text{adv}} = -\frac{1}{N} \sum_{i=1}^{N} \left[ y_i \log(D(z_i)) + (1 - y_i) \log(1 - D(z_i)) \right]\]
-όπου $D(z_i)$ είναι η πρόβλεψη του διακριτή για το $i$-οστό λανθάνον διάνυσμα $z_i$, και $y_i$ η αληθινή ετικέτα (1 για control, 0 για perturbed) \cite{nielsen2015neural}.
+όπου $D(z_i)$ είναι η πρόβλεψη του διακριτή για το $i$-οστό λανθάνον διάνυσμα $z_i$, και $y_i$ η αληθινή ετικέτα \cite{nielsen2015neural}.
 
 % \begin{figure}
 %     \centering
@@ -649,6 +690,8 @@ H \gls{multitasklearning} (\gls{mlt}) είναι μία τεχνική μηχα�
 
 Στο \cref{fig:eval_pbmc} επιλέξαμε το ISG15, έναν γονιδιακό δείκτη  της διαταραχής IFN-β, ως παράδειγμα για την απεικόνιση της κατανομής των προβλεπόμενων και αναμενόμενων προφίλ έκφρασης ανά τύπο κυττάρου. Κανένα από τα μοντέλα δεν αναπαρήγαγε πλήρως την αναμενόμενη κατανομή για αυτό το γονίδιο.
 
+\clearpage
+
 
 % \begin{figure}
 %     \centering
@@ -657,30 +700,144 @@ H \gls{multitasklearning} (\gls{mlt}) είναι μία τεχνική μηχα�
 %     \label{fig:pbmc_umap}
 % \end{figure}
 
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc.png}
+%     \caption{Βασικές μετρικές ανά τύπο κυττάρου (Kang et al. \cite{kanaGenerativeModelingSinglecell2023})}
+%     \label{fig:eval_pbmc}
+% \end{figure}
+
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc.png}
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc_degs.png}
+    \caption{\gls{degs}}
+    \end{subfigure}
+    
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc_r2all.png}
+    \caption{$R^2$ για όλα τα γονίδια}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc_r220.png}
+    \caption{$R^2$ για τα 20 πρώτα \gls{hvg}}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[h!]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc_r2100.png}
+    \caption{$R^2$ για τα 100 πρώτα \gls{hvg}}
+    \end{subfigure}        
+    
     \caption{Βασικές μετρικές ανά τύπο κυττάρου (Kang et al. \cite{kanaGenerativeModelingSinglecell2023})}
     \label{fig:eval_pbmc}
 \end{figure}
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc.png}
-    \caption{Μετρικές απόστασης ανά τύπο κυττάρου (Kang et al. \cite{kanaGenerativeModelingSinglecell2023})}
-    \label{fig:eval_pbmc_distance}
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc_edist.png}
+    \caption{edistance}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc_wasserstein.png}
+    \caption{wasserstein}
+    \end{subfigure}    
 \end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc_euclidean.png}
+    \caption{euclidean}
+    \end{subfigure}  
+    
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc_mean_pairwise.png}
+    \caption{mean pairwise distance}
+    \end{subfigure}        
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc_mmd.png}
+    \caption{mmd}
+    \end{subfigure}      
+    
+    \caption{Μετρικές απόστασης ανά τύπο κυττάρου (Kang et al. \cite{kanaGenerativeModelingSinglecell2023})}
+    \label{fig:eval_pbmc_distance}    
+\end{figure}
+
+\clearpage
+
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.9\textwidth]{figures/pbmc_split.png}
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/pbmc_split_cell_type.png}
+    \caption{}
+    \end{subfigure}
+    
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/pbmc_split_condition.png}
+    \caption{}
+    \end{subfigure}
+\end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/pbmc_split_train.png}
+    \caption{}
+    \end{subfigure}
+
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/pbmc_split_test.png}
+    \caption{}
+    \end{subfigure}        
+    
     \caption{Απεικόνιση UMAP του διαχωρισμού των δεδομένων (Kang et al. \cite{kanaGenerativeModelingSinglecell2023})}
     \label{fig:eval_pbmc_umap}
 \end{figure}
 
+
+
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.7\textwidth]{violins_pbmc.png}
+    \includegraphics[width=0.9\textwidth]{violins_pbmc.png}
     \caption{Διάγραμμα βιολιού των κατανομών έκφρασης του γονιδίου ISG15 (Kang et al. \cite{kanaGenerativeModelingSinglecell2023})}
     \label{fig:eval_pbmc_violins}
 \end{figure}
@@ -710,7 +867,7 @@ H \gls{multitasklearning} (\gls{mlt}) είναι μία τεχνική μηχα�
     \label{tab:eval_pbmc}
 \end{table}
 
-
+\clearpage
 
 \subsection{Πρόβλεψη μονοκυτταρικών διαταραχών με πολλαπλές διαταραχές}
 \label{sec:eval_multiple_perturbations}
@@ -728,45 +885,296 @@ H \gls{multitasklearning} (\gls{mlt}) είναι μία τεχνική μηχα�
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_nault.png}
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_nault_degs.png}
+    \caption{\gls{degs}}
+    \end{subfigure}
+    
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_nault_r2all.png}
+    \caption{$R^2$ για όλα τα γονίδια}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_nault_r220.png}
+    \caption{$R^2$ για τα 20 πρώτα \gls{hvg}}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[h!]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_nault_r2100.png}
+    \caption{$R^2$ για τα 100 πρώτα \gls{hvg}}
+    \end{subfigure}        
+    
     \caption{Βασικές μετρικές ανά τύπο κυττάρου (Nault et al. \cite{nault2021single,nault2022benchmarking})}
     \label{fig:eval_nault}
 \end{figure}
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.88\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault.png}
-    \caption{Μετρικές απόστασης ανά τύπο κυττάρου (Nault et al. \cite{nault2021single,nault2022benchmarking})}
-    \label{fig:eval_nault_distance}
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault_edist.png}
+    \caption{edistance}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault_wasserstein.png}
+    \caption{wasserstein}
+    \end{subfigure}    
 \end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault_euclidean.png}
+    \caption{euclidean}
+    \end{subfigure}  
+    
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault_mean_pairwise.png}
+    \caption{mean pairwise distance}
+    \end{subfigure}        
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault_mmd.png}
+    \caption{mmd}
+    \end{subfigure}      
+    
+    \caption{Μετρικές απόστασης ανά τύπο κυττάρου (Nault et al. \cite{nault2021single,nault2022benchmarking})}
+    \label{fig:eval_nault_distance} 
+\end{figure}
+
+
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_nault_degs.png}
+%     \caption{Βασικές μετρικές ανά τύπο κυττάρου (Nault et al. \cite{nault2021single,nault2022benchmarking})}
+%     \label{fig:eval_nault}
+% \end{figure}
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.88\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault.png}
+%     \caption{Μετρικές απόστασης ανά τύπο κυττάρου (Nault et al. \cite{nault2021single,nault2022benchmarking})}
+%     \label{fig:eval_nault_distance}
+% \end{figure}
+
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.9\textwidth]{selected_benchmarking_doses_baseline_metrics_nault.png}
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_dose_baseline_metrics_nault_degs.png}
+    \caption{\gls{degs}}
+    \end{subfigure}
+    
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_dose_baseline_metrics_nault_r2all.png}
+    \caption{$R^2$ για όλα τα γονίδια}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_dose_baseline_metrics_nault_r220.png}
+    \caption{$R^2$ για τα 20 πρώτα \gls{hvg}}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[h!]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_dose_baseline_metrics_nault_r2100.png}
+    \caption{$R^2$ για τα 100 πρώτα \gls{hvg}}
+    \end{subfigure}        
+    
     \caption{Βασικές μετρικές ανά δοσολογία (Nault et al. \cite{nault2021single,nault2022benchmarking})}
     \label{fig:eval_nault_doses_baseline}
 \end{figure}
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{selected_benchmarking_doses_distance_metrics_nault.png}
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_dose_distance_metrics_nault_edist.png}
+    \caption{edistance}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_dose_distance_metrics_nault_wasserstein.png}
+    \caption{wasserstein}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_dose_distance_metrics_nault_euclidean.png}
+    \caption{euclidean}
+    \end{subfigure}  
+    
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_dose_distance_metrics_nault_mean_pairwise.png}
+    \caption{mean pairwise distance}
+    \end{subfigure}        
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_dose_distance_metrics_nault_mmd.png}
+    \caption{mmd}
+    \end{subfigure}      
+    
     \caption{Μετρικές απόστασης ανά δοσολογία (Nault et al. \cite{nault2021single,nault2022benchmarking})}
     \label{fig:eval_nault_doses_distance}
 \end{figure}
 
+\clearpage
+
+
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{selected_benchmarking_doses_baseline_metrics_nault.png}
+%     \caption{Βασικές μετρικές ανά δοσολογία (Nault et al. \cite{nault2021single,nault2022benchmarking})}
+%     \label{fig:eval_nault_doses_baseline}
+% \end{figure}
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{selected_benchmarking_doses_distance_metrics_nault.png}
+%     \caption{Μετρικές απόστασης ανά δοσολογία (Nault et al. \cite{nault2021single,nault2022benchmarking})}
+%     \label{fig:eval_nault_doses_distance}
+% \end{figure}
+
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.85\textwidth]{figures/nault_umap_split_multiple.png}
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_multiple_cell_type.png}
+    \caption{}
+    \end{subfigure}
+    
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_multiple_condition.png}
+    \caption{}
+    \end{subfigure}
+\end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_multiple_train.png}
+    \caption{}
+    \end{subfigure}
+
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_multiple_test.png}
+    \caption{}
+    \end{subfigure}        
+    
     \caption{Απεικόνιση UMAP του διαχωρισμού των δεδομένων για όλες τις δοσολογίες (Nault et al. \cite{nault2021single,nault2022benchmarking})}
     \label{fig:eval_nault_umap_all}
 \end{figure}
 
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{figures/nault_umap_split_multiple.png}
+%     \caption{Απεικόνιση UMAP του διαχωρισμού των δεδομένων για όλες τις δοσολογίες (Nault et al. \cite{nault2021single,nault2022benchmarking})}
+%     \label{fig:eval_nault_umap_all}
+% \end{figure}
+
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.85\textwidth]{figures/nault_umap_split_30.png}
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_30_cell_type.png}
+    \caption{}
+    \end{subfigure}
+    
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_30_condition.png}
+    \caption{}
+    \end{subfigure}
+\end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_30_train.png}
+    \caption{}
+    \end{subfigure}
+
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_30_test.png}
+    \caption{}
+    \end{subfigure}        
+    
     \caption{Απεικόνιση UMAP του διαχωρισμού των δεδομένων για τη δοσολογία $30 \mu g/kg$ (Nault et al. \cite{nault2021single,nault2022benchmarking})}
     \label{fig:eval_nault_umap_30}
 \end{figure}
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{figures/nault_umap_split_30.png}
+%     \caption{Απεικόνιση UMAP του διαχωρισμού των δεδομένων για τη δοσολογία $30 \mu g/kg$ (Nault et al. \cite{nault2021single,nault2022benchmarking})}
+%     \label{fig:eval_nault_umap_30}
+% \end{figure}
 
 
 \begin{table}[h!]
@@ -813,6 +1221,111 @@ H \gls{multitasklearning} (\gls{mlt}) είναι μία τεχνική μηχα�
 
 Συνοψίζοντας τα αποτελέσματα κατά μέσο όρο για όλα τα είδη (βλ. \cref{tab:eval_cross_species}), παρατηρήθηκε ότι η \verb|MTAe| πέτυχε τον υψηλότερο μέσο αριθμό \gls{degs} ($\approx 16$). Τα scGen και scVIDR πέτυχαν τα υψηλότερα $R^2$ σκορ, όπως και στην περίπτωση της μονής διαταραχής (\crefwithname{sec:eval_single_perturbation}), αλλά είχαν χαμηλή απόδοση στις μετρικές απόστασης. Η \verb|MTVae| κατέγραψε την καλύτερη απόδοση στις μετρικές απόστασης και σχετικά υψηλό αριθμό \gls{degs} ($\approx 12.5$), αλλά χαμηλά $R^2$. Οι παραλλαγές με optimal transport ανταποκρίθηκαν ικανοποιητικά στις μετρικές απόστασης, αλλά ασθενώς στις μετρικές αναφοράς, όπως και στο προηγούμενο σύνολο δεδομένων.
 
+
+\clearpage
+
+
+
+\begin{figure}[h!]
+    \centering
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species_degs.png}
+    \caption{\gls{degs}}
+    \end{subfigure}
+    
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species_r2all.png}
+    \caption{$R^2$ για όλα τα γονίδια}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species_r220.png}
+    \caption{$R^2$ για τα 20 πρώτα \gls{hvg}}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[h!]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species_r2100.png}
+    \caption{$R^2$ για τα 100 πρώτα \gls{hvg}}
+    \end{subfigure}        
+    
+    \caption{Βασικές μετρικές ανά είδος (Hagai et al. \cite{hagai2018gene})}
+    \label{fig:eval_cross_species}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species_edist.png}
+    \caption{edistance}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species_wasserstein.png}
+    \caption{wasserstein}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species_euclidean.png}
+    \caption{euclidean}
+    \end{subfigure}  
+    
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species_mean_pairwise.png}
+    \caption{mean pairwise distance}
+    \end{subfigure}        
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species_mmd.png}
+    \caption{mmd}
+    \end{subfigure}      
+    
+    \caption{Μετρικές απόστασης ανά είδος (Hagai et al. \cite{hagai2018gene})}
+    \label{fig:eval_cross_species_distance}
+\end{figure}
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species.png}
+%     \caption{Βασικές μετρικές ανά είδος (Hagai et al. \cite{hagai2018gene})}
+%     \label{fig:eval_cross_species}
+% \end{figure}
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species.png}
+%     \caption{Μετρικές απόστασης ανά είδος (Hagai et al. \cite{hagai2018gene})}
+%     \label{fig:eval_cross_species_distance}
+% \end{figure}
+
+\clearpage
+
 \begin{table}[h!]
     \centering    
     \scalebox{0.75}{
@@ -837,21 +1350,6 @@ H \gls{multitasklearning} (\gls{mlt}) είναι μία τεχνική μηχα�
     \caption{Μέσοι όροι σε όλους τους τύπους κυττάρων Hagel et al. \cite{hagai2018gene}}
     \label{tab:eval_cross_species}
 \end{table}
-
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species.png}
-    \caption{Βασικές μετρικές ανά είδος (Hagai et al. \cite{hagai2018gene})}
-    \label{fig:eval_cross_species}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.9\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species.png}
-    \caption{Μετρικές απόστασης ανά είδος (Hagai et al. \cite{hagai2018gene})}
-    \label{fig:eval_cross_species_distance}
-\end{figure}
 
 
 % \subsection{Overview}
