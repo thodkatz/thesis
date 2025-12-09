@@ -6,6 +6,20 @@
 \setmainfont[Ligatures=TeX]{Linux Libertine O}
 \usepackage[left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm]{geometry}
 
+
+\usepackage{xcolor}
+\definecolor{DarkGreen}{rgb}{0.0, 0.5, 0.0}
+\definecolor{DarkBlue}{rgb}{0.0, 0.0, 0.55}
+\usepackage[colorlinks]{hyperref}
+\hypersetup{
+	colorlinks = true,
+%	pdfborder = {0 0 0},
+	citecolor = DarkGreen,
+	linkcolor = DarkBlue,
+	urlcolor = DarkGreen,
+}
+
+
 \usepackage{amsmath,amsfonts,amssymb}
 
 
@@ -30,6 +44,11 @@
 
 \graphicspath{{assets/}}
 
+
+\usepackage{setspace}
+\onehalfspacing % 1.5 line spacing
+
+
 \sloppy
 
 
@@ -53,7 +72,6 @@
 
 {
 \renewcommand*\contentsname{Contents}
-\hypersetup{linkcolor=black}
 \tableofcontents
 }
 
@@ -78,7 +96,26 @@
 \textbf{\Large Abstract}
 \end{center}
 
-Advanced single-cell technologies have provided new insights on cellular responses to perturbations, with significant potential for translational medicine. However, the inherent complexity of biological systems and the technical limitations of the experimental protocols present challenges for many proposed computational methods to algorithmically capture the perturbation mechanisms. Multi-task learning is one of the methods that have been left unexplored in this field. In this study, we aim to bridge this gap by unraveling its potential in single-cell perturbation modeling. We have developed a multi-task autoencoder architecture that predicts perturbed single-cell transcriptomic profiles for multiple perturbations achieving state-of-the-art performance while exhibiting greater scalability and efficiency compared to existing methods.
+%Advanced single-cell technologies have provided new insights on cellular responses to perturbations, with significant potential for translational medicine. However, the inherent complexity of biological systems and the technical limitations of the experimental protocols present challenges for many proposed computational methods to algorithmically capture the perturbation mechanisms. Multi-task learning is one of the methods that have been left unexplored in this field. In this study, we aim to bridge this gap by unraveling its potential in single-cell perturbation modeling. We have developed a multi-task autoencoder architecture that predicts perturbed single-cell transcriptomic profiles for multiple perturbations achieving state-of-the-art performance while exhibiting greater scalability and efficiency compared to existing methods.
+
+Advanced single-cell technologies have provided new insights for the comprehension and
+utilization of cellular responses to perturbations, with significant potential for biomedicine.
+However, the inherent complexity of biological systems and the technical limitations of the
+experimental protocols present challenges for many proposed computational methods to al-
+gorithmically capture the perturbation mechanisms. 
+Multi-task learning is one of the methods
+that have been left unexplored in this field. In this study, we aim to bridge this gap by un-
+raveling its potential in single-cell perturbation modeling. We have developed a multi-task
+autoencoder architecture that predicts perturbed single-cell transcriptomic profiles for multiple perturbations. This method achieves state-of-the-art performance while exhibiting greater scalability and efficiency compared to existing methods. 
+Further investigation and refinement of this architecture as a theoretical and abstract model for simultaneously solving multiple related problems in perturbation modeling and broader bioinformatics would be of particular interest.
+
+\vspace{1cm}
+\noindent
+\textbf{\Large Keywords}
+\newline
+
+\noindent
+Single-cell technology, perturbation, perturbation modeling, multi-task learning, autoencoder, deep learning
 
 
 \clearpage
