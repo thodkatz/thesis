@@ -39,7 +39,9 @@
 
 \usepackage[acronym]{glossaries}
 \makeglossaries
-
+\crefname{section}{Section}{Sections}
+\crefname{table}{Table}{Tables}
+\crefname{figure}{Figure}{Figures}
 \newcommand{\crefwithname}[1]{\cref{#1}: \nameref{#1}}
 
 \graphicspath{{assets/}}
@@ -92,21 +94,19 @@
 
 \clearpage
 \addcontentsline{toc}{subsection}{Abstract}
-\begin{center}
+\noindent
 \textbf{\Large Abstract}
-\end{center}
+\newline
+
 
 %Advanced single-cell technologies have provided new insights on cellular responses to perturbations, with significant potential for translational medicine. However, the inherent complexity of biological systems and the technical limitations of the experimental protocols present challenges for many proposed computational methods to algorithmically capture the perturbation mechanisms. Multi-task learning is one of the methods that have been left unexplored in this field. In this study, we aim to bridge this gap by unraveling its potential in single-cell perturbation modeling. We have developed a multi-task autoencoder architecture that predicts perturbed single-cell transcriptomic profiles for multiple perturbations achieving state-of-the-art performance while exhibiting greater scalability and efficiency compared to existing methods.
 
+\noindent
 Advanced single-cell technologies have provided new insights for the comprehension and
 utilization of cellular responses to perturbations, with significant potential for biomedicine.
 However, the inherent complexity of biological systems and the technical limitations of the
-experimental protocols present challenges for many proposed computational methods to al-
-gorithmically capture the perturbation mechanisms. 
-Multi-task learning is one of the methods
-that have been left unexplored in this field. In this study, we aim to bridge this gap by un-
-raveling its potential in single-cell perturbation modeling. We have developed a multi-task
-autoencoder architecture that predicts perturbed single-cell transcriptomic profiles for multiple perturbations. This method achieves state-of-the-art performance while exhibiting greater scalability and efficiency compared to existing methods. 
+experimental protocols present challenges for many proposed computational methods to algorithmically capture the perturbation mechanisms. 
+Multi-task learning is one of the methods that have been left unexplored in this field. In this study, we aim to bridge this gap by unraveling its potential in single-cell perturbation modeling. We have developed a multi-task autoencoder architecture that predicts perturbed single-cell transcriptomic profiles for multiple perturbations. This method achieves state-of-the-art performance while exhibiting greater scalability and efficiency compared to existing methods. 
 Further investigation and refinement of this architecture as a theoretical and abstract model for simultaneously solving multiple related problems in perturbation modeling and broader bioinformatics would be of particular interest.
 
 \vspace{1cm}
@@ -117,38 +117,132 @@ Further investigation and refinement of this architecture as a theoretical and a
 \noindent
 Single-cell technology, perturbation, perturbation modeling, multi-task learning, autoencoder, deep learning
 
+\vspace{200pt}
+
+
+\begin{center}
+    \begin{large}
+    Theodoros Katzalis
+    \end{large}
+
+    thodkatz@gmail.com
+
+    \vspace{\baselineskip}
+
+    Department of Electrical and Computer Engineering
+    
+    Aristotle University of Thessaloniki, 54124 Thessaloniki, Greece
+
+    \vspace{\fill}
+
+    Thessaloniki, December 2025
+
+\end{center}
+
+\clearpage
+\phantomsection
+\addcontentsline{toc}{subsection}{Acknowledgements}
+\noindent
+\textbf{\Large Acknowledgements}
+\newline
+
+
+%Καταρχάς, θα ήθελα να ευχαριστήσω θερμά τον επιβλέποντα Καθηγητή, κ. Περικλή Μήτκα, για την ευκαιρία που μου έδωσε να συνεργαστώ μαζί του και να εκπονήσω την εργασία μου σε αυτό το ενδιαφέρον ερευνητικό πεδίο υπό την επιστημονική καθοδήγηση και υποστήριξή του. Η συνεργασία μου μαζί του διεύρυνε σημαντικά τους ορίζοντές μου και μου έδωσε τη δυνατότητα να ανακαλύψω μια μοναδική σύνθεση ανάμεσα στη βιολογία και τη μηχανική, επεκτείνοντας το πρόγραμμα σπουδών, η οποία και κέντρισε το ενδιαφέρον μου, και με ενέπνευσε να συνεχίσω την ενασχόλησή μου με αυτό το εξελισσόμενο διεπιστημονικό πεδίο.
+
+Firstly, I would like to sincerely thank the supervisor Prof. Pericels Mitkas, for giving me this opportunity to collaborate with him and to conduct the thesis in this very interesting research area guided by his supervision and scientific support. This collaboration allowed me to widen my horizons, and gave me the chance to unravel a unique blend of biology and engineering, while extending the curriculum. Additionally, it has eventually pulled my attention, and inspired me to continue working on this developing research area.
+
+%Εγκάρδιες ευχαριστίες οφείλω επίσης στην ομάδα βιοπληροφορικής του Ινστιτούτου Εφαρμοσμένων Βιοεπιστημών (ΙΝΕΒ) του Εθνικού Κέντρου Έρευνας και Τεχνολογικής Ανάπτυξης (ΕΚΕΤΑ), και συγκεκριμένα στον επιβλέποντα της ομάδας κ. Φώτη Ε. Ψωμόπουλο, και στα μέλη Γεώργιο Γαβριηλίδη, Βασίλειο Βασιλείου και Άσπα Ορφανού. Η ομάδα με εισήγαγε στον χώρο της βιοπληροφορικής και με στήριξε πολυεπίπεδα καθ´όλη τη διάρκεια εκπόνησης της εργασίας μου, παρέχοντας τεχνογνωσία και χρόνο για εποικοδομητικές συζητήσεις, οι οποίες βοήθησαν αμέριστα τον προσανατολισμό της έρευνάς μου.
+
+Furthermore, I would like to sincerely thank the bioinformatics team of Institute of Applied Biosciences (INAB) of the Center for Research and Technology Hellas (CERTH), and specifically the leader of the team Mr. Fotis E. Psomopoulos, and the members George Gavriilidis, Vasileios Vasileiou, and Aspa Orfanou. The team has introduced me to the area of bioinformatics and supported in a multifaceted way throughout my diploma thesis, providing technological expertise and invaluable time for productive conversations, that have assisted me to navigate the research field.
+
+%Θα ήθελα να αναφέρω επιπλέον ότι η εκπόνηση της εργασίας μου θα ήταν ανέφικτη δίχως την πρόσβαση στους υπολογιστικούς πόρους του Ευρωπαϊκού Εργαστηρίου Μοριακής Βιολογίας (EMBL) της Χαϊδελβέργης. Για αυτό θα ήθελα να ευχαριστήσω θερμά την κ. Anna Kreshuk, επικεφαλής της ομάδας ανάλυσης βιολογικών εικόνων με τη χρήση τεχνητής νοημοσύνης (Machine learning for bioimage analysis), για τη δυνατότητα που μου έδωσε να αποτελώ μέλος της ομάδας της ως μηχανικός λογισμικού για την πλατφόρμα ilastik\footnote{\url{https://www.ilastik.org/}}, και παράλληλα να έχω πρόσβαση στη συστοιχία υπολογιστών του Εργαστηρίου για την επιτέλεση των πειραμάτων μου.
+
+I would like to mention as well, that this work won't be possible without the access of the computational resources of the European Molecular Biology Laboratory (EMBL) in Heidelberg. Thus, I would like to sincerely thank Dr. Anna Kreshuk, leader of the group of machine learning for bioimage analysis, for giving me the opportunity to be member of the team as a software engineer for the platform ilastik\footnote{\url{https://www.ilastik.org/}}, and for the access to the High-Performance Computing infrastructure to run my experiments.
+
+%Τέλος, νιώθω την ανάγκη να ευχαριστήσω την οικογένειά μου και τους φίλους μου για τη συναισθηματική υποστήριξη που μου παρείχαν καθ'όλη τη διάρκεια της ερευνητικής μου πορείας στην Ελλάδα και το εξωτερικό.
+
+Finally, I would like to thank my family and my friends for their emotional support throughout my research trajectory in Greece and abroad. 
 
 \clearpage
 
 
-% I have mentioned that scvidr is a multi-task model. Thus, maybe I have to rephrase it since there were some attempts but not fully dedicated to explore the multi-task as a learning paradigm per se.
+\clearpage
 
 \section{Introduction}
 
-% what is single-cell, what used to be the old bulk data that didn't allow fine grained high dimensional data
+Computational work has become an indispensable part of the biological research. Bioinformatics, the field that employs computational tools to analyze biological data, emerged in the 1960s with an initial focus on protein sequence analysis. In the modern era, driven by technological advances and the development of \gls{ngs} \cite{gauthier2019brief}, the field has expanded significantly to include large-scale sequencing of genetic material at the cellular level. Consequently, machine learning has become a natural and powerful approach for extracting knowledge from these vast and complex datasets \cite{libbrecht2015machine}.  
+
+
+\subsection{Brief description of the problem}
+
+%Single-cell technologies have made it possible to study biological heterogeneity at the cellular level, opening new avenues for understanding cellular mechanisms and their responses to perturbations. However, the perturbation space is vast and multidimensional, making it infeasible to investigate every possible condition in a laboratory setting due to cost and time constraints \cite{heumos2023best,kana2023generative}. This limitation has motivated the development of computational methods aimed at modeling this space, therefore enabling inference in novel in silico scenarios that simulate experimental settings.
+%The field concerned with the characterization and prediction of biological responses to external influences (gene knockouts, drug dosages, or environmental changes), is known as perturbation modeling. This area plays a crucial role in elucidating disease mechanisms and identifying potential therapeutic targets \cite{jiMachineLearningPerturbational2021}.
 
 The advent of single-cell technologies has enabled the study of the biological heterogeneity at the cellular resolution, opening new avenues for understanding the cellular mechanisms and their responses to perturbations.
 However, the perturbation space is vast, and experimentally exploring combinations would be infeasible and costly \cite{heumos2023best, kana2023generative}. This has motivated the development of computational methods to model this space, enabling extrapolation to unseen scenarios through in silico experimentation. The field of deciphering and predicting the effects of external stimuli (gene knockouts, drug dosages, temperature changes, etc.) is referred to as perturbation modeling, and it plays a crucial role in disease mechanism discovery and therapeutic target identification \cite{jiMachineLearningPerturbational2021}.
+
+\subsection{Objective of the diploma thesis}
+The complex nature of biological responses to perturbations can be decomposed into related sub-objectives, enabling simplification and improved interpretability of the underlying processes.
+\gls{mlt} provides a suitable framework for exploiting such a decomposition, as it allows multiple tasks to be trained jointly. By learning shared representations across tasks, \gls{mlt} can enhance predictive performance and improve generalization robustness \cite{ruderOverviewMultiTaskLearning2017}.
+Thus, this paradigm can be a promising approach to resolve the challenges of the single-cell perturbation modeling.
+However, despite its advantages, its application in this field remains unexplored. In this work, we attempt to fill this gap, investigating its potential.
+
+
+\clearpage
+
+\subsection{Methodology}
+
+Initially, we attempted to investigate which subtasks could be decomposed from the overall task of perturbation modeling, so they can be formulated within a multi-task learning setup. Then, we have focused to the applications of single-cell data, and specifically the prediction of the gene expression after a perturbation.
+
+To utilize the multi-task learning paradigm, we have developed an innovative \gls{mlt} autoencoder architecture capable of predicting the single-cell transcriptomic profile for a set of perturbations by applying one of them. The perturbation is modeled as a vector that encodes its type, and it is integrated into the architecture of the autoencoder through \gls{film} layers \cite{dumoulin2018feature-wise}. The FiLM method consists of a combination of additive and multiplicative transformations, and it is applied to every node in the layer of interest.
+
+The architecture is evaluated in three different scenarios for predicting perturbed transcriptomic profiles and is compared with corresponding methods proposed in the literature. Initially, the performance of a single-perturbation, \gls{ifnb}, experiment is examined in human \gls{pbmc} \cite{kanaGenerativeModelingSinglecell2023}. Regarding the second scenario, the architecture is evaluated in a multi-perturbation setting, through the administration of the drug \gls{tcdd} at different dosages in mice \cite{nault2021single,nault2022benchmarking}. Finally, the scenario of a single-perturbation, \gls{lps}, across different species (mouse, rat, rabbit, pig) is investigated, aiming to introduce an additional axis of variation with respect to the species, extending the condition (control, perturbed) specific variation of the previous scenarios.
+
+\subsection{Contents}
+
+The diploma thesis consists of five chapters. Following the introduction in Chapter 1, Chapter 2 presents the theoretical background. In this chapter, we analyze the technical challenges of perturbation modeling at the single-cell level and review the methods proposed in the literature to address them. Additionally, we introduce the fundamental theory of multi-task learning and discuss its potential applications in molecular biology.
+Chapter 3 focuses on the task of \gls{ood} detection, which constitutes the main field of interest of this work. In this chapter, we explore the application of a multi-task learning approach to this problem and describe the core \gls{mlt} architecture developed in this thesis, along with its variants.
+In Chapter 4, we present and analyze the experimental results, comparing the proposed multi-task learning methods with state-of-the-art approaches reported in the literature. Finally, Chapter 5 summarizes the conclusions of the research and outlines directions for future work. The thesis concludes with information on code availability, followed by the appendix and the glossary. 
+
+\clearpage
+
+
+
+% I have mentioned that scvidr is a multi-task model. Thus, maybe I have to rephrase it since there were some attempts but not fully dedicated to explore the multi-task as a learning paradigm per se.
+
+\section{Theoretical background}
+
+% what is single-cell, what used to be the old bulk data that didn't allow fine grained high dimensional data
+
+The advancement of technology in the sequencing of genetic material, and specifically \gls{ngs}, shaped two core approaches of detecting gene expressions within a biological sample. The first, named as bulk RNA-seq, is capable of counting the transcriptome of a cell culture, recording an average value of the overall gene expression. On the other hand, the second approach, known as \gls{sc}, focuses on the gene expression of individual cells, that enhances the transcriptomic resolution and unravels the cellular heterogeneity. Therefore, single-cell technologies enable the elucidation of cellular responses while preserving cell-specific information that is lost through averaging in bulk RNA-seq experiments. \cite{10xBulkVsSingleCell2025}. 
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.8\textwidth]{bulk_vs_single.png}
+    \caption{Comparison of sequencing technologies: single cell RNA-seq and bulk RNA-seq\cite{mbzuai2024future}}
+\end{figure}
+
+
 
 % intro to the tasks
 
 % I should mention the rest of the tasks
 
-%One of the main objectives of perturbation modeling is \gls{ood} \cite{gavriilidisMinireviewPerturbationModelling2024}, which is the focal point of our study. The task is about predicting the perturbation response of the omics signature of cells with a specific cell type, while having observed the perturbation response of other cell types.
+%One of the main objectives of perturbation modeling is \gls{ood} \cite{gavriilidis2024mini}, which is the focal point of our study. The task is about predicting the perturbation response of the omics signature of cells with a specific cell type, while having observed the perturbation response of other cell types.
 
 % dataset limitations
 
-Datasets used for perturbation modelling are often highly noisy and sparse due to the inherent limitations of single-cell technologies. For example, dropout events are likely to occur, leading to many zeros in the expression profiles as a failure of detecting lower expression levels. The data is also high-dimensional, typically consisting of thousands of cells profiled across hundreds or thousands of features (e.g., gene expression levels in transcriptomics), which enables fine-grained analysis of cellular responses \cite{jiMachineLearningPerturbational2021}. The perturbation response itself is non-linear and complex, depending not only on the nature of the perturbation but also on the cellular context, including cell type, microenvironment, genetic background, and temporal dynamics \cite{gavriilidisMinireviewPerturbationModelling2024}.
+However, datasets used for perturbation modelling are often highly noisy and sparse due to the inherent limitations of single-cell technologies. For example, dropout events are likely to occur, leading to many zeros in the expression profiles as a failure of detecting lower expression levels. The data is also high-dimensional, typically consisting of thousands of cells profiled across hundreds or thousands of features (e.g., gene expression levels in transcriptomics), which enables fine-grained analysis of cellular responses \cite{jiMachineLearningPerturbational2021}. The perturbation response itself is non-linear and complex, depending not only on the nature of the perturbation but also on the cellular context, including cell type, microenvironment, genetic background, and temporal dynamics \cite{gavriilidis2024mini}.
 
-Machine learning methods, particularly deep learning, have shown promise in addressing this complexity by leveraging their generative capacity, made possible by the recent surge in high-throughput single-cell data \cite{gavriilidisMinireviewPerturbationModelling2024}.
+Machine learning methods, particularly deep learning, have shown promise in addressing this complexity by leveraging their generative capacity, made possible by the recent surge in high-throughput single-cell data \cite{gavriilidis2024mini}.
 More specifically there is a growing trend toward leveraging \gls{llm} in the field. A recent survey by Szalata et al. \cite{szalata2024transformers} highlights this as a promising yet still immature research direction. Key challenges include the lack of standardized evaluation frameworks, model instabilities, insufficiently diverse datasets, and the absence of sequential structure analogous to positional embeddings in natural language processing.
 In contrast, autoencoder architectures and their variants have already demonstrated strong performance outperforming transformers \cite{szalata2024transformers}, while offering notable advantages in terms of resource efficiency and reduced computational complexity.
 
 
-Based on the core deep learning concept of manifold hypothesis, autoencoder architectures aim to learn a low-dimensional representation of the data, capturing the underlying structure of the perturbation response. This is achieved by the encoder-decoder architecture, where the encoder compresses the input data into a lower-dimensional space, while the decoder attempts to reconstruct the original input. This compression can yield biologically meaningful features, resulting in a more interpretable and efficient representation of the data, which can be useful for downstream tasks such as \gls{ood} \cite{gavriilidisMinireviewPerturbationModelling2024}.
+Based on the core deep learning concept of manifold hypothesis, autoencoder architectures aim to learn a low-dimensional representation of the data, capturing the underlying structure of the perturbation response. This is achieved by the encoder-decoder architecture, where the encoder compresses the input data into a lower-dimensional space, while the decoder attempts to reconstruct the original input. This compression can yield biologically meaningful features, resulting in a more interpretable and efficient representation of the data, which can be useful for downstream tasks such as \gls{ood} \cite{gavriilidis2024mini}.
 
 
-However, the non-linearity of deep learning models presents another challenge in balancing predictive accuracy with interpretability \cite{kana2023generative}. This trade-off remains a key milestone in the field, and many recent efforts have aimed to address it through causal machine learning approaches such as the GRouNdGAN, sVAE+, and graphVCI \cite{gavriilidisMinireviewPerturbationModelling2024}. Other interpretable approaches include the usage of SHAP values by UnitedNet \cite{tangExplainableMultitaskLearning2023}, integrative gradients by PerturbNet \cite{yuPerturbNetPredictsSinglecell2022},  and the approximation of the function of the uninterpretable non-linear decoder with sparse ridge regression as demonstrated by scVIDR \cite{kanaGenerativeModelingSinglecell2023}.
+However, the non-linearity of deep learning models presents another challenge in balancing predictive accuracy with interpretability \cite{kana2023generative}. This trade-off remains a key milestone in the field, and many recent efforts have aimed to address it through causal machine learning approaches such as the GRouNdGAN, sVAE+, and graphVCI \cite{gavriilidis2024mini}. Other interpretable approaches include the usage of SHAP values by UnitedNet \cite{tangExplainableMultitaskLearning2023}, integrative gradients by PerturbNet \cite{yuPerturbNetPredictsSinglecell2022},  and the approximation of the function of the uninterpretable non-linear decoder with sparse ridge regression as demonstrated by scVIDR \cite{kanaGenerativeModelingSinglecell2023}.
 
 Additional limitations in the data space, such as batch effects and confounding covariates, also hinder prediction accuracy. To mitigate these issues and improve generalization, recent studies have focused on integrative single-cell omics approaches, including spatial data integration. The target is to learn a low-dimensional representation that disentangles the core biological context while removing technical variations.
 
@@ -231,27 +325,29 @@ The goal of \gls{mlt} is to learn a set of parameters $\theta$ that minimizes th
 % 
 
 
-\section{Perturbation modeling objectives}
+\subsection{Perturbation modeling objectives}
 
-In the field of perturbation modeling, there are four main objectives that can be outlined \cite{gavriilidisMinireviewPerturbationModelling2024, jiMachineLearningPerturbational2021, heumos2023best}.
+In the field of perturbation modeling, there are four main objectives that can be outlined \cite{gavriilidis2024mini, jiMachineLearningPerturbational2021, heumos2023best}.
 
-The prediction of unseen omics signatures and phenotypic changes after a perturbation \footnote{In the case of chemical perturbations, the term perturbation refers to the specific drug applied. However, for the purposes of the \gls{ood} task, a change in dosage of the same drug is also considered a distinct perturbation. Throughout this study, we treat each unique combination of drug and dosage as a separate perturbation.} is applied to either a cell line (bulk omics) or individual cells (single-cell omics) is considered the primary objective, often referred to as \gls{ood}. Regarding omics signatures, scGen is a well-known model that has served as a baseline for perturbed single-cell transcriptomics prediction. For phenotypic changes, this could refer to cell viability as a function of drug dosage, typically quantified by IC50 values. DeepDSC \cite{li2019deepdsc} is another example, a deep neural network that predicts the drug sensitivity of cancer cell lines based on their gene expression profiles and a compound descriptor. This compound descriptor is represented as Morgan fingerprints\footnote{Morgan fingerprints, also known as extended-connectivity fingerprints (ECFP), are a type of molecular fingerprint used in cheminformatics to represent the structure of molecules in a computer-readable format. They encode the structural features into a binary vector \cite{morgan1965generation}}, capturing the 1D and 2D structure of the compound.
+\begin{enumerate}
+    \item The prediction of unseen omics signatures and phenotypic changes after a perturbation \footnote{In the case of chemical perturbations, the term perturbation refers to the specific drug applied. However, for the purposes of the \gls{ood} task, a change in dosage of the same drug is also considered a distinct perturbation. Throughout this study, we treat each unique combination of drug and dosage as a separate perturbation.} is applied to either a cell line (bulk omics) or individual cells (single-cell omics) is considered the primary objective, often referred to as \gls{ood}. Regarding omics signatures, scGen is a well-known model that has served as a baseline for perturbed single-cell transcriptomics prediction. For phenotypic changes, this could refer to cell viability as a function of drug dosage, typically quantified by IC50 values. DeepDSC \cite{li2019deepdsc} is another example, a deep neural network that predicts the drug sensitivity of cancer cell lines based on their gene expression profiles and a compound descriptor. This compound descriptor is represented as Morgan fingerprints\footnote{Morgan fingerprints, also known as extended-connectivity fingerprints (ECFP), are a type of molecular fingerprint used in cheminformatics to represent the structure of molecules in a computer-readable format. They encode the structural features into a binary vector \cite{morgan1965generation}}, capturing the 1D and 2D structure of the compound.
+    \item The second objective concerns the prediction of a perturbation's mode of action. This involves identifying the signaling pathways and specific target proteins that are activated or inhibited in response to a given perturbation. Understanding which proteins a drug interacts with, and the downstream cascade of molecular events it initiates, is fundamental for drug discovery and repurposing.
+    DeepDTAGen \cite{shah2025deepdtagen} is a multi-task model designed to address this challenge. It predicts the binding affinity between a drug and a target protein, and also generates novel drug candidates represented as SMILES strings\footnote{SMILES stands for Simplified Molecular Input Line Entry System. It is a text-based representation of molecular structures. For example, ethanol (CH₃CH₂OH) can be represented as the string "CCO" in SMILES format.}, conditioned on a given protein target.
+    \item Perturbation interaction prediction, that can be highly beneficial for combinatorial treatments, is treated as the third objective. The goal is to predict how different perturbations interact with each other, which is crucial for understanding drug-drug interactions and potential interlinked side effects. This can involve predicting whether two drugs will have synergistic or antagonistic effects when administered together. For example, the DeepSynergy model predicts a synergy score having as inputs the gene expression profiles of a cell line and the chemical descriptors of two drugs \cite{preuer2018deepsynergy}. The synergy score quantifies the deviation of an experimentally observed response surface from one predicted by a theoretical reference model, such as Loewe Additivity \cite{loewe1953problem}, Bliss Independence \cite{bliss1939toxicity}, Highest Single Agent (HSA) \cite{tan2012systematic}, or the more recent Zero Interaction Potency (ZIP) \cite{yadav2015searching}.
+    \item The fourth objective involves the prediction of chemical properties. For instance, the task can be formulated to design de novo chemical compounds that can induce a desired perturbed gene expression profile. PerturbNet \cite{yuPerturbNetPredictsSinglecell2022} is a model capable of addressing this challenge. It first compresses the feature spaces of both transcriptomic profiles and chemical structures using autoencoders. These two modalities are then linked via a conditional invertible neural network (cINN).
+    By operating the cINN in reverse, the model enables counterfactual predictions, allowing the exploration of the chemical feature space for perturbations likely to produce a specified gene expression response. In this way, the task serves as a conceptual bridge between biology and chemistry, linking molecular structure to phenotypic effect.
+\end{enumerate}
+
 
 %The second objective is related to the prediction of the mode-of-action of the perturbation. This could entail predicting the pathway mechanisms and the target proteins that will be activated or inhibited by the perturbation. Understanding to what kind of proteins a drug can bind to and the cascade events triggered by this interaction is fundamental for drug discovery and repurposing. DeepDTAGen, is a multi-task model, that is able to predict the biding affinity of a drug to a protein, and to generate new drug candidates, represented with SMILES strings \footnote{SMILES stands for Simplified Molecular Input Line Entry System. It's a way to represent a chemical molecule as a text string using ASCII characters. For example, ethanol (CH₃CH₂OH) can be represented as the string "CCO"}, based on a target protein \cite{shah2025deepdtagen}.
 
-
-The second objective concerns the prediction of a perturbation's mode of action. This involves identifying the signaling pathways and specific target proteins that are activated or inhibited in response to a given perturbation. Understanding which proteins a drug interacts with, and the downstream cascade of molecular events it initiates, is fundamental for drug discovery and repurposing.
-DeepDTAGen \cite{shah2025deepdtagen} is a multi-task model designed to address this challenge. It predicts the binding affinity between a drug and a target protein, and also generates novel drug candidates represented as SMILES strings\footnote{SMILES stands for Simplified Molecular Input Line Entry System. It is a text-based representation of molecular structures. For example, ethanol (CH₃CH₂OH) can be represented as the string "CCO" in SMILES format.}, conditioned on a given protein target.
-
-Perturbation interaction prediction, that can be highly beneficial for combinatorial treatments, is treated as the third objective. The goal is to predict how different perturbations interact with each other, which is crucial for understanding drug-drug interactions and potential interlinked side effects. This can involve predicting whether two drugs will have synergistic or antagonistic effects when administered together. For example, the DeepSynergy model predicts a synergy score having as inputs the gene expression profiles of a cell line and the chemical descriptors of two drugs \cite{preuer2018deepsynergy}. The synergy score quantifies the deviation of an experimentally observed response surface from one predicted by a theoretical reference model, such as Loewe Additivity \cite{loewe1953problem}, Bliss Independence \cite{bliss1939toxicity}, Highest Single Agent (HSA) \cite{tan2012systematic}, or the more recent Zero Interaction Potency (ZIP) \cite{yadav2015searching}.
 % I could elaborate more on the last ones, what is loewe additivity and such
 
-The fourth objective involves the prediction of chemical properties. For instance, the task can be formulated to design de novo chemical compounds that can induce a desired perturbed gene expression profile. PerturbNet \cite{yuPerturbNetPredictsSinglecell2022} is a model capable of addressing this challenge. It first compresses the feature spaces of both transcriptomic profiles and chemical structures using autoencoders. These two modalities are then linked via a conditional invertible neural network (cINN).
-By operating the cINN in reverse, the model enables counterfactual predictions, allowing the exploration of the chemical feature space for perturbations likely to produce a specified gene expression response. In this way, the task serves as a conceptual bridge between biology and chemistry, linking molecular structure to phenotypic effect.
 
-\section{Multi-task learning and perturbation modeling}
 
-As mentioned by \cite{jiMachineLearningPerturbational2021,gavriilidisMinireviewPerturbationModelling2024}, \gls{mlt} can be considered a powerful ML/DL approach that can be promising to be applied for perturbation modeling. It is worth mentioning that for the NCI-DREAM challenge \cite{costello2014community}, addressing the drug sensitivity of unseen cell lines, a Bayesian \gls{mlt} approach was considered to perform the best \cite{schrod2024codex}. 
+\subsection{Multi-task learning and perturbation modeling}
+
+As mentioned by \cite{jiMachineLearningPerturbational2021,gavriilidis2024mini}, \gls{mlt} can be considered a powerful ML/DL approach that can be promising to be applied for perturbation modeling. It is worth mentioning that for the NCI-DREAM challenge \cite{costello2014community}, addressing the drug sensitivity of unseen cell lines, a Bayesian \gls{mlt} approach was considered to perform the best \cite{schrod2024codex}. 
 
 In addition to the categorization of perturbation modeling objectives, single-cell analysis tasks, such as gene regulatory network (GRN) inference, cell clustering, and multi-modal integration, can be highly beneficial when incorporated into a \gls{mlt} framework. These tasks provide complementary biological context that can enhance the performance and interpretability of perturbation modeling.
 For example, UnitedNet \cite{tangExplainableMultitaskLearning2023} has demonstrated strong performance in cross-modal prediction and cell-type classification by leveraging multi-omics data within an \gls{mlt} architecture. Similarly, scPreGAN \cite{weiScPreGANDeepGenerative2022} integrates cell type classification as an auxiliary task to improve the generation of perturbed single-cell transcriptomic profiles, illustrating the value of combining single-cell tasks with perturbation modeling objectives.
@@ -277,11 +373,64 @@ Instead of treating perturbation objectives as independent tasks, the objectives
 
 %sequential, parallel, soft, hard parameter sharing
 
+
+\subsection{Literature models for the out-of-distribution (OOD) detection task in single-cell data}
+\label{sec:benchmark_models}
+
+Based on the previous analysis of potential integration of perturbation objectives, emphasis has been given to the single-cell use case, as it has been the most explored in the literature due to the recent advancements of single-cell technology. 
+
+Several approaches have been proposed in the literature to address the \gls{ood} prediction task. Among these, we selected the following representative methods to benchmark and compare against our multi-task learning architectures: a) scGen \cite{lotfollahiScGenPredictsSinglecell2019}, b) scVIDR \cite{kanaGenerativeModelingSinglecell2023}, c) scPreGAN \cite{weiScPreGANDeepGenerative2022}, and d) scButterfly \cite{caoScButterflyVersatileSinglecell2024}.
+
+\subsubsection{scGen}
+
+scGen's architecture is based on a \gls{vae} that learns a probabilistic latent space representation of the gene expression profiles. 
+The perturbation effect is modeled as a vector $\delta$, calculated as the mean of the differences between the latent vectors of the perturbed and control gene expression profiles. Then, the latent perturbed gene expression profile of a held-out cell type, $\hat{z}$,  is generated by adding this perturbation vector, $\delta$, to the latent vector of the control profile, $z$, using $\hat{z} = z + \delta$. Finally, the perturbed gene expression is obtained by decoding the generated latent vector, $\hat{z}$, using the decoder of the \gls{vae}. This approach allows for the generation of new perturbed profiles by manipulating the latent space representation using vector arithmetic.
+
+\subsubsection{scVIDR}
+ 
+
+A key limitation of scGen is the absence of explicit cell-type-specific modeling, which can reduce its ability to generalize to unseen cell types with distinct perturbation responses.
+scVIDR addresses this by incorporating cell-type-aware perturbation estimation. Rather than computing a single global perturbation vector $\delta$ based only on the condition labels, scVIDR fits a linear regression model that captures how perturbation vectors vary across cell types.
+For each training cell type $i$, the perturbation vector is defined as $\delta_i = \hat{z}_i - z_i$,
+where $z_i$​, and $\hat{z}_i$ are the mean latent representation of the control, and perturbed cells of type $i$ respectively.
+A linear model is then trained to predict $\hat{\delta}_i$​ from $z_i$, i.e., $\hat{\delta}_i = f(z_i)$.
+
+
+Once trained, this model can predict the perturbation vector $\delta_A$​ for an unseen cell type $A$, using only its control-state latent representation $z_A$, i.e., $\hat{\delta}_A = f(z_A)$.
+This cell-type-aware prediction improves generalization by allowing the model to tailor the perturbation response based on the control-state context of each cell type.
+
+scVIDR can also predict the gene expression profile for multiple dosages. Similarly, scVIDR fits a linear regression model to predict the perturbation vector $\hat{\delta}_c$ across cell types, but in this case, the conditions are the lowest and the highest dosage. Intermediate dosages are then calculated by log linearly interpolating on the $\hat{\delta}_c$.
+
+Regarding interpretability, the bottleneck of the non-linear mapping from the latent space to the gene expression space is replaced by a linear one, utilizing a sparse linear regression model. This is approximated by a weight matrix $\hat{W}_{VAE}$, with dimensions $MxG$ where $M$ is the number of latent variables and $G$ is the number of genes. Then this matrix is used to examine the contribution of the latent variables to the gene expression profile, using the following equation:
+
+\[\text{gene score} = \hat{\delta}_c^T \hat{W}_{VAE}\]
+
+A higher gene score indicates a bigger change at the expression level of the gene if the dosage increases.
+
+\subsubsection{scPreGAN}
+
+scPreGAN integrates an autoencoder with a \gls{gan} framework to predict \gls{sc} data under perturbations. The architecture consists of a shared encoder and two generators, one for each condition (control and perturbed). To align the generated distributions with the real data, the model employs two discriminators, each associated with a specific condition.
+
+The encoder, which is shared across both conditions, learns a perturbation-free latent representation that captures high-level biological features common to both states. The generators then incorporate condition-specific perturbation effects to reconstruct the gene expression profiles from the latent space. The discriminators are trained to distinguish between real and generated samples, while the generators are optimized adversarially to produce realistic reconstructions that fool their respective discriminators.
+
+
+\subsubsection{scButterfly}
+
+
+scButterfly is a generative adversarial model built on a dual-aligned \gls{vae} architecture, designed for cross-modal translation in single-cell data. The model has demonstrated strong performance in translating between transcriptomic and chromatin accessibility profiles, as well as between transcriptomic and proteomic data.
+
+Its architecture consists of two \gls{vae}s, each pretrained on a specific modality, and a translator component that aligns the latent spaces of the two encoders. The translator is composed of two neural networks, one per modality, each modeling a Gaussian distribution in the latent space. These networks take the encoder's latent representation as input, sample from the modeled distribution, and pass the sample to the decoder of the other modality, enabling cross-modal generation.
+After VAE pretraining, the translator is trained to align the latent spaces such that biologically meaningful translation across modalities can be achieved.
+
+Although scButterfly isn't primarily designed for perturbation modeling, the study has demonstrated its potential, by treating control and perturbed expression profiles as two modalities. One of its limitations is the narrow evaluation scope, as it has been tested only on the case of human \gls{pbmc} stimulated by \gls{ifnb} \cite{kanaGenerativeModelingSinglecell2023}.
+
+\clearpage
+
 \section{Method}
 \label{sec:method}
 
-Based on the previous analysis of potential integration of perturbation objectives, emphasis has been given to the single-cell use case, as it has been the most explored in the literature due to the recent advancements of single-cell technology. 
-To facilitate a multi-task learning approach, we define as a task the prediction of the single-cell perturbed gene expression profile of a held-out context, having as inputs its control-state profile and the kind of perturbation. To accomplish this, the model learns the effect of perturbations from the remaining (seen) contexts and generalizes this knowledge to unseen ones. This setting enables the evaluation of a model's ability to extrapolate known perturbation effects to new biological or experimental domains and represents the primary objective of perturbation modeling, the \gls{ood}. A typical dataset for this task consists of transcriptomic profiles from \gls{sc} across multiple biological contexts, such as different cell types, perturbation, dosages, studies, or species under both control and perturbed conditions. Similarly to the drug-protein study \cite{allenspachNeuralMultitaskLearning2024}, where the prediction of the binding affinity between a drug and a protein corresponds to a different for each protein, we will treat each perturbation as a separate task.
+
+To facilitate a multi-task learning approach, we define as a task the prediction of the single-cell perturbed gene expression profile of a held-out context, having as inputs its control-state profile and the kind of perturbation. To accomplish this, the model learns the effect of perturbations from the remaining (seen) contexts and generalizes this knowledge to unseen ones. This setting enables the evaluation of a model's ability to extrapolate known perturbation effects to new biological or experimental domains and represents the primary objective of perturbation modeling, the \gls{ood}. A typical dataset for this task consists of transcriptomic profiles from \gls{sc} across multiple biological contexts, such as different cell types, perturbation, dosages, studies, or species under both control and perturbed conditions. Similarly to the drug-protein study \cite{allenspach2024neural}, where the prediction of the binding affinity between a drug and a protein corresponds to a different for each protein, we will treat each perturbation as a separate task.
 
 % why the perturbation has been integrated not at the input but the decoder? 
 
@@ -296,9 +445,10 @@ The perturbation is represented as a one-hot encoded vector, where, for a datase
     \includegraphics[width=.45\textwidth]{film_layers.png}
   \end{center}
   \caption{FiLM \cite{dumoulin2018feature-wise}}
+  \vspace{20pt}
 \end{wrapfigure}
 
-About the conditioning of the task, as we have seen at \crefwithname{sec:mlt}, we have explored the application of conditional affine transformation, a combination of multiplicative and additive conditioning, that shifts and scales the input element-wise. It is efficient in terms of scaling and parameters compared to multi-head architectures, where each task has its dedicated network to generate the output of the task . This approach is named as FiLM, for Feature-wise Linear Modulation \cite{dumoulin2018feature-wise, perez2018film}:
+About the conditioning of the task, as we have seen at \crefwithname{sec:mlt}, we have explored the application of conditional affine transformation, a combination of multiplicative and additive conditioning, that shifts and scales the input element-wise. It is efficient in terms of scaling and parameters compared to multi-head architectures, where each task has its dedicated network to generate the output of the task . This approach is named as \gls{film}, for Feature-wise Linear Modulation \cite{dumoulin2018feature-wise, perez2018film}:
 
 \[ \text{FiLM(x)} = \gamma (z) \odot x + \beta (z) \]
 
@@ -343,17 +493,26 @@ The loss is the reconstruction loss of the autoencoder, which is the mean square
 % I could mention why the condition isn't integrated at the first layers?
 
 \begin{figure}[h!]
-    \includegraphics[width=\textwidth]{biorender_film_architecture.png}
-    \caption{Illustration of the multi-task architecture (created in  \url{https://BioRender.com}}). The encoder is shared across all tasks, while the decoder is conditioned by the task-specific FiLM layers. In this example, only two film layers are integrated in the first two hidden layers of the decoder. The FiLM gener ator takes as input a conditioning representation of the perturbations (e.g. one-hot encoding), and outputs the modulation parameters $\gamma$, and $\beta$ for the FiLM layers. 
+    \includegraphics[width=\textwidth]{biorender_film_architecture_4.png}
+    \caption[Illustration of the multi-task architecture]{Illustration of the multi-task architecture (created in  \url{https://BioRender.com}}). The encoder is shared across all tasks, while the decoder is conditioned by the task-specific FiLM layers. In this example, only two film layers are integrated in the first two hidden layers of the decoder. The FiLM gener ator takes as input a conditioning representation of the perturbations (e.g. one-hot encoding), and outputs the modulation parameters $\gamma$, and $\beta$ for the FiLM layers. 
 \end{figure}
 % I have to document the losses
 
 
-We have explored several variations of this approach, all of which maintain the decoder architecture with the inclusion of FiLM-based conditioning for all the hidden layers of the decoder. These variations can be split to three main groups, a) adversarial autoencoders, b) optimal transport, c) Variational Autoencoders (VAEs).
+We have explored several variations of this approach, all of which maintain the decoder architecture with the inclusion of FiLM-based conditioning for all the hidden layers of the decoder. These variations can be split to three main groups, a) adversarial autoencoders, b) optimal transport, c) \gls{vae}.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{basic_flowchart.png}
+    \caption{Flowchart for one iteration of training of the MTAe architecture}
+\end{figure}
+
+\clearpage
+
 
 \subsection{Adversarial autoencoders (AeAdv)}
 
-In our adversarial autoencoder variations, we enforce structure in the latent space via an adversarial loss. The architecture builds on the previously described autoencoder with FiLM layers, extended with a discriminator. The discriminator is trained to distinguish between encoded latent vectors and samples from a target distribution, while the encoder is trained adversarially to fool the discriminator. This encourages the latent space to match the desired target distribution.
+In our adversarial autoencoder variations, we enforce structure in the latent space via an adversarial loss. The architecture builds on the previously described autoencoder with \gls{film} layers, extended with a discriminator. The discriminator is trained to distinguish between encoded latent vectors and samples from a target distribution, while the encoder is trained adversarially to fool the discriminator. This encourages the latent space to match the desired target distribution.
 
 In the \verb|MTAeAdv| architecture, we aim to explicitly model a perturbation-free latent space. Here, the discriminator is trained to distinguish between latent representations of control and perturbed gene expression profiles, while the encoder attempts to make them indistinguishable. This encourages the latent space to be agnostic to perturbation.
 
@@ -363,7 +522,7 @@ The total loss for the adversarial autoencoder is a combination of the reconstru
 \[\mathcal{L}_{\text{Adv}} = (1 - \lambda) \mathcal{L}_{\text{recon}} +  \lambda \mathcal{L}_{\text{adv}}\]
 , where $\lambda$ is a hyperparameter that controls the trade-off between reconstruction and adversarial loss, and $\mathcal{L}_{\text{adv}}$ is the adversarial loss, which can be defined as the binary cross-entropy loss between the discriminator's predictions and the true labels (1 for real samples, 0 for generated samples):
 \[\mathcal{L}_{\text{adv}} = -\frac{1}{N} \sum_{i=1}^{N} \left[ y_i \log(D(z_i)) + (1 - y_i) \log(1 - D(z_i)) \right]\]
-, where $D(z_i)$ is the discriminator's prediction for the $i$th latent vector $z_i$, and $y_i$ is the true label (1 for control, 0 for perturbed).
+, where $D(z_i)$ is the discriminator's prediction for the $i$th latent vector $z_i$, and $y_i$ is the true label.
 
 % \begin{figure}
 %     \centering
@@ -384,6 +543,27 @@ The total loss for the adversarial autoencoder is a combination of the reconstru
 %     \label{}
 % \end{figure}
 
+
+\begin{figure}[h!]
+    \includegraphics[width=.9\textwidth]{mtadv.png}
+    \caption{Illustration of the MTAeAdv architecture}
+\end{figure}
+
+\begin{figure}[h!]
+    \includegraphics[width=.9\textwidth]{mtadvg.png}
+    \caption{Illustration of the MTAeAdvG architecture}
+\end{figure}
+
+
+
+\begin{figure}[h!]
+    \includegraphics[width=.9\textwidth]{gaussian_flowchart.png}
+    \caption{Flowchart for one iteration of training of the MTAeAdvG and the MTAeAdv architectures}
+\end{figure}
+
+\clearpage
+
+
 \subsection{Optimal transport (OT)}
 
 Another set of architectural variations incorporates optimal transport to address the lack of paired samples in \gls{sc}. Because the same cell cannot be sequenced both before and after a perturbation, we lack true one-to-one correspondences between control and perturbed conditions. As a result, modeling must rely on comparing distributions rather than individual cell-level changes.
@@ -398,13 +578,26 @@ The loss is the mean squared error between the input and the output of the decod
 
 , where $x_i$ is the input gene expression profile, $\hat{x}_i$ is the paired perturbed gene expression profile, and $N$ is the number of samples. 
 
-Compared to the previous architectures, the perturbed gene expression profiles aren't used as inputs to be reconstructed. Instead, they are used as a target distribution to be mapped given the control gene expression profile and the type of the perturbation. This approach is named as \verb|MTAeOT|. Additionally, we have attempted to pretrain the model with the \verb|MTAe| architecture and then fine-tune it with the \verb|MTAeOT| architecture. This approach is named as \verb|MTAePlusOT|.
+Compared to the previous architectures, the perturbed gene expression profiles aren't used as inputs to be reconstructed. Instead, they are used as a target distribution to be mapped given the control gene expression profile and the type of the perturbation. This approach is named as \verb|MTAeOT|. Additionally, we have attempted to pretrain the model with the \verb|MTAe| architecture and then fine-tune it with the \verb|MTAeOT| architecture. This approach is named as \verb|MTAePlusOT| (\cref{fig:mtotfinetune}).
 
 % \begin{figure}
 %     \centering
 %     \includegraphics[width=\textwidth]{ae_ot_sketch.png}
 %     \caption{Using optimal transport to fine-tune the MTAe architecture (MTAePlusOT)}
 % \end{figure}
+
+
+\begin{figure}[h!]
+    \includegraphics[width=\textwidth]{mtopt.png}
+    \caption{Illustration of the MTAeOT architecture}
+\end{figure}
+
+\begin{figure}[h!]
+    \includegraphics[width=\textwidth]{ot_flowchart.png}
+    \caption{Flowchart for one iteration of training of the MTAeΟΤ architecture}
+\end{figure}
+
+\clearpage
 
 \subsection{Variational Autoencoder (VAE)}
 
@@ -422,61 +615,34 @@ Here, $q_\phi(z|x)$ is the encoder's approximation of the posterior over latent 
 %     \caption{VAE}
 % \end{figure}
 
+\vspace{60pt}
+
+\begin{figure}[h!]
+    \includegraphics[width=\textwidth]{mtoptfinetune.png}
+    \caption{Illustration of the MTAePlusOT and MTVaePlusOT architectures}
+    \label{fig:mtotfinetune}
+\end{figure}
+
+\begin{figure}[h!]
+    \includegraphics[width=\textwidth]{mtvae.png}
+    \caption{Illustration of the MTVae architecture}
+\end{figure}
 
 
-\section{Current single-cell perturbation modeling methods}
-\label{sec:benchmark_models}
+\begin{figure}[h!]
+    \includegraphics[width=\textwidth]{vae_flowchart.png}
+    \caption{Flowchart for one iteration of training of the MTVae architecture}
+\end{figure}
 
-Several approaches have been proposed in the literature to address the \gls{ood} prediction task. Among these, we selected the following representative methods to benchmark and compare against our multi-task learning architectures: a) scGen \cite{lotfollahiScGenPredictsSinglecell2019}, b) scVIDR \cite{kanaGenerativeModelingSinglecell2023}, c) scPreGAN \cite{weiScPreGANDeepGenerative2022}, and d) scButterfly \cite{caoScButterflyVersatileSinglecell2024}.
-
-\subsection{scGen}
-
-scGen's architecture is based on a \gls{vae} that learns a probabilistic latent space representation of the gene expression profiles. 
-The perturbation effect is modeled as a vector $\delta$, calculated as the mean of the differences between the latent vectors of the perturbed and control gene expression profiles. Then, the latent perturbed gene expression profile of a held-out cell type, $\hat{z}$,  is generated by adding this perturbation vector, $\delta$, to the latent vector of the control profile, $z$, using $\hat{z} = z + \delta$. Finally, the perturbed gene expression is obtained by decoding the generated latent vector, $\hat{z}$, using the decoder of the \gls{vae}. This approach allows for the generation of new perturbed profiles by manipulating the latent space representation using vector arithmetic.
-
-\subsection{scVIDR}
- 
-
-A key limitation of scGen is the absence of explicit cell-type-specific modeling, which can reduce its ability to generalize to unseen cell types with distinct perturbation responses.
-scVIDR addresses this by incorporating cell-type-aware perturbation estimation. Rather than computing a single global perturbation vector $\delta$ based only on the condition labels, scVIDR fits a linear regression model that captures how perturbation vectors vary across cell types.
-For each training cell type $i$, the perturbation vector is defined as $\delta_i = \hat{z}_i - z_i$,
-where $z_i$​, and $\hat{z}_i$ are the mean latent representation of the control, and perturbed cells of type $i$ respectively.
-A linear model is then trained to predict $\hat{\delta}_i$​ from $z_i$, i.e., $\hat{\delta}_i = f(z_i)$.
+\clearpage
 
 
-Once trained, this model can predict the perturbation vector $\delta_A$​ for an unseen cell type $A$, using only its control-state latent representation $z_A$, i.e., $\hat{\delta}_A = f(z_A)$.
-This cell-type-aware prediction improves generalization by allowing the model to tailor the perturbation response based on the control-state context of each cell type.
 
-scVIDR can also predict the gene expression profile for multiple dosages. Similarly, scVIDR fits a linear regression model to predict the perturbation vector $\hat{\delta}_c$ across cell types, but in this case, the conditions are the lowest and the highest dosage. Intermediate dosages are then calculated by log linearly interpolating on the $\hat{\delta}_c$.
-
-Regarding interpretability, the bottleneck of the non-linear mapping from the latent space to the gene expression space is replaced by a linear one, utilizing a sparse linear regression model. This is approximated by a weight matrix $\hat{W}_{VAE}$, with dimensions $MxG$ where $M$ is the number of latent variables and $G$ is the number of genes. Then this matrix is used to examine the contribution of the latent variables to the gene expression profile, using the following equation:
-
-\[\text{gene score} = \hat{\delta}_c^T \hat{W}_{VAE}\]
-
-A higher gene score indicates a bigger change at the expression level of the gene if the dosage increases.
-
-\subsection{scPreGAN}
-
-scPreGAN integrates an autoencoder with a \gls{gan} framework to predict \gls{sc} data under perturbations. The architecture consists of a shared encoder and two generators, one for each condition (control and perturbed). To align the generated distributions with the real data, the model employs two discriminators, each associated with a specific condition.
-
-The encoder, which is shared across both conditions, learns a perturbation-free latent representation that captures high-level biological features common to both states. The generators then incorporate condition-specific perturbation effects to reconstruct the gene expression profiles from the latent space. The discriminators are trained to distinguish between real and generated samples, while the generators are optimized adversarially to produce realistic reconstructions that fool their respective discriminators.
-
-
-\subsection{scButterfly}
-
-
-scButterfly is a generative adversarial model built on a dual-aligned \gls{vae} architecture, designed for cross-modal translation in single-cell data. The model has demonstrated strong performance in translating between transcriptomic and chromatin accessibility profiles, as well as between transcriptomic and proteomic data.
-
-Its architecture consists of two \gls{vae}s, each pretrained on a specific modality, and a translator component that aligns the latent spaces of the two encoders. The translator is composed of two neural networks, one per modality, each modeling a Gaussian distribution in the latent space. These networks take the encoder's latent representation as input, sample from the modeled distribution, and pass the sample to the decoder of the other modality, enabling cross-modal generation.
-After VAE pretraining, the translator is trained to align the latent spaces such that biologically meaningful translation across modalities can be achieved.
-
-Although scButterfly isn't primarily designed for perturbation modeling, the study has demonstrated its potential, by treating control and perturbed expression profiles as two modalities. One of its limitations is the narrow evaluation scope, as it has been tested only on the case of human \gls{pbmc} stimulated by interferon beta (IFN-b) \cite{kanaGenerativeModelingSinglecell2023}.
 
 \section{Evaluation}
 
 
 % I should mention preprocessing
-
 
 The models described in \crefwithname{sec:benchmark_models} serve as baselines for evaluating our multi-task learning architectures on the \gls{ood} prediction task.
 In contrast to our proposed method, these baseline models are typically designed to predict perturbed gene expression for a single, fixed type of perturbation, and lack the ability to condition on varying perturbation types. An exception is scVIDR, which can condition on different dosages of a given drug. This allows a single scVIDR model to predict responses across multiple perturbations
@@ -485,12 +651,16 @@ In contrast to our proposed method, these baseline models are typically designed
 Our objective is to explore whether explicitly conditioning on the perturbation type, thus enabling multi-perturbation response prediction, within a multi-task learning framework can lead to improved performance on the \gls{ood} prediction task.
 We extend this evaluation across multiple biological contexts, including cell types, and species, to assess the robustness and generalization capabilities of our approach.
 
-We have used two categories of evaluation metrics to compare the predicted gene expression profiles to the actual perturbed ones: a) baseline metrics, and b) distance metrics. The baseline metrics include the count of common \gls{degs}, the squared Pearson correlation $R^2$ for mean gene expression levels computed over all the \gls{hvg}, and the $R^2$ score for the top 100 \gls{hvg}. A differentially expressed gene is defined as a gene whose expression distribution differs significantly between the control and perturbed conditions. We have used Scanpy \cite{wolf2018scanpy} to identify \gls{degs}, which applies statistical tests to rank genes based on their test scores. To count common \gls{degs}, we compute the top 100 ranked \gls{degs} for both the predicted and the expected profiles, and then take the intersection of these sets.
+We have used two categories of evaluation metrics to compare the predicted gene expression profiles to the actual perturbed ones: a) baseline metrics, and b) distance metrics. The baseline metrics include the count of common \gls{degs}, the squared Pearson correlation $R^2$ for mean gene expression levels computed over all the \gls{hvg}, and the $R^2$ score for the top 100 \gls{hvg}. A differentially expressed gene is defined as a gene whose expression distribution differs significantly between the control and perturbed conditions. 
+We have used Scanpy \cite{wolf2018scanpy} to identify DEGs, which applies statistical tests to rank genes based on their test scores. To count common DEGs, we compute the top 100 ranked DEGs for both the predicted and the expected profiles, and then take the intersection of these sets.
+
 The distance metrics capture both point-wise and distributional differences between predicted and actual profiles. These include: (a) Euclidean distance, (b) E-distance, (c) Wasserstein distance, (d) mean pairwise distance, and (e) maximum mean discrepancy (MMD).
 The baseline metrics were computed using Scanpy, while the distance metrics were computed with the Pertpy library \cite{heumos2024pertpy}.
 To account for model variability, we repeated each experiment three times using different random seeds (1, 2, and 19193), and report the average performance across runs.
 
-For the following analysis, we have selected some of our most promising multi-task architectures, namely \verb|MTAe|, \verb|MTAeAdv|, \verb|MTAeAdvG|, \verb|MTVae| to be visually represented by the evaluation results. For a full comparison of all the models, refer to the supplementary material \crefwithname{sec:appendix_evaluation}. 
+For the following analysis, we have selected some of our most promising multi-task architectures, namely \verb|MTAe|, \verb|MTAeAdv|, \verb|MTAeAdvG|, \verb|MTVae| to be visually represented by the evaluation results. For a full comparison of all the models, refer to the supplementary material (\crefwithname{sec:appendix_evaluation}). 
+
+\clearpage
 
 \subsection{Single perturbation response prediction}
 \label{sec:eval_single_perturbation}
@@ -498,9 +668,10 @@ For the following analysis, we have selected some of our most promising multi-ta
 We have evaluated the models on human \gls{pbmc} that have been stimulated by IFN-b interferon (Kang et al. \cite{kanaGenerativeModelingSinglecell2023}). For this dataset, there is only one type of perturbation, and the conditioning signal of our multi-task architectures is a one-hot encoded vector with two entries, one for the control condition and one for the perturbed condition. We have used the provided preprocessed data from scGen study \cite{lotfollahiScGenPredictsSinglecell2019}, which consists of 18.868 cells, and the most highly variable 6.998 genes.
 %How the data was preprocessed? Number of samples?
 
-We have tested the models across all the available cell types, training a model from scratch for each use case. To test each model, we held out the perturbed gene expression of the cell type of interest and used the rest to train.
+We have tested the models across all the available cell types, training a model from scratch for each use case. To test each model, we held out the perturbed gene expression of the cell type of interest and used the rest to train (\cref{fig:eval_pbmc,fig:eval_pbmc_distance}).
 
 By averaging the results across all the cell types (see \cref{tab:eval_pbmc}), we can see that one of our multi-task versions, \verb|MTAe|, achieved the highest DEGs of $\small{\sim} 75$, while achieving comparable $R^2$ scores to the scVIDR, and scButterfly, as the best performing ones.  The distance metrics show the last ones perform better than \verb|MTAe|, indicating a more representative global structure of the perturbed gene expression profiles. However, \verb|MTAeAdv|, and \verb|MTVae|, seemed to be on par with the best performing models across all metrics, while the optimal transport variations, \verb|MTAeOT|, \verb|MTAePlusOT|, \verb|MTVaeOT|, and \verb|MTVaePlusOT|, performed significantly worse than the rest of the models.
+
 As shown in \cref{fig:eval_pbmc}, we have selected ISG15, a marker gene of IFN-b, as an example gene to visualize the distribution of the predicted and expected gene expression profiles across cell types. However, none of the models seem to capture the expected distribution of the gene expression profile.
 
 
@@ -511,35 +682,212 @@ As shown in \cref{fig:eval_pbmc}, we have selected ISG15, a marker gene of IFN-b
 %     \label{fig:pbmc_umap}
 % \end{figure}
 
+% \begin{figure}[h!]
+%     \centering
+%     \begin{subfigure}[t]{0.42\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc.png}
+%         \caption{Baseline metrics across cell types}
+%         \label{}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}[t]{0.42\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc.png}
+%         \caption{Distance metrics across cell types}
+%         \label{}
+%     \end{subfigure}
+%     \begin{subfigure}[b]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{figures/pbmc_split.png}
+%         \caption{UMAP representation of data splitting}
+%         \label{}
+%     \end{subfigure}
+%     \begin{subfigure}[b]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=.75\textwidth]{violins_pbmc.png}
+%         \caption{Violin plots of gene expression distributions for gene ISG15}
+%         \label{}
+%     \end{subfigure}     
+%     \caption{Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
+%     \label{fig:eval_pbmc}
+% \end{figure}
+
+% \begin{table}[h!]
+%     \centering
+%     \scalebox{0.75}{
+%     \begin{tabularx}{\textwidth}{lXXXXXXXXX}
+%     \toprule
+%     model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
+%     \midrule
+%     MTAe & \textbf{75.714} & 0.946 & 0.871 & 0.917 & 0.488 & 0.892 & 0.651 & 0.949 & 0.488 \\
+%     MTAeAdv & 72.381 & 0.961 & 0.955 & 0.948 & 0.202 & 0.604 & 0.429 & 0.800 & 0.202 \\
+%     MTAeAdvG & 65.905 & 0.917 & 0.878 & 0.901 & 0.504 & 0.828 & 0.681 & 0.909 & 0.504 \\
+%     MTAeOT & 41.190 & 0.657 & 0.668 & 0.648 & 0.811 & 0.947 & 0.883 & 0.963 & 0.811 \\
+%     MTAePlusOT & 37.190 & 0.670 & 0.674 & 0.657 & 0.810 & 0.951 & 0.880 & 0.966 & 0.810 \\
+%     MTVae & 69.095 & 0.942 & 0.954 & 0.928 & 0.261 & 0.621 & 0.499 & 0.800 & 0.261 \\
+%     MTVaeOT & 39.571 & 0.669 & 0.678 & 0.663 & 0.813 & 0.955 & 0.883 & 0.966 & 0.813 \\
+%     MTVaePlusOT & 30.619 & 0.661 & 0.670 & 0.655 & 0.821 & 0.958 & 0.888 & 0.968 & 0.821 \\
+%     scButterfly & 60.727 & 0.891 & 0.914 & 0.889 & 0.271 & \textbf{0.601} & 0.469 & \textbf{0.779} & 0.271 \\
+%     scGen & 32.143 & 0.910 & 0.872 & 0.870 & 0.627 & 0.909 & 0.765 & 0.946 & 0.627 \\
+%     scPreGAN & 35.750 & 0.771 & 0.857 & 0.799 & 0.499 & 0.690 & 0.682 & 0.851 & 0.499 \\
+%     vidrSingle & 25.536 & \textbf{0.970} & \textbf{0.971} & \textbf{0.961} & \textbf{0.182} & 0.606 & \textbf{0.408} & 0.797 & \textbf{0.182} \\
+%     \bottomrule
+%     \end{tabularx}}
+%     \caption{Averaged across all cell types in Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
+%     \label{tab:eval_pbmc}
+% \end{table}
+
+\clearpage
+
+
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=\textwidth]{multi_task_benchmarking_cell_type_baseline_metrics_pbmc.png}
+%     \caption{Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
+%     \label{fig:pbmc_umap}
+% \end{figure}
+
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc.png}
+%     \caption{Βασικές μετρικές ανά τύπο κυττάρου (Kang et al. \cite{kanaGenerativeModelingSinglecell2023})}
+%     \label{fig:eval_pbmc}
+% \end{figure}
+
 \begin{figure}[h!]
     \centering
-    \begin{subfigure}[t]{0.42\textwidth}
+    
+    \begin{subfigure}{\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc.png}
-        \caption{Baseline metrics across cell types}
-        \label{}
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc_degs.png}
+    \caption{\gls{degs}}
     \end{subfigure}
+    
     \hfill
-    \begin{subfigure}[t]{0.42\textwidth}
+    
+    \begin{subfigure}{\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc.png}
-        \caption{Distance metrics across cell types}
-        \label{}
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc_r2all.png}
+    \caption{$R^2$ for all the genes}
     \end{subfigure}
-    \begin{subfigure}[b]{0.48\textwidth}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figures/pbmc_split.png}
-        \caption{UMAP representation of data splitting}
-        \label{}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.48\textwidth}
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc_r220.png}
+    \caption{$R^2$ for the top 20 \gls{hvg}}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[h!]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
         \centering
-        \includegraphics[width=.75\textwidth]{violins_pbmc.png}
-        \caption{Violin plots of gene expression distributions for gene ISG15}
-        \label{}
-    \end{subfigure}     
-    \caption{Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_pbmc_r2100.png}
+    \caption{$R^2$ for the top 100 \gls{hvg}}
+    \end{subfigure}        
+    
+    \caption{Baseline metrics per cell type (Kang et al. \cite{kanaGenerativeModelingSinglecell2023})}
     \label{fig:eval_pbmc}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc_edist.png}
+    \caption{edistance}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc_wasserstein.png}
+    \caption{wasserstein}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc_euclidean.png}
+    \caption{euclidean}
+    \end{subfigure}  
+    
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc_mean_pairwise.png}
+    \caption{mean pairwise distance}
+    \end{subfigure}        
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_pbmc_mmd.png}
+    \caption{mmd}
+    \end{subfigure}      
+    
+    \caption{Distance metrics per cell type  (Kang et al. \cite{kanaGenerativeModelingSinglecell2023})}
+    \label{fig:eval_pbmc_distance}    
+\end{figure}
+
+\clearpage
+
+
+\begin{figure}[h!]
+    \centering
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/pbmc_split_cell_type.png}
+    \caption{}
+    \end{subfigure}
+    
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/pbmc_split_condition.png}
+    \caption{}
+    \end{subfigure}
+\end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/pbmc_split_train.png}
+    \caption{}
+    \end{subfigure}
+
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/pbmc_split_test.png}
+    \caption{}
+    \end{subfigure}        
+    
+    \caption{UMAP train test split (Kang et al. \cite{kanaGenerativeModelingSinglecell2023})}
+    \label{fig:eval_pbmc_umap}
+\end{figure}
+
+
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.9\textwidth]{violins_pbmc.png}
+    \caption{Violin plots gene expression distributions for the ISG15 gene CD4T cell type (Kang et al. \cite{kanaGenerativeModelingSinglecell2023})}
+    \label{fig:eval_pbmc_violins}
 \end{figure}
 
 \begin{table}[h!]
@@ -563,10 +911,11 @@ As shown in \cref{fig:eval_pbmc}, we have selected ISG15, a marker gene of IFN-b
     vidrSingle & 25.536 & \textbf{0.970} & \textbf{0.971} & \textbf{0.961} & \textbf{0.182} & 0.606 & \textbf{0.408} & 0.797 & \textbf{0.182} \\
     \bottomrule
     \end{tabularx}}
-    \caption{Averaged across all cell types in Kang et al. \cite{kanaGenerativeModelingSinglecell2023}}
+    \caption{Averaged metrics across all cell types (Kang et al. \cite{kanaGenerativeModelingSinglecell2023})}
     \label{tab:eval_pbmc}
 \end{table}
 
+\clearpage
 
 
 \subsection{Multiple perturbations response prediction}
@@ -583,50 +932,328 @@ We have averaged the results across all the cell types, and dosages (see \cref{t
 
 \clearpage
 
+% \begin{figure}[h!]
+%     \centering
+%     \begin{subfigure}[t]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_baseline_metrics_nault.png}
+%         \caption{Baseline metrics across cell types}
+%         \label{}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}[t]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault.png}
+%         \caption{Distance metrics across cell types}
+%         \label{}
+%     \end{subfigure}
+%     \begin{subfigure}[b]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{selected_benchmarking_doses_baseline_metrics_nault.png}
+%         \caption{Baseline metrics across dosages}
+%         \label{}
+%     \end{subfigure}
+%     \begin{subfigure}[b]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=.9\textwidth]{selected_benchmarking_doses_distance_metrics_nault.png}
+%         \caption{Distance metrics across dosages}
+%         \label{}
+%     \end{subfigure}
+%     \begin{subfigure}[b]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=.9\textwidth]{figures/nault_umap_split_multiple.png}
+%         \caption{UMAP representation of data splitting for all the dosages}
+%         \label{}
+%     \end{subfigure}
+%     \begin{subfigure}[b]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=.9\textwidth]{figures/nault_umap_split_30.png}
+%         \caption{UMAP representation of data splitting for the dosage $30 \mu g/kg$}
+%         \label{}
+%     \end{subfigure}       
+%     \caption{Averaged results across all cell types and dosages in Nault et al. \cite{nault2021single,nault2022benchmarking}}
+%     \label{fig:eval_nault}
+% \end{figure}
+
+% \clearpage
+
+% \begin{table}[h!]
+%     \centering
+%     \scalebox{0.75}{
+%     \begin{tabularx}{\textwidth}{lXXXXXXXXX}
+%     \toprule
+%     model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
+%     \midrule
+%     MTAe & \textbf{20.341} & 0.862 & 0.792 & 0.833 & 1.386 & 1.217 & 1.116 & 1.050 & 1.386 \\
+%     MTAeAdv & 13.716 & 0.792 & 0.725 & 0.743 & 1.128 & 1.091 & 1.011 & 1.017 & 1.128 \\
+%     MTAeAdvG & 18.307 & 0.808 & 0.736 & 0.764 & 1.164 & 1.107 & 1.030 & 1.029 & 1.164 \\
+%     MTAeOT & 8.652 & 0.608 & 0.642 & 0.590 & 0.925 & 1.006 & 0.951 & 0.998 & 0.925 \\
+%     MTAePlusOT & 8.519 & 0.613 & 0.644 & 0.596 & \textbf{0.917} & \textbf{1.004} & 0.948 & 0.996 & 0.917 \\
+%     MTVae & 18.981 & 0.808 & 0.724 & 0.753 & 1.124 & 1.100 & 1.005 & 1.016 & 1.124 \\
+%     MTVaeOT & 8.163 & 0.614 & 0.642 & 0.593 & 0.929 & 1.009 & 0.952 & 0.998 & 0.929 \\
+%     MTVaePlusOT & 8.701 & 0.615 & 0.645 & 0.597 & 0.919 & 1.006 & 0.948 & 0.997 & \textbf{0.919} \\
+%     scButterfly & 16.818 & 0.740 & 0.694 & 0.696 & 0.984 & 1.014 & \textbf{0.944} & \textbf{0.990} & 0.984 \\
+%     scGen & 6.288 & \textbf{0.915} & \textbf{0.863} & \textbf{0.897} & 2.408 & 1.229 & 1.387 & 1.041 & 2.408 \\
+%     scPreGAN & 14.511 & 0.599 & 0.596 & 0.562 & 0.972 & 1.019 & 0.969 & 1.000 & 0.972 \\
+%     vidrMult & 2.352 & 0.870 & 0.837 & 0.852 & 9.295 & 1.358 & 2.425 & 1.054 & 9.295 \\
+%     vidrSingle & 3.795 & 0.855 & 0.797 & 0.824 & 1.431 & 1.174 & 1.118 & 1.025 & 1.431 \\
+%     \bottomrule
+%     \end{tabularx}}
+%     \caption{Nault et al. \cite{nault2021single,nault2022benchmarking}}
+%     \label{tab:eval_nault}
+% \end{table}
+
+\clearpage
+
 \begin{figure}[h!]
     \centering
-    \begin{subfigure}[t]{0.48\textwidth}
+    
+    \begin{subfigure}{\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_baseline_metrics_nault.png}
-        \caption{Baseline metrics across cell types}
-        \label{}
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_nault_degs.png}
+    \caption{\gls{degs}}
     \end{subfigure}
+    
     \hfill
-    \begin{subfigure}[t]{0.48\textwidth}
+    
+    \begin{subfigure}{\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault.png}
-        \caption{Distance metrics across cell types}
-        \label{}
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_nault_r2all.png}
+    \caption{$R^2$ for all the genes}
     \end{subfigure}
-    \begin{subfigure}[b]{0.48\textwidth}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{selected_benchmarking_doses_baseline_metrics_nault.png}
-        \caption{Baseline metrics across dosages}
-        \label{}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.48\textwidth}
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_nault_r220.png}
+    \caption{$R^2$ for the top 20 \gls{hvg}}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[h!]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
         \centering
-        \includegraphics[width=.9\textwidth]{selected_benchmarking_doses_distance_metrics_nault.png}
-        \caption{Distance metrics across dosages}
-        \label{}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.48\textwidth}
-        \centering
-        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_multiple.png}
-        \caption{UMAP representation of data splitting for all the dosages}
-        \label{}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.48\textwidth}
-        \centering
-        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_30.png}
-        \caption{UMAP representation of data splitting for the dosage $30 \mu g/kg$}
-        \label{}
-    \end{subfigure}       
-    \caption{Averaged results across all cell types and dosages in Nault et al. \cite{nault2021single,nault2022benchmarking}}
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_nault_r2100.png}
+    \caption{$R^2$ for the top 100 \gls{hvg}}
+    \end{subfigure}        
+    
+    \caption{Baseline metrics per cell type (Nault et al. \cite{nault2021single,nault2022benchmarking})}
     \label{fig:eval_nault}
 \end{figure}
 
+\begin{figure}[!htbp]
+    \centering
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault_edist.png}
+    \caption{edistance}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault_wasserstein.png}
+    \caption{wasserstein}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault_euclidean.png}
+    \caption{euclidean}
+    \end{subfigure}  
+    
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault_mean_pairwise.png}
+    \caption{mean pairwise distance}
+    \end{subfigure}        
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_nault_mmd.png}
+    \caption{mmd}
+    \end{subfigure}      
+    
+    \caption{Distance metrics per cell type (Nault et al. \cite{nault2021single,nault2022benchmarking})}
+    \label{fig:eval_nault_distance} 
+\end{figure}
+
+
+\begin{figure}[h!]
+    \centering
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_dose_baseline_metrics_nault_degs.png}
+    \caption{\gls{degs}}
+    \end{subfigure}
+    
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_dose_baseline_metrics_nault_r2all.png}
+    \caption{$R^2$ for all the genes}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_dose_baseline_metrics_nault_r220.png}
+    \caption{$R^2$ for the top 20 \gls{hvg}}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[h!]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_dose_baseline_metrics_nault_r2100.png}
+    \caption{$R^2$ for the top 100 \gls{hvg}}
+    \end{subfigure}        
+    
+    \caption{Baseline metrics per dose (Nault et al. \cite{nault2021single,nault2022benchmarking})}
+    \label{fig:eval_nault_doses_baseline}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_dose_distance_metrics_nault_edist.png}
+    \caption{edistance}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_dose_distance_metrics_nault_wasserstein.png}
+    \caption{wasserstein}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_dose_distance_metrics_nault_euclidean.png}
+    \caption{euclidean}
+    \end{subfigure}  
+    
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_dose_distance_metrics_nault_mean_pairwise.png}
+    \caption{mean pairwise distance}
+    \end{subfigure}        
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_dose_distance_metrics_nault_mmd.png}
+    \caption{mmd}
+    \end{subfigure}      
+    
+    \caption{Distance metrics per dose (Nault et al. \cite{nault2021single,nault2022benchmarking})}
+    \label{fig:eval_nault_doses_distance}
+\end{figure}
+
 \clearpage
+
+
+\begin{figure}[h!]
+    \centering
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_multiple_cell_type.png}
+    \caption{}
+    \end{subfigure}
+    
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_multiple_condition.png}
+    \caption{}
+    \end{subfigure}
+\end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_multiple_train.png}
+    \caption{}
+    \end{subfigure}
+
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_multiple_test.png}
+    \caption{}
+    \end{subfigure}        
+    
+    \caption{UMAP train test split for all the doses (Nault et al. \cite{nault2021single,nault2022benchmarking})}
+    \label{fig:eval_nault_umap_all}
+\end{figure}
+
+
+\begin{figure}[h!]
+    \centering
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_30_cell_type.png}
+    \caption{}
+    \end{subfigure}
+    
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_30_condition.png}
+    \caption{}
+    \end{subfigure}
+\end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_30_train.png}
+    \caption{}
+    \end{subfigure}
+
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{figures/nault_umap_split_30_test.png}
+    \caption{}
+    \end{subfigure}        
+    
+    \caption{UMAP train test split for the dose of $30 \mu g/kg$ (Nault et al. \cite{nault2021single,nault2022benchmarking})}
+    \label{fig:eval_nault_umap_30}
+\end{figure}
+
 
 \begin{table}[h!]
     \centering
@@ -650,7 +1277,7 @@ We have averaged the results across all the cell types, and dosages (see \cref{t
     vidrSingle & 3.795 & 0.855 & 0.797 & 0.824 & 1.431 & 1.174 & 1.118 & 1.025 & 1.431 \\
     \bottomrule
     \end{tabularx}}
-    \caption{Nault et al. \cite{nault2021single,nault2022benchmarking}}
+    \caption{Averaged metrics across all cell types Nault et al. \cite{nault2021single,nault2022benchmarking}}
     \label{tab:eval_nault}
 \end{table}
 
@@ -670,6 +1297,112 @@ Similar to the evaluation performed in the scGen study, we used the dataset from
 The dataset was obtained preprocessed from the scGen study. To evaluate the models, we followed the same approach as in the \crefwithname{sec:eval_single_perturbation}, but instead of holding out the perturbed gene expression profiles of a cell type, we held out the perturbed gene expression profiles of a species.
 
 By averaging the result across all the species (see \cref{tab:eval_cross_species}), \verb|MTAe|, achieved the highest DEGs of $\small{\sim} 16$. scGen, and scVIDR achieved the highest $R^2$ scores, same as the case of \crefwithname{sec:eval_single_perturbation}, but performed poorly on the distance metrics. \verb|MTVae| achieved the best performance on the distance metrics, relatively high number of DEGs $12.5$, but low $R^2$ scores. The optimal transport variations performed well on the distance metrics, but poorly on the baseline ones, similarly to the case of \crefwithname{sec:eval_multiple_perturbations}.
+
+
+
+\clearpage
+
+
+
+\begin{figure}[h!]
+    \centering
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species_degs.png}
+    \caption{\gls{degs}}
+    \end{subfigure}
+    
+    \hfill
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species_r2all.png}
+    \caption{$R^2$ for all the genes}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species_r220.png}
+    \caption{$R^2$ for the top 20 \gls{hvg}}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[h!]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species_r2100.png}
+    \caption{$R^2$ for the top 100 \gls{hvg}}
+    \end{subfigure}        
+    
+    \caption{Baseline metrics per species (Hagai et al. \cite{hagai2018gene})}
+    \label{fig:eval_cross_species}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species_edist.png}
+    \caption{edistance}
+    \end{subfigure}
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species_wasserstein.png}
+    \caption{wasserstein}
+    \end{subfigure}    
+\end{figure}
+
+
+\begin{figure}[p]\ContinuedFloat
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species_euclidean.png}
+    \caption{euclidean}
+    \end{subfigure}  
+    
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species_mean_pairwise.png}
+    \caption{mean pairwise distance}
+    \end{subfigure}        
+
+    \hfill
+
+    \begin{subfigure}{\textwidth}
+        \centering
+        \includegraphics[width=.83\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species_mmd.png}
+    \caption{mmd}
+    \end{subfigure}      
+    
+    \caption{Distance metrics per species (Hagai et al. \cite{hagai2018gene})}
+    \label{fig:eval_cross_species_distance}
+\end{figure}
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species.png}
+%     \caption{Βασικές μετρικές ανά είδος (Hagai et al. \cite{hagai2018gene})}
+%     \label{fig:eval_cross_species}
+% \end{figure}
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species.png}
+%     \caption{Μετρικές απόστασης ανά είδος (Hagai et al. \cite{hagai2018gene})}
+%     \label{fig:eval_cross_species_distance}
+% \end{figure}
+
+\clearpage
 
 \begin{table}[h!]
     \centering    
@@ -692,35 +1425,61 @@ By averaging the result across all the species (see \cref{tab:eval_cross_species
     vidrSingle & 12.917 & \textbf{0.878} & \textbf{0.711} & \textbf{0.701} & 3.386 & 1.905 & 1.769 & 1.225 & 3.386 \\
     \bottomrule
     \end{tabularx}}
-    \caption{Hagel et al. \cite{hagai2018gene}}
+    \caption{Averaged metrics across all cell types Hagel et al. \cite{hagai2018gene}}
     \label{tab:eval_cross_species}
 \end{table}
 
 
-\begin{figure}[h!]
-    \centering
-    \begin{subfigure}[t]{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species.png}
-        \caption{Baseline metrics across species}
-        \label{}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species.png}
-        \caption{Distance metrics across species}
-        \label{}
-    \end{subfigure}
-    % \begin{subfigure}[b]{0.48\textwidth}
-    %     \centering
-    %     \includegraphics[width=\textwidth]{violins_cross_species.png}
-    %     \caption{Violin plots of gene expression distributions for gene Sod2}
-    %     \label{}
-    % \end{subfigure}     
-    \caption{Averaged results across all species in Hagel et al. \cite{hagai2018gene}}
-    \label{fig:eval_cross_species}
-\end{figure}
+% \begin{table}[h!]
+%     \centering    
+%     \scalebox{0.75}{
+%     \begin{tabularx}{\textwidth}{lXXXXXXXXX}
+%     \toprule
+%     model & DEGs & $R^2_{\text{HVG}}$ & $R^2_{\text{HVG20}}$ & $R^2_{\text{HVG100}}$ & Euc & Was & E-dist & MPD & MMD \\
+%     \midrule
+%     MTAe & \textbf{16.083} & 0.740 & 0.559 & 0.481 & 0.930 & 1.008 & 0.962 & 0.995 & 0.930 \\
+%     MTAeAdv & 11.250 & 0.579 & 0.465 & 0.365 & 0.865 & 0.919 & 0.929 & 0.957 & 0.865 \\
+%     MTAeAdvG & 12.500 & 0.708 & 0.533 & 0.456 & 0.921 & 0.985 & 0.958 & 0.987 & 0.921 \\
+%     MTAeOT & 7.500 & 0.483 & 0.432 & 0.304 & 0.899 & 0.932 & 0.948 & 0.966 & 0.899 \\
+%     MTAePlusOT & 8.000 & 0.480 & 0.436 & 0.309 & 0.876 & 0.913 & 0.936 & 0.956 & 0.876 \\
+%     MTVae & 12.500 & 0.652 & 0.498 & 0.413 & \textbf{0.840} & \textbf{0.903} & \textbf{0.916} & \textbf{0.951} & 0.840 \\
+%     MTVaeOT & 7.417 & 0.479 & 0.423 & 0.302 & 0.895 & 0.929 & 0.946 & 0.964 & 0.895 \\
+%     MTVaePlusOT & 7.833 & 0.473 & 0.431 & 0.301 & 0.883 & 0.919 & 0.940 & 0.959 & 0.883 \\
+%     scButterfly & 10.750 & 0.574 & 0.389 & 0.346 & 0.899 & 0.942 & 0.948 & 0.971 & 0.899 \\
+%     scGen & 7.583 & 0.826 & 0.705 & 0.658 & 2.014 & 1.576 & 1.367 & 1.165 & 2.014 \\
+%     scPreGAN & 7.250 & 0.443 & 0.374 & 0.276 & 0.914 & 0.945 & 0.955 & 0.973 & 0.914 \\
+%     vidrSingle & 12.917 & \textbf{0.878} & \textbf{0.711} & \textbf{0.701} & 3.386 & 1.905 & 1.769 & 1.225 & 3.386 \\
+%     \bottomrule
+%     \end{tabularx}}
+%     \caption{Hagel et al. \cite{hagai2018gene}}
+%     \label{tab:eval_cross_species}
+% \end{table}
+
+
+% \begin{figure}[h!]
+%     \centering
+%     \begin{subfigure}[t]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_baseline_metrics_cross_species.png}
+%         \caption{Baseline metrics across species}
+%         \label{}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}[t]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{selected_benchmarking_cell_type_distance_metrics_cross_species.png}
+%         \caption{Distance metrics across species}
+%         \label{}
+%     \end{subfigure}
+%     % \begin{subfigure}[b]{0.48\textwidth}
+%     %     \centering
+%     %     \includegraphics[width=\textwidth]{violins_cross_species.png}
+%     %     \caption{Violin plots of gene expression distributions for gene Sod2}
+%     %     \label{}
+%     % \end{subfigure}     
+%     \caption{Averaged results across all species in Hagel et al. \cite{hagai2018gene}}
+%     \label{fig:eval_cross_species}
+% \end{figure}
 
 
 % \subsection{Overview}
@@ -734,7 +1493,7 @@ By averaging the result across all the species (see \cref{tab:eval_cross_species
 
 % scVIDR performance drops for DEGs, and distance metrics, but it performs well for the $R^2$ metrics and stays very consistent, along with scGEN. The multi-task models and scButterfly exhibit greater variability across measurements, but better performance on average. The optimal transport variations performed poorly overall, but were among the best for distance metrics for the Nault et al. \cite{nault2021single,nault2022benchmarking} dataset. 
 
-
+\clearpage
 
 
 \section{Conclusion and future work}
@@ -745,9 +1504,11 @@ In this work, we proposed a multi-task architecture for perturbation modeling in
 
 We also validated the potential of scButterfly in perturbation modeling on the multi-dosage dataset of Nault et al. \cite{nault2021single,nault2022benchmarking}, extending beyond the Kang et al. dataset \cite{kanaGenerativeModelingSinglecell2023}, which was the primary dataset in the original authors' study.
 
-Our base model, \verb|MTAe|, achieved the highest number of \gls{degs} across all experiments (\crefwithname{sec:eval_single_perturbation}, \crefwithname{sec:eval_multiple_perturbations}, and \crefwithname{sec:eval_cross_species}). While no single model consistently outperforms across all metrics, a significant advantage of our multi-task approach is its lower complexity and scalability. It requires training only one model per cell type, rather than one model per perturbation as in the baseline models \cite{allenspachNeuralMultitaskLearning2024}. This makes our approach particularly advantageous for large datasets with many perturbations, as it reduces both computational cost and training time. Future work could further validate this parameter efficiency by applying our approach to larger, more diverse datasets.
+Our base model, \verb|MTAe|, achieved the highest number of \gls{degs} across all experiments (\crefwithname{sec:eval_single_perturbation}, \crefwithname{sec:eval_multiple_perturbations}, and \crefwithname{sec:eval_cross_species}). While no single model consistently outperforms across all metrics, a significant advantage of our multi-task approach is its lower complexity and scalability. It requires training only one model per cell type, rather than one model per perturbation as in the baseline models \cite{allenspach2024neural}. This makes our approach particularly advantageous for large datasets with many perturbations, as it reduces both computational cost and training time. Future work could further validate this parameter efficiency by applying our approach to larger, more diverse datasets.
 
 A current limitation of our method is its transductive learning with respect to perturbations. Since the perturbation signal is one-hot encoded, the model cannot generalize to unseen perturbations. Future work should explore how inductive representations of perturbations could be integrated into our architecture to enable extrapolation to unseen perturbations.
+
+\clearpage
 
 \section{Code availability}
 
